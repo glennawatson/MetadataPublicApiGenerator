@@ -119,12 +119,68 @@ namespace MetadataPublicApiGenerator
 
             if (typeDefinition.IsReadOnly)
             {
-                syntaxList.Add(SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword));
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword));
             }
 
             if (typeDefinition.IsByRefLike)
             {
-                syntaxList.Add(SyntaxFactory.Token(SyntaxKind.RefKeyword));
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.RefKeyword));
+            }
+
+            return syntaxList;
+        }
+
+        public static SyntaxTokenList GetModifiers(this IMethod method)
+        {
+            var syntaxList = GetModifiers((IEntity)method);
+
+            if (method.IsOverride)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
+            }
+
+            if (method.IsVirtual)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.VirtualKeyword));
+            }
+
+            return syntaxList;
+        }
+
+        public static SyntaxTokenList GetModifiers(this IVariable variable)
+        {
+            var modifierList = new List<SyntaxKind>();
+
+            if (variable.IsConst)
+            {
+                modifierList.Add(SyntaxKind.ConstKeyword);
+            }
+
+            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+        }
+
+        public static SyntaxTokenList GetModifiers(this IParameter parameter)
+        {
+            var syntaxList = GetModifiers((IVariable)parameter);
+
+            if (parameter.IsIn)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.InKeyword));
+            }
+
+            if (parameter.IsOut)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.OutKeyword));
+            }
+
+            if (parameter.IsParams)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.ParamsKeyword));
+            }
+
+            if (parameter.IsRef)
+            {
+                syntaxList = syntaxList.Add(SyntaxFactory.Token(SyntaxKind.RefKeyword));
             }
 
             return syntaxList;

@@ -3,10 +3,13 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ICSharpCode.Decompiler.TypeSystem;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Accessibility = ICSharpCode.Decompiler.TypeSystem.Accessibility;
 
 namespace MetadataPublicApiGenerator
 {
@@ -96,10 +99,8 @@ namespace MetadataPublicApiGenerator
         {
             switch (operatorName)
             {
-                case "op_Explicit":
-                    return SyntaxFactory.Token(SyntaxKind.ExplicitKeyword);
                 case "op_Equality":
-                    return SyntaxFactory.Token(SyntaxKind.EqualsKeyword);
+                    return SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken);
                 case "op_Inequality":
                     return SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken);
                 case "op_GreaterThan":
@@ -111,44 +112,49 @@ namespace MetadataPublicApiGenerator
                 case "op_LessThanOrEqual:":
                     return SyntaxFactory.Token(SyntaxKind.LessThanLessThanEqualsToken);
                 case "op_BitwiseAnd":
-                    return SyntaxFactory.Token(SyntaxKind.BitwiseNotExpression);
+                    return SyntaxFactory.Token(SyntaxKind.AmpersandToken);
                 case "op_BitwiseOr":
-                    return SyntaxFactory.Token(SyntaxKind.BitwiseOrExpression);
+                    return SyntaxFactory.Token(SyntaxKind.BarToken);
                 case "op_Addition":
-                    return SyntaxFactory.Token(SyntaxKind.AddKeyword);
+                    return SyntaxFactory.Token(SyntaxKind.PlusToken);
                 case "op_Subtraction":
-                    return SyntaxFactory.Token(SyntaxKind.SubtractExpression);
+                    return SyntaxFactory.Token(SyntaxKind.MinusToken);
                 case "op_Division":
-                    return SyntaxFactory.Token(SyntaxKind.DivideExpression);
+                    return SyntaxFactory.Token(SyntaxKind.SlashToken);
                 case "op_Modulus":
-                    return SyntaxFactory.Token(SyntaxKind.ModuloExpression);
+                    return SyntaxFactory.Token(SyntaxKind.PercentToken);
                 case "op_Multiply":
-                    return SyntaxFactory.Token(SyntaxKind.MultiplyExpression);
+                    return SyntaxFactory.Token(SyntaxKind.AsteriskToken);
                 case "op_LeftShift":
-                    return SyntaxFactory.Token(SyntaxKind.LeftShiftExpression);
+                    return SyntaxFactory.Token(SyntaxKind.LessThanLessThanToken);
                 case "op_RightShift":
-                    return SyntaxFactory.Token(SyntaxKind.RightShiftExpression);
+                    return SyntaxFactory.Token(SyntaxKind.GreaterThanGreaterThanToken);
                 case "op_ExclusiveOr":
-                    return SyntaxFactory.Token(SyntaxKind.ExclusiveOrExpression);
+                    return SyntaxFactory.Token(SyntaxKind.CaretToken);
                 case "op_UnaryNegation":
-                    return SyntaxFactory.Token(SyntaxKind.UnaryMinusExpression);
+                    return SyntaxFactory.Token(SyntaxKind.MinusToken);
                 case "op_UnaryPlus":
-                    return SyntaxFactory.Token(SyntaxKind.UnaryPlusExpression);
+                    return SyntaxFactory.Token(SyntaxKind.PlusToken);
                 case "op_LogicalNot":
-                    return SyntaxFactory.Token(SyntaxKind.LogicalNotExpression);
+                    return SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken);
                 case "op_False":
                     return SyntaxFactory.Token(SyntaxKind.FalseKeyword);
                 case "op_True":
                     return SyntaxFactory.Token(SyntaxKind.TrueKeyword);
                 case "op_Increment":
-                    return SyntaxFactory.Token(SyntaxKind.PostIncrementExpression);
+                    return SyntaxFactory.Token(SyntaxKind.PlusPlusToken);
                 case "op_Decrement":
-                    return SyntaxFactory.Token(SyntaxKind.PostDecrementExpression);
-                case "op_Implicit":
-                    return SyntaxFactory.Token(SyntaxKind.ImplicitKeyword);
+                    return SyntaxFactory.Token(SyntaxKind.MinusMinusToken);
                 case "op_OnesComplement":
-                    return SyntaxFactory.Token(SyntaxKind.complement)
+                    return SyntaxFactory.Token(SyntaxKind.TildeToken);
             }
+
+            throw new Exception($"Unknown name for a operator: {operatorName}");
+        }
+
+        internal static bool ShouldIncludeEntity(IEntity entity, ISet<string> excludeMembersAttributes)
+        {
+            return !entity.GetAttributes().Any(attr => excludeMembersAttributes.Contains(attr.AttributeType.FullName)) && entity.Accessibility == Accessibility.Public;
         }
     }
 }
