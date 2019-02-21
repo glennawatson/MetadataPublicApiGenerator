@@ -55,19 +55,72 @@ namespace MetadataPublicApiGenerator
         /// Gets a string form of the type and generic arguments for a type.
         /// </summary>
         /// <param name="currentType">The type to generate the arguments for.</param>
+        /// <param name="compilation">The compilation information source.</param>
         /// <returns>A type descriptor including the generic arguments.</returns>
-        public static string GenerateFullGenericName(this IType currentType)
+        public static string GenerateFullGenericName(this IType currentType, ICompilation compilation)
         {
-            var sb = new StringBuilder(currentType.FullName);
+            var sb = new StringBuilder(currentType.GetRealTypeName(compilation));
 
             if (currentType.TypeParameterCount > 0)
             {
                 sb.Append("<")
-                    .Append(string.Join(", ", currentType.TypeArguments.Select(GenerateFullGenericName)))
+                    .Append(string.Join(", ", currentType.TypeArguments.Select(x => GenerateFullGenericName(x, compilation))))
                     .Append(">");
             }
 
             return sb.ToString();
+        }
+
+        public static string GetRealTypeName(this IType type, ICompilation compilation)
+        {
+            type = type.GetRealType(compilation);
+
+            if (type.Kind == ICSharpCode.Decompiler.TypeSystem.TypeKind.Array)
+            {
+                var arrayType = (ArrayType)type;
+                var elementType = arrayType.ElementType;
+
+                return elementType.GenerateFullGenericName(compilation) + "[]";
+            }
+
+            switch (type.GetTypeCode())
+            {
+                case TypeCode.Boolean:
+                    return "bool";
+                case TypeCode.Byte:
+                    return "byte";
+                case TypeCode.Char:
+                    return "char";
+                case TypeCode.Decimal:
+                    return "decimal";
+                case TypeCode.Double:
+                    return "double";
+                case TypeCode.Int16:
+                    return "short";
+                case TypeCode.Int32:
+                    return "int";
+                case TypeCode.Int64:
+                    return "long";
+                case TypeCode.SByte:
+                    return "sbyte";
+                case TypeCode.Single:
+                    return "single";
+                case TypeCode.String:
+                    return "string";
+                case TypeCode.UInt16:
+                    return "ushort";
+                case TypeCode.UInt32:
+                    return "uint";
+                case TypeCode.UInt64:
+                    return "ulong";
+                default:
+                    if (type.FullName == "System.Object")
+                    {
+                        return "object";
+                    }
+
+                    return type.FullName;
+            }
         }
 
         /// <summary>

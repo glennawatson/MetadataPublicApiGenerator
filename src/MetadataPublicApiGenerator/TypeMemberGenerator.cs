@@ -21,7 +21,7 @@ namespace MetadataPublicApiGenerator
     {
         internal static readonly IDictionary<SymbolKind, int> PreferredOrderWeights = new Dictionary<SymbolKind, int>
         {
-            { SymbolKind.None,  10 },
+            { SymbolKind.None, 10 },
             { SymbolKind.Module, 9 },
             { SymbolKind.TypeDefinition, 8 },
             { SymbolKind.Field, 7 },
@@ -47,7 +47,11 @@ namespace MetadataPublicApiGenerator
 
         internal static DelegateDeclarationSyntax GenerateDelegateDeclaration(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
         {
-            return SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), typeDefinition.Name).WithModifiers(typeDefinition.GetModifiers());
+            var invokeMember = typeDefinition.Methods.First(x => x.Name == "Invoke");
+
+            return SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), typeDefinition.Name)
+                .WithModifiers(typeDefinition.GetModifiers())
+                .WithParameterList(GenerateParameters(compilation, invokeMember, excludeAttributes));
         }
 
         internal static IList<MemberDeclarationSyntax> GenerateEventsDeclarations(ICompilation compilation, IEnumerable<IEvent> events, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
@@ -60,7 +64,7 @@ namespace MetadataPublicApiGenerator
             }
 
             return new List<MemberDeclarationSyntax>(validMembers.Select(x => SyntaxFactory.EventFieldDeclaration(
-                    SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(x.DeclaringType.GetRealType(compilation).GenerateFullGenericName()))
+                    SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(x.DeclaringType.GetRealType(compilation).GenerateFullGenericName(compilation)))
                         .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(x.Name)))))
                     .WithModifiers(x.GetModifiers())
                     .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, x.GetAttributes(), excludeAttributes))));
@@ -92,10 +96,10 @@ namespace MetadataPublicApiGenerator
                         switch (item.Name)
                         {
                             case "op_Explicit":
-                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ExplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName()));
+                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ExplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
                                 break;
                             case "op_Implicit":
-                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ImplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName()));
+                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ImplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
                                 break;
                             default:
                                 member = SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), SyntaxHelper.OperatorNameToToken(item.Name));
@@ -104,7 +108,13 @@ namespace MetadataPublicApiGenerator
 
                         break;
                     default:
-                        member = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), item.Name);
+                        var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), item.Name);
+                        if (item.TypeParameters.Count > 0)
+                        {
+                            method = method.WithTypeParameterList(GenerateGenericParameterList(compilation, item, excludeAttributes));
+                        }
+
+                        member = method;
                         break;
                 }
 
@@ -131,7 +141,7 @@ namespace MetadataPublicApiGenerator
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.Name))
                         .WithModifiers(parameter.GetModifiers())
                         .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, parameter.GetAttributes(), excludeAttributes))
-                        .WithType(SyntaxFactory.IdentifierName(parameter.Type.GenerateFullGenericName())));
+                        .WithType(SyntaxFactory.IdentifierName(parameter.Type.GenerateFullGenericName(compilation))));
             }
 
             if (parameterList.Count == 0)
@@ -140,6 +150,23 @@ namespace MetadataPublicApiGenerator
             }
 
             return SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameterList));
+        }
+
+        internal static TypeParameterListSyntax GenerateGenericParameterList(ICompilation compilation, IMethod method, ISet<string> excludeAttributes)
+        {
+            var list = new List<TypeParameterSyntax>();
+
+            foreach (var typeParameter in method.TypeParameters)
+            {
+                list.Add(SyntaxFactory.TypeParameter(typeParameter.Name));
+            }
+
+            if (list.Count == 0)
+            {
+                return SyntaxFactory.TypeParameterList();
+            }
+
+            return SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(list));
         }
     }
 }

@@ -93,7 +93,7 @@ namespace MetadataPublicApiGenerator
         {
             var compilationUnit = SyntaxFactory.CompilationUnit();
 
-            var assemblyAttributes = compilation.MainModule.GetAssemblyAttributes().Where(x => !excludeAttributes.Contains(x.AttributeType.FullName)).ToList();
+            var assemblyAttributes = compilation.MainModule.GetAssemblyAttributes().OrderBy(x => x.AttributeType.Name).Where(x => !excludeAttributes.Contains(x.AttributeType.FullName)).ToList();
             if (assemblyAttributes.Count > 0 && shouldIncludeAssemblyAttributes)
             {
                 compilationUnit = AttributeGenerator.GenerateAssemblyCustomAttributes(compilation, compilationUnit, assemblyAttributes);
@@ -117,6 +117,7 @@ namespace MetadataPublicApiGenerator
                 // Get a list of valid types that don't have attributes matching our exclude list.
                 var validTypes = namespaceInfo.Types
                     .Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes))
+                    .OrderBy(x => x.Name)
                     .Select(x => GenerateMemberDeclaration(compilation, x, excludeAttributes, excludeMembersAttributes))
                     .ToList();
 
