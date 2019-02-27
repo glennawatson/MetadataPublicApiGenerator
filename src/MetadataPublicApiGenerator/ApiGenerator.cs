@@ -7,16 +7,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using ICSharpCode.Decompiler.Metadata;
-using ICSharpCode.Decompiler.TypeSystem;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Extensions;
+using MetadataPublicApiGenerator.Generators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Accessibility = ICSharpCode.Decompiler.TypeSystem.Accessibility;
-using SymbolKind = ICSharpCode.Decompiler.TypeSystem.SymbolKind;
-using TypeKind = ICSharpCode.Decompiler.TypeSystem.TypeKind;
 
 namespace MetadataPublicApiGenerator
 {
@@ -82,122 +80,48 @@ namespace MetadataPublicApiGenerator
                 System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory()
             };
 
-            var compilation = new EventBuilderCompiler(new IModuleReference[] { new PEFile(assemblyPath, PEStreamOptions.PrefetchMetadata) }, searchDirectories);
+            var compilation = new EventBuilderCompiler(assemblyPath, searchDirectories);
 
-            Func<ITypeDefinition, bool> includeTypesFunc = tr => includeTypes == null || includeTypes.Any(t => t.FullName == tr.FullName);
+            Func<TypeDefinition, bool> excludeFunc = tr => false;
 
-            return CreatePublicApiForAssembly(compilation, includeTypesFunc, shouldIncludeAssemblyAttributes, whitelistedNamespacePrefixes, attributesToExclude, attributesMembersToExclude);
+            return CreatePublicApiForAssembly(compilation, excludeFunc, shouldIncludeAssemblyAttributes, whitelistedNamespacePrefixes, attributesToExclude, attributesMembersToExclude);
         }
 
-        internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<ITypeDefinition, bool> shouldIncludeType, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<TypeDefinition, bool> excludeFunc, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
         {
             var compilationUnit = SyntaxFactory.CompilationUnit();
 
-            var assemblyAttributes = compilation.MainModule.GetAssemblyAttributes().OrderBy(x => x.AttributeType.Name).Where(x => !excludeAttributes.Contains(x.AttributeType.FullName)).ToList();
-            if (assemblyAttributes.Count > 0 && shouldIncludeAssemblyAttributes)
+            if (shouldIncludeAssemblyAttributes)
             {
-                compilationUnit = AttributeGenerator.GenerateAssemblyCustomAttributes(compilation, compilationUnit, assemblyAttributes);
+                compilationUnit = compilationUnit.WithAttributeLists(AttributeGenerator.GenerateAssemblyCustomAttributes(compilation.MainModule, excludeAttributes));
             }
 
-            compilationUnit = GenerateNamespaces(compilation, compilationUnit, excludeAttributes, excludeMembersAttributes);
+            var factory = new GeneratorFactory(excludeAttributes, excludeMembersAttributes, excludeFunc);
+
+            compilationUnit = GenerateNamespaces(compilation, compilationUnit, factory);
 
             return compilationUnit.NormalizeWhitespace().ToFullString();
         }
 
-        internal static CompilationUnitSyntax GenerateNamespaces(ICompilation compilation, CompilationUnitSyntax compilationUnit, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        internal static CompilationUnitSyntax GenerateNamespaces(ICompilation compilation, CompilationUnitSyntax compilationUnit, IGeneratorFactory factory)
         {
-            var namespaceProcessingStack = new Stack<INamespace>(new[] { compilation.RootNamespace });
+            var namespaceProcessingStack = new Stack<NamespaceDefinition>(new[] { compilation.RootNamespace });
 
-            var list = new List<NamespaceDeclarationSyntax>();
+            var list = new List<NamespaceDeclarationSyntax>(128);
 
             while (namespaceProcessingStack.Count > 0)
             {
                 var namespaceInfo = namespaceProcessingStack.Pop();
 
-                // Get a list of valid types that don't have attributes matching our exclude list.
-                var validTypes = namespaceInfo.Types
-                    .Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes))
-                    .OrderBy(x => x.Name)
-                    .Select(x => GenerateMemberDeclaration(compilation, x, excludeAttributes, excludeMembersAttributes))
-                    .ToList();
+                list.Add(factory.Generate(namespaceInfo, compilation.MainModule));
 
-                if (validTypes.Count > 0)
+                foreach (var child in namespaceInfo.NamespaceDefinitions)
                 {
-                    if (string.IsNullOrWhiteSpace(namespaceInfo.FullName))
-                    {
-                        compilationUnit = compilationUnit.WithMembers(SyntaxFactory.List(validTypes));
-                        continue;
-                    }
-
-                    list.Add(SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceInfo.FullName)).WithMembers(SyntaxFactory.List(validTypes)));
-                }
-
-                foreach (var child in namespaceInfo.ChildNamespaces)
-                {
-                    namespaceProcessingStack.Push(child);
+                    namespaceProcessingStack.Push(child.Resolve(compilation.MainModule));
                 }
             }
 
             return compilationUnit.WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(list));
-        }
-
-        internal static MemberDeclarationSyntax GenerateMemberDeclaration(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
-        {
-            switch (typeDefinition.Kind)
-            {
-                case TypeKind.Class:
-                    return GenerateTypeDeclaration(compilation, SyntaxFactory.ClassDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes);
-                case TypeKind.Interface:
-                    return GenerateTypeDeclaration(compilation, SyntaxFactory.InterfaceDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes);
-                case TypeKind.Struct:
-                    return GenerateTypeDeclaration(compilation, SyntaxFactory.StructDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes);
-                case TypeKind.Delegate:
-                    return TypeMemberGenerator.GenerateDelegateDeclaration(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes);
-                case TypeKind.Enum:
-                    return GenerateEnumDeclaration(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes);
-            }
-
-            throw new Exception(
-                $"Cannot handle a class of type {typeDefinition.Kind} with name {typeDefinition.FullName}.");
-        }
-
-        internal static T GenerateTypeDeclaration<T>(ICompilation compilation, T item, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
-            where T : TypeDeclarationSyntax
-        {
-            return (T)item.WithModifiers(typeDefinition.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, typeDefinition.GetAttributes().OrderBy(x => x.AttributeType.Name), excludeAttributes))
-                .WithMembers(TypeMemberGenerator.GenerateMemberDeclarations(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes));
-        }
-
-        internal static EnumDeclarationSyntax GenerateEnumDeclaration(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
-        {
-            var enumDeclaration = SyntaxFactory.EnumDeclaration(typeDefinition.Name)
-                .WithModifiers(typeDefinition.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, typeDefinition.GetAttributes(), excludeAttributes));
-
-            if (typeDefinition.EnumUnderlyingType.FullName != "System.Int32")
-            {
-                enumDeclaration = enumDeclaration.WithBaseList(
-                    SyntaxFactory.BaseList(
-                        SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(
-                            SyntaxFactory.SimpleBaseType(
-                                SyntaxHelper.EnumType(compilation, typeDefinition.EnumUnderlyingType)))));
-            }
-
-            var members = typeDefinition.Fields.Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes)).Select(x =>
-            {
-                var enumMember = SyntaxFactory.EnumMemberDeclaration(x.Name)
-                                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, x.GetAttributes(), excludeAttributes));
-
-                if (x.IsConst)
-                {
-                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.LiteralParameterFromType(compilation, typeDefinition.EnumUnderlyingType, x.GetConstantValue())));
-                }
-
-                return enumMember;
-            });
-
-            return enumDeclaration.WithMembers(SyntaxFactory.SeparatedList(members));
         }
     }
 }

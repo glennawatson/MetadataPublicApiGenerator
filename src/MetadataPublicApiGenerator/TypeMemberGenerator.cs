@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SymbolKind = ICSharpCode.Decompiler.TypeSystem.SymbolKind;
+using TypeKind = ICSharpCode.Decompiler.TypeSystem.TypeKind;
 
 namespace MetadataPublicApiGenerator
 {
@@ -19,30 +20,122 @@ namespace MetadataPublicApiGenerator
     /// </summary>
     internal static class TypeMemberGenerator
     {
-        internal static readonly IDictionary<SymbolKind, int> PreferredOrderWeights = new Dictionary<SymbolKind, int>
+        /// <summary>
+        /// A dictionary of <see cref="SymbolKind"/> mapped to their corresponding weights.
+        /// </summary>
+        private static readonly IDictionary<SymbolKind, int> SymbolKindPreferredOrderWeights = new Dictionary<SymbolKind, int>
         {
-            { SymbolKind.None, 10 },
+            { SymbolKind.None, 15 },
             { SymbolKind.Module, 9 },
-            { SymbolKind.TypeDefinition, 8 },
-            { SymbolKind.Field, 7 },
+            { SymbolKind.TypeDefinition, 10 },
+            { SymbolKind.Field, 1 },
             { SymbolKind.Property, 5 },
-            { SymbolKind.Indexer, 4 },
-            { SymbolKind.Event, 6 },
-            { SymbolKind.Method, 3 },
-            { SymbolKind.Operator, 2 },
-            { SymbolKind.Constructor, 0 },
-            { SymbolKind.Destructor, 1 },
+            { SymbolKind.Indexer, 6 },
+            { SymbolKind.Event, 2 },
+            { SymbolKind.Method, 8 },
+            { SymbolKind.Operator, 7 },
+            { SymbolKind.Constructor, 3 },
+            { SymbolKind.Destructor, 4 },
             { SymbolKind.Accessor, 11 },
-            { SymbolKind.Namespace, 12 },
-            { SymbolKind.Variable, 13 },
-            { SymbolKind.Parameter, 14 },
-            { SymbolKind.TypeParameter, 15 },
+            { SymbolKind.Namespace, 0 },
+            { SymbolKind.Variable, 12 },
+            { SymbolKind.Parameter, 13 },
+            { SymbolKind.TypeParameter, 14 },
         };
 
-        internal static SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclarations(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        private static readonly IDictionary<TypeKind, int> TypeKindPreferredOrderWeights = new Dictionary<TypeKind, int>
         {
-            return SyntaxFactory.List(GenerateEventsDeclarations(compilation, typeDefinition.Events.OrderBy(x => x.Name), excludeAttributes, excludeMembersAttributes)
-                .Concat(GenerateMethodDeclarations(compilation, typeDefinition.Methods.OrderBy(x => PreferredOrderWeights[x.SymbolKind]).ThenBy(x => x.Name), excludeAttributes, excludeMembersAttributes)));
+            { TypeKind.Other, 21 },
+            { TypeKind.Class, 3 },
+            { TypeKind.Interface, 1 },
+            { TypeKind.Struct, 4 },
+            { TypeKind.Delegate, 0 },
+            { TypeKind.Enum, 2 },
+            { TypeKind.Void, 5 },
+            { TypeKind.Unknown, 6 },
+            { TypeKind.Null, 7 },
+            { TypeKind.None, 8},
+            { TypeKind.Dynamic, 9 },
+            { TypeKind.UnboundTypeArgument, 10 },
+            { TypeKind.TypeParameter, 11 },
+            { TypeKind.Array, 12 },
+            { TypeKind.Pointer, 13 },
+            { TypeKind.ByReference, 14 },
+            { TypeKind.Anonymous, 15 },
+            { TypeKind.Intersection, 16 },
+            { TypeKind.ArgList, 17 },
+            { TypeKind.Tuple, 18 },
+            { TypeKind.ModOpt, 19 },
+            { TypeKind.ModReq, 20 },
+        };
+
+        internal static SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclarations(ICompilation compilation, IEnumerable<ITypeDefinition> typeDefinitions, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        {
+            var list = new List<MemberDeclarationSyntax>();
+
+            var validMembers = typeDefinitions.Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes)).OrderBy(x => TypeKindPreferredOrderWeights[x.Kind]).ThenBy(x => x.Name).ToList();
+
+            foreach (var typeDefinition in validMembers)
+            {
+                switch (typeDefinition.Kind)
+                {
+                    case TypeKind.Class:
+                        list.Add(GenerateTypeDeclaration(compilation, SyntaxFactory.ClassDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes));
+                        break;
+                    case TypeKind.Interface:
+                        list.Add(GenerateTypeDeclaration(compilation, SyntaxFactory.InterfaceDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes));
+                        break;
+                    case TypeKind.Struct:
+                        list.Add(GenerateTypeDeclaration(compilation, SyntaxFactory.StructDeclaration(typeDefinition.Name), typeDefinition, excludeAttributes, excludeMembersAttributes));
+                        break;
+                    case TypeKind.Delegate:
+                        list.Add(GenerateDelegateDeclaration(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes));
+                        break;
+                    case TypeKind.Enum:
+                        list.Add(EnumGenerator.GenerateEnumDeclaration(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes));
+                        break;
+                    default:
+                        throw new Exception($"Cannot handle a class of type {typeDefinition.Kind} with name {typeDefinition.FullName}.");
+                }
+            }
+
+            return SyntaxFactory.List(list.Where(x => x != null));
+        }
+
+        /// <summary>
+        /// Generates <see cref="TypeDeclarationSyntax"/> for the corresponding <see cref="ITypeDefinition"/>.
+        /// </summary>
+        /// <typeparam name="T">The derived class from <see cref="TypeDeclarationSyntax"/> which we are filling.</typeparam>
+        /// <param name="compilation">The compilation which contains all the data about the assembly we are analyzing.</param>
+        /// <param name="item">The item we are generating data for.</param>
+        /// <param name="typeDefinition">The type definition we use to populate the type definition.</param>
+        /// <param name="excludeAttributes">Any attributes we don't want to generate.</param>
+        /// <param name="excludeMembersAttributes">Attributes we use to indicate we don't want to generate the members.</param>
+        /// <returns>The fill in <see cref="TypeDeclarationSyntax"/>.</returns>
+        internal static T GenerateTypeDeclaration<T>(ICompilation compilation, T item, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+            where T : TypeDeclarationSyntax
+        {
+            item = (T)GenericParameterGeneratorHelper.GenerateGenericParameterList(compilation, typeDefinition, item);
+            return (T)item.WithModifiers(typeDefinition.GetModifiers())
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, typeDefinition.GetAttributes().OrderBy(x => x.AttributeType.Name), excludeAttributes))
+                .WithMembers(GenerateMemberDeclaration(compilation, typeDefinition, excludeAttributes, excludeMembersAttributes));
+        }
+
+        internal static SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        {
+            var validMembers = typeDefinition.Members.Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes)).OrderBy(x => SymbolKindPreferredOrderWeights[x.SymbolKind]).ThenBy(x => x.Name).ToList();
+
+            if (validMembers.Count == 0)
+            {
+                return SyntaxFactory.List<MemberDeclarationSyntax>();
+            }
+
+            foreach (var member in validMembers)
+            {
+                switch (member.SymbolKind):
+                    
+            }
+
         }
 
         internal static DelegateDeclarationSyntax GenerateDelegateDeclaration(ICompilation compilation, ITypeDefinition typeDefinition, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
@@ -70,65 +163,58 @@ namespace MetadataPublicApiGenerator
                     .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, x.GetAttributes(), excludeAttributes))));
         }
 
-        internal static IEnumerable<BaseMethodDeclarationSyntax> GenerateMethodDeclarations(ICompilation compilation, IEnumerable<IMethod> methods, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        internal static FieldDeclarationSyntax GenerateFieldDeclaration(ICompilation compilation, IField field, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
         {
-            var validMembers = methods.Where(x => SyntaxHelper.ShouldIncludeEntity(x, excludeMembersAttributes)).ToList();
+            return null;
+        }
 
-            var syntaxList = new List<BaseMethodDeclarationSyntax>();
-
-            if (validMembers.Count == 0)
+        internal static BaseMethodDeclarationSyntax GenerateMethodDeclaration(ICompilation compilation, IMethod item, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        {
+            BaseMethodDeclarationSyntax member;
+            switch (item.SymbolKind)
             {
-                return Array.Empty<BaseMethodDeclarationSyntax>();
+                case SymbolKind.Constructor:
+                    member = SyntaxFactory.ConstructorDeclaration(item.DeclaringTypeDefinition.Name);
+                    break;
+                case SymbolKind.Destructor:
+                    member = SyntaxFactory.DestructorDeclaration(item.DeclaringTypeDefinition.Name);
+                    break;
+                case SymbolKind.Operator:
+                    switch (item.Name)
+                    {
+                        case "op_Explicit":
+                            member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ExplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
+                            break;
+                        case "op_Implicit":
+                            member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ImplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
+                            break;
+                        default:
+                            member = SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), SyntaxHelper.OperatorNameToToken(item.Name));
+                            break;
+                    }
+
+                    break;
+                default:
+                    var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), item.Name);
+                    if (item.TypeParameters.Count > 0)
+                    {
+                        method = GenericParameterGeneratorHelper.GenerateGenericParameterList(compilation, item, method);
+                    }
+
+                    member = method;
+                    break;
             }
 
-            foreach (var item in validMembers)
+            if (member != null)
             {
-                BaseMethodDeclarationSyntax member;
-                switch (item.SymbolKind)
-                {
-                    case SymbolKind.Constructor:
-                        member = SyntaxFactory.ConstructorDeclaration(item.DeclaringTypeDefinition.Name);
-                        break;
-                    case SymbolKind.Destructor:
-                        member = SyntaxFactory.DestructorDeclaration(item.DeclaringTypeDefinition.Name);
-                        break;
-                    case SymbolKind.Operator:
-                        switch (item.Name)
-                        {
-                            case "op_Explicit":
-                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ExplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
-                                break;
-                            case "op_Implicit":
-                                member = SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(SyntaxKind.ImplicitKeyword), SyntaxFactory.IdentifierName(item.ReturnType.GenerateFullGenericName(compilation)));
-                                break;
-                            default:
-                                member = SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), SyntaxHelper.OperatorNameToToken(item.Name));
-                                break;
-                        }
-
-                        break;
-                    default:
-                        var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(item.DeclaringType.GetRealType(compilation).FullName), item.Name);
-                        if (item.TypeParameters.Count > 0)
-                        {
-                            method = method.WithTypeParameterList(GenerateGenericParameterList(compilation, item, excludeAttributes));
-                        }
-
-                        member = method;
-                        break;
-                }
-
-                if (member != null)
-                {
-                    syntaxList.Add(member
-                        .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, item.GetAttributes(), excludeAttributes))
-                        .WithModifiers(item.GetModifiers())
-                        .WithParameterList(GenerateParameters(compilation, item, excludeAttributes))
-                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
-                }
+                return member
+                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, item.GetAttributes(), excludeAttributes))
+                    .WithModifiers(item.GetModifiers())
+                    .WithParameterList(GenerateParameters(compilation, item, excludeAttributes))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
             }
 
-            return syntaxList;
+            return null;
         }
 
         internal static ParameterListSyntax GenerateParameters(ICompilation compilation, IMethod method, ISet<string> excludeAttributes)
@@ -138,10 +224,7 @@ namespace MetadataPublicApiGenerator
             foreach (var parameter in method.Parameters)
             {
                 parameterList.Add(
-                    SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.Name))
-                        .WithModifiers(parameter.GetModifiers())
-                        .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, parameter.GetAttributes(), excludeAttributes))
-                        .WithType(SyntaxFactory.IdentifierName(parameter.Type.GenerateFullGenericName(compilation))));
+);
             }
 
             if (parameterList.Count == 0)
@@ -150,23 +233,6 @@ namespace MetadataPublicApiGenerator
             }
 
             return SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameterList));
-        }
-
-        internal static TypeParameterListSyntax GenerateGenericParameterList(ICompilation compilation, IMethod method, ISet<string> excludeAttributes)
-        {
-            var list = new List<TypeParameterSyntax>();
-
-            foreach (var typeParameter in method.TypeParameters)
-            {
-                list.Add(SyntaxFactory.TypeParameter(typeParameter.Name));
-            }
-
-            if (list.Count == 0)
-            {
-                return SyntaxFactory.TypeParameterList();
-            }
-
-            return SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(list));
         }
     }
 }

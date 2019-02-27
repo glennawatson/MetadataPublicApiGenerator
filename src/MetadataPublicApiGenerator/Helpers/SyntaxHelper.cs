@@ -1,17 +1,19 @@
-﻿// Copyright (c) 2019 Glenn Watson. All rights reserved.
+// Copyright (c) 2019 Glenn Watson. All rights reserved.
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ICSharpCode.Decompiler.TypeSystem;
+using System.Reflection.Metadata;
+using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Accessibility = ICSharpCode.Decompiler.TypeSystem.Accessibility;
 
-namespace MetadataPublicApiGenerator
+namespace MetadataPublicApiGenerator.Helpers
 {
     /// <summary>
     /// A helper for generating expressions for arguments.
@@ -22,14 +24,36 @@ namespace MetadataPublicApiGenerator
         /// Get the ExpressionSyntax from a type.
         /// </summary>
         /// <param name="compilation">The compilation for the current class.</param>
-        /// <param name="type">The type to convert from.</param>
+        /// <param name="wrapper">The type to convert from.</param>
         /// <param name="value">The value to set.</param>
         /// <returns>The expression syntax.</returns>
-        public static ExpressionSyntax LiteralParameterFromType(ICompilation compilation, IType type, object value)
+        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, IWrapper wrapper, object value)
         {
-            type = type.GetRealType(compilation);
+            if (wrapper is ArrayTypeWrapper arrayTypeWrapper)
+            {
+                return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))));
+            }
 
-            switch (type.GetDefinition()?.KnownTypeCode)
+            if (wrapper is TypeWrapper typeWrapper)
+            {
+                var type = typeWrapper.TypeDefinition;
+
+                return LiteralParameterFromType(compilation, type, value);
+            }
+
+            return null;
+        }
+
+        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, TypeDefinition type, object value)
+        {
+            var knownType = type.IsKnownType(compilation);
+
+            return LiteralParameterFromType(knownType, value);
+        }
+
+        public static ExpressionSyntax LiteralParameterFromType(KnownTypeCode underlyingType, object value)
+        {
+            switch (underlyingType)
             {
                 case KnownTypeCode.Char:
                     return SyntaxFactory.LiteralExpression(SyntaxKind.CharacterLiteralExpression, SyntaxFactory.Literal((char)value));
@@ -58,41 +82,11 @@ namespace MetadataPublicApiGenerator
                     return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((double)value));
                 case KnownTypeCode.String:
                     return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal((string)value));
-                case KnownTypeCode.Type:
+                case KnownTypeCode.Object:
                     return SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(((Type)value).FullName));
-                case KnownTypeCode.Array:
-                    return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(
-                        SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringLiteralExpression))));
             }
 
-            throw new Exception($"Unknown parameter type for a parameter: {type.Name}");
-        }
-
-        public static PredefinedTypeSyntax EnumType(ICompilation compilation, IType enumType)
-        {
-            enumType = enumType.GetRealType(compilation);
-
-            switch (enumType.GetDefinition()?.KnownTypeCode)
-            {
-                case KnownTypeCode.SByte:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.SByteKeyword));
-                case KnownTypeCode.Byte:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword));
-                case KnownTypeCode.Int16:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ShortKeyword));
-                case KnownTypeCode.UInt16:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.UShortKeyword));
-                case KnownTypeCode.Int32:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword));
-                case KnownTypeCode.UInt32:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.UIntKeyword));
-                case KnownTypeCode.Int64:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.LongKeyword));
-                case KnownTypeCode.UInt64:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ULongKeyword));
-            }
-
-            throw new Exception($"Unknown parameter type for a enum base type: {enumType.Name}");
+            throw new Exception($"Unknown parameter type for a parameter: {underlyingType}");
         }
 
         public static SyntaxToken OperatorNameToToken(string operatorName)
@@ -150,11 +144,6 @@ namespace MetadataPublicApiGenerator
             }
 
             throw new Exception($"Unknown name for a operator: {operatorName}");
-        }
-
-        internal static bool ShouldIncludeEntity(IEntity entity, ISet<string> excludeMembersAttributes)
-        {
-            return !entity.GetAttributes().Any(attr => excludeMembersAttributes.Contains(attr.AttributeType.FullName)) && entity.Accessibility == Accessibility.Public;
         }
     }
 }
