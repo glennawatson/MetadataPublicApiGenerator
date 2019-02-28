@@ -77,7 +77,7 @@ namespace MetadataPublicApiGenerator
             {
                 Path.GetDirectoryName(assemblyPath),
                 AppDomain.CurrentDomain.BaseDirectory,
-                System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory()
+                System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(),
             };
 
             var compilation = new EventBuilderCompiler(assemblyPath, searchDirectories);

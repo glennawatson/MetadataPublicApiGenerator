@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -49,11 +50,17 @@ namespace MetadataPublicApiGenerator.Generators
         internal static SyntaxList<AttributeListSyntax> GenerateAssemblyCustomAttributes(CompilationModule compilation, ISet<string> excludeAttributes)
         {
             var validAttributes = new List<CustomAttribute>();
-            foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => x.Resolve(compilation)))
+            foreach (var attributeHandle in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes())
             {
-                var attributeType = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation).GetDeclaringType().Resolve(compilation);
+                var attribute = attributeHandle.Resolve(compilation);
 
-                if (excludeAttributes.Contains(attributeType.GetFullName(compilation)))
+                var constructorInstance = ((MemberReferenceHandle)attribute.Constructor)
+                    .Resolve(compilation);
+                var signature = constructorInstance
+                    .DecodeMethodSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation, attribute.Constructor));
+
+                var name = constructorInstance.Parent.GetName(compilation);
+                if (excludeAttributes.Contains(name))
                 {
                     continue;
                 }

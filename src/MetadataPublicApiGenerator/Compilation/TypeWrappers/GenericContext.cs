@@ -13,9 +13,6 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
     internal readonly struct GenericContext
     {
-        public readonly IImmutableList<TypeParameterWrapper> ClassTypeParameters;
-        public readonly IImmutableList<TypeParameterWrapper> MethodTypeParameters;
-
         public GenericContext(IImmutableList<TypeParameterWrapper> classTypeParameters)
         {
             ClassTypeParameters = classTypeParameters ?? ImmutableList<TypeParameterWrapper>.Empty;
@@ -30,28 +27,40 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         internal GenericContext(CompilationModule module, Handle context)
         {
-            var typeDefinitionHandle = (TypeDefinitionHandle)context;
-            var methodDefinitionHandle = (MethodDefinitionHandle)context;
-            if (!typeDefinitionHandle.IsNil)
+            switch (context.Kind)
             {
-                var typeDefinition = typeDefinitionHandle.Resolve(module);
-                ClassTypeParameters = TypeParameterWrapper.Create(module, context, typeDefinition.GetGenericParameters());
-                MethodTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
-            }
-            else if (!methodDefinitionHandle.IsNil)
-            {
-                var methodDefinition = methodDefinitionHandle.Resolve(module);
-                var declaringTypeDefinition = methodDefinition.GetDeclaringType().Resolve(module);
+                case HandleKind.TypeDefinition:
+                    var typeDefinitionHandle = (TypeDefinitionHandle)context;
+                    var typeDefinition = typeDefinitionHandle.Resolve(module);
+                    ClassTypeParameters = TypeParameterWrapper.Create(module, context, typeDefinition.GetGenericParameters());
+                    MethodTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
+                    break;
+                case HandleKind.MethodDefinition:
+                    var methodDefinitionHandle = (MethodDefinitionHandle)context;
+                    var methodDefinition = methodDefinitionHandle.Resolve(module);
+                    var declaringTypeDefinition = methodDefinition.GetDeclaringType().Resolve(module);
 
-                ClassTypeParameters = TypeParameterWrapper.Create(module, methodDefinition.GetDeclaringType(), declaringTypeDefinition.GetGenericParameters());
-                MethodTypeParameters = TypeParameterWrapper.Create(module, methodDefinitionHandle, methodDefinition.GetGenericParameters());
-            }
-            else
-            {
-                ClassTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
-                MethodTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
+                    ClassTypeParameters = TypeParameterWrapper.Create(module, methodDefinition.GetDeclaringType(), declaringTypeDefinition.GetGenericParameters());
+                    MethodTypeParameters = TypeParameterWrapper.Create(module, methodDefinitionHandle, methodDefinition.GetGenericParameters());
+                    break;
+                case HandleKind.MemberReference:
+                    var memberHandle = (MemberReferenceHandle)context;
+                    var member = memberHandle.Resolve(module);
+                    var typeHandle = (TypeDefinitionHandle)member.Parent;
+                    var parentDefinition = typeHandle.Resolve(module);
+                    ClassTypeParameters = TypeParameterWrapper.Create(module, typeHandle, parentDefinition.GetGenericParameters());
+                    MethodTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
+                    break;
+                default:
+                    ClassTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
+                    MethodTypeParameters = ImmutableList<TypeParameterWrapper>.Empty;
+                    break;
             }
         }
+
+        public IImmutableList<TypeParameterWrapper> ClassTypeParameters { get; }
+
+        public IImmutableList<TypeParameterWrapper> MethodTypeParameters { get; }
 
         public TypeParameterWrapper GetClassTypeParameter(int index)
         {

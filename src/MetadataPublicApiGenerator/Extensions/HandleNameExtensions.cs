@@ -131,6 +131,11 @@ namespace MetadataPublicApiGenerator.Extensions
             return map.GetOrAdd(handle, stringHandle => compilation.MetadataReader.GetString(stringHandle));
         }
 
+        public static string GetName(this EntityHandle entity, CompilationModule module)
+        {
+            return ((Handle)entity).GetName(module);
+        }
+
         public static string GetName(this Handle entity, CompilationModule module)
         {
             switch (entity.Kind)
