@@ -50,17 +50,14 @@ namespace MetadataPublicApiGenerator.Generators
         internal static SyntaxList<AttributeListSyntax> GenerateAssemblyCustomAttributes(CompilationModule compilation, ISet<string> excludeAttributes)
         {
             var validAttributes = new List<CustomAttribute>();
-            foreach (var attributeHandle in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes())
+            foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => x.Resolve(compilation)))
             {
-                var attribute = attributeHandle.Resolve(compilation);
+                var memberReference = ((MemberReferenceHandle)attribute.Constructor).Resolve(compilation);
 
-                var constructorInstance = ((MemberReferenceHandle)attribute.Constructor)
-                    .Resolve(compilation);
-                var signature = constructorInstance
-                    .DecodeMethodSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation, attribute.Constructor));
+                // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
+                var method = memberReference.DecodeMethodSignature(new TypeProvider(compilation.Compilation), default);
 
-                var name = constructorInstance.Parent.GetName(compilation);
-                if (excludeAttributes.Contains(name))
+                if (excludeAttributes.Contains(method.ReturnType.FullName))
                 {
                     continue;
                 }

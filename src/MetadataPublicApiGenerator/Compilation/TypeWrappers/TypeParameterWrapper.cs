@@ -16,7 +16,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// Type parameter of a generic class/method.
     /// </summary>
-    internal class TypeParameterWrapper : IHandleWrapper, INamedWrapper
+    internal class TypeParameterWrapper : IHandleWrapper, ITypeNamedWrapper
     {
         private TypeParameterWrapper(CompilationModule module, Handle owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes attr)
         {
@@ -53,6 +53,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         /// <inheritdoc />
         public string Name { get; }
+
+        public string FullName => Name;
+
+        public string Namespace => string.Empty;
 
         /// <inheritdoc />
         public bool IsKnownType => false;

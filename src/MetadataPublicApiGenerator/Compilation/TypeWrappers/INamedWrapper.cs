@@ -11,7 +11,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// A element that is named.
     /// </summary>
-    internal interface INamedWrapper : IWrapper
+    internal interface INamedWrapper
     {
         /// <summary>
         /// Gets the short name of the class the return type is pointing to.

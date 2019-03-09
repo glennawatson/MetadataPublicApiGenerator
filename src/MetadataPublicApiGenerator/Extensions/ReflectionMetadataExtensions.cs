@@ -26,21 +26,24 @@ namespace MetadataPublicApiGenerator.Extensions
         /// <param name="compilation">The compilation to scan.</param>
         /// <param name="name">The name of the item to get.</param>
         /// <returns>The name of the items.</returns>
-        public static IReadOnlyCollection<(CompilationModule module, TypeDefinitionHandle typeDefinitionHandle)> GetTypeDefinitionByName(this ICompilation compilation, string name)
+        public static ImmutableList<(CompilationModule module, TypeDefinitionHandle typeDefinitionHandle)> GetTypeDefinitionByName(this ICompilation compilation, string name)
         {
             void GetTypeMappings(CompilationModule module, Dictionary<string, List<(CompilationModule, TypeDefinitionHandle)>> list)
             {
                 var reader = module.MetadataReader;
-                foreach (var typeDefinition in module.PublicTypeDefinitionHandles)
+                foreach (var typeDefinitionHandle in module.PublicTypeDefinitionHandles)
                 {
-                    var typeName = reader.GetString(typeDefinition.Resolve(module).Name);
-                    if (!list.TryGetValue(typeName, out var listCurrent))
+                    var typeDefinition = typeDefinitionHandle.Resolve(module);
+                    var namespaceName = reader.GetString(typeDefinition.Namespace);
+                    var typeName = reader.GetString(typeDefinition.Name);
+                    var fullName = namespaceName + '.' + typeName;
+                    if (!list.TryGetValue(fullName, out var listCurrent))
                     {
                         listCurrent = new List<(CompilationModule, TypeDefinitionHandle)>();
-                        list[typeName] = listCurrent;
+                        list[fullName] = listCurrent;
                     }
 
-                    listCurrent.Add((module, typeDefinition));
+                    listCurrent.Add((module, typeDefinitionHandle));
                 }
             }
 
@@ -347,18 +350,89 @@ namespace MetadataPublicApiGenerator.Extensions
             return (default, MethodKind.Ordinary);
         }
 
-        public static MethodSignature<IWrapper> DecodeSignature(this PropertyDefinitionHandle handle, CompilationModule module)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this PropertyDefinitionHandle handle, CompilationModule module, GenericContext? genericContext = default)
         {
-            var genericContext = new GenericContext(module, handle);
             var instance = handle.Resolve(module);
-            return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext);
+            return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
         }
 
-        public static MethodSignature<IWrapper> DecodeSignature(this MethodDefinitionHandle handle, CompilationModule module)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodDefinitionHandle handle, CompilationModule module, GenericContext? genericContext = default)
         {
-            var genericContext = new GenericContext(module, handle);
             var instance = handle.Resolve(module);
-            return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext);
+            return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
+        }
+
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodSpecificationHandle handle, CompilationModule module, GenericContext? genericContext = default)
+        {
+            var instance = handle.Resolve(module);
+            var methodTypeArgs = instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
+
+            if (instance.Method.Kind == HandleKind.MethodDefinition)
+            {
+                return ((MethodDefinitionHandle)instance.Method).DecodeSignature(module, genericContext);
+            }
+
+            return ((MemberReferenceHandle)instance.Method).DecodeSignature(module, genericContext);
+        }
+
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MemberReferenceHandle handle, CompilationModule module, GenericContext? context = default)
+        {
+            var reference = handle.Resolve(module);
+
+            if (reference.GetKind() != MemberReferenceKind.Method)
+            {
+                throw new ArgumentException("Must be a valid method reference", nameof(handle));
+            }
+
+            if (reference.Parent.Kind == HandleKind.MethodDefinition)
+            {
+                return DecodeSignature((MethodDefinitionHandle)reference.Parent, module, context);
+            }
+
+            if (reference.Parent.IsNil)
+            {
+                return null;
+            }
+
+            ITypeWrapper typeWrapper;
+            switch (reference.Parent.Kind)
+            {
+                case HandleKind.TypeDefinition:
+                    typeWrapper = module.TypeProvider.GetTypeFromDefinition(module.MetadataReader, (TypeDefinitionHandle)reference.Parent, 0) as ITypeWrapper;
+                    break;
+                case HandleKind.TypeReference:
+                    typeWrapper = module.TypeProvider.GetTypeFromReference(module.MetadataReader, (TypeReferenceHandle)reference.Parent, 0) as ITypeWrapper;
+                    break;
+                case HandleKind.TypeSpecification:
+                    var typeSpec = ((TypeSpecificationHandle)reference.Parent).Resolve(module);
+                    var genericContext = new GenericContext(module, reference.Parent);
+                    typeWrapper = typeSpec.DecodeSignature(module.TypeProvider, genericContext) as ITypeWrapper;
+                    break;
+                default:
+                    throw new BadImageFormatException("Not a type handle");
+            }
+
+            return reference.DecodeMethodSignature(module.TypeProvider, new GenericContext(module, typeWrapper.Handle));
+        }
+
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this EntityHandle handle, CompilationModule compilation, GenericContext context = default)
+        {
+            if (handle.IsNil)
+            {
+                throw new ArgumentNullException(nameof(handle));
+            }
+
+            switch (handle.Kind)
+            {
+                case HandleKind.MethodDefinition:
+                    return ((MethodDefinitionHandle)handle).DecodeSignature(compilation, context);
+                case HandleKind.MemberReference:
+                    return ((MemberReferenceHandle)handle).DecodeSignature(compilation, context);
+                case HandleKind.MethodSpecification:
+                    return ((MethodSpecificationHandle)handle).DecodeSignature(compilation, context);
+                default:
+                    throw new BadImageFormatException("Metadata token must be either a methoddef, memberref or methodspec");
+            }
         }
     }
 }

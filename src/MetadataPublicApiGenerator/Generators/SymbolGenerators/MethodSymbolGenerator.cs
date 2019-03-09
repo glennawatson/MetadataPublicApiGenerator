@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Text;
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
@@ -33,6 +32,11 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             var signature = member.DecodeSignature(compilation);
 
+            if (signature == null)
+            {
+                throw new Exception("Could not get a valid signature");
+            }
+
             switch (methodKind)
             {
                 case MethodKind.Constructor:
@@ -40,24 +44,24 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 case MethodKind.Destructor:
                     return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.DestructorDeclaration(method.GetDeclaringType().GetName(compilation)), method);
                 case MethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature)), method.GetName(compilation))
+                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), method.GetName(compilation))
                         .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, method.GetCustomAttributes(), ExcludeAttributes));
 
                     return GenerateFromMethodSyntax(Factory, compilation, methodDeclaration, method);
                 case MethodKind.BuiltinOperator:
                 case MethodKind.UserDefinedOperator:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature)), SyntaxHelper.OperatorNameToToken(method.GetName(compilation))), method);
+                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), SyntaxHelper.OperatorNameToToken(method.GetName(compilation))), method);
                 default:
                     throw new Exception("Unknown method type: " + methodKind);
             }
         }
 
-        private static string GetReturnTypeName(MethodSignature<IWrapper> signature)
+        private static string GetReturnTypeName(in MethodSignature<ITypeNamedWrapper> signature)
         {
-            return ((ITypeNamedWrapper)signature.ReturnType).FullName;
+            return signature.ReturnType.FullName;
         }
 
-        private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, CompilationModule compilation, BaseMethodDeclarationSyntax item, MethodDefinition member)
+        private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, CompilationModule compilation, BaseMethodDeclarationSyntax item, in MethodDefinition member)
         {
             return item
                 .WithModifiers(member.GetModifiers())

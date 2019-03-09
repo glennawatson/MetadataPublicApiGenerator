@@ -28,6 +28,11 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             var signature = propertyHandle.DecodeSignature(compilation);
             var accessorList = new List<AccessorDeclarationSyntax>();
 
+            if (signature == null)
+            {
+                throw new Exception("Unable to find a proper signature for the property");
+            }
+
             var accessors = property.GetAccessors();
 
             if (!accessors.Getter.IsNil)
@@ -40,7 +45,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 accessorList.Add(Generate(accessors.Setter, SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration), compilation));
             }
 
-            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(((ITypeNamedWrapper)signature.ReturnType).FullName), property.GetName(compilation))
+            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(((ITypeNamedWrapper)signature.Value.ReturnType).FullName), property.GetName(compilation))
                 .WithAccessorList(SyntaxFactory.AccessorList(SyntaxFactory.List(accessorList)))
                 .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, property.GetCustomAttributes(), ExcludeAttributes))
                 .WithModifiers(property.GetModifiers(compilation));

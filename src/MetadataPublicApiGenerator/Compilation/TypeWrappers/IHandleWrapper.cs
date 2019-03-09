@@ -12,7 +12,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// Represents a wrapper that has a handle.
     /// </summary>
-    internal interface IHandleWrapper : IWrapper
+    internal interface IHandleWrapper
     {
         /// <summary>
         /// Gets the handle for the wrapped type.

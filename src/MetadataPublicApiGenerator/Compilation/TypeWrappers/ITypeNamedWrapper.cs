@@ -11,7 +11,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// Represents a element that is named.
     /// </summary>
-    internal interface ITypeNamedWrapper : INamedWrapper, IWrapper
+    internal interface ITypeNamedWrapper : INamedWrapper
     {
         /// <summary>
         /// Gets the fully qualified name of the class the return type is pointing to.
@@ -27,5 +27,15 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// Gets the full name of the namespace containing this entity.
         /// </summary>
         string Namespace { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether this is a known type.
+        /// </summary>
+        bool IsKnownType { get; }
+
+        /// <summary>
+        /// Gets the module that this wrapped item belongs to.
+        /// </summary>
+        CompilationModule Module { get; }
     }
 }

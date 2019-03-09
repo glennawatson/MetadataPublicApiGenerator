@@ -13,7 +13,7 @@ namespace MetadataPublicApiGenerator.Compilation
     /// <summary>
     /// A type provider for the System.Reflection.Metadata based set of methods to decode attributes and method signatures.
     /// </summary>
-    internal class TypeProvider : ICustomAttributeTypeProvider<IWrapper>, ISignatureTypeProvider<IWrapper, GenericContext>
+    internal class TypeProvider : ICustomAttributeTypeProvider<ITypeNamedWrapper>, ISignatureTypeProvider<ITypeNamedWrapper, GenericContext>
     {
         private readonly ICompilation _compilation;
 
@@ -27,27 +27,27 @@ namespace MetadataPublicApiGenerator.Compilation
         }
 
         /// <inheritdoc />
-        public IWrapper GetSystemType()
+        public ITypeNamedWrapper GetSystemType()
         {
             var value = _compilation.GetTypeDefinitionByName("System.Type").First();
             return new TypeWrapper(value.module, _compilation.GetTypeDefinitionByName("System.Type").First().typeDefinitionHandle);
         }
 
         /// <inheritdoc />
-        public bool IsSystemType(IWrapper type)
+        public bool IsSystemType(ITypeNamedWrapper type)
         {
             return type.IsKnownType;
         }
 
         /// <inheritdoc />
-        public IWrapper GetTypeFromSerializedName(string name)
+        public ITypeNamedWrapper GetTypeFromSerializedName(string name)
         {
             var value = _compilation.GetTypeDefinitionByName(name).First();
             return new TypeWrapper(value.module, value.typeDefinitionHandle);
         }
 
         /// <inheritdoc />
-        public PrimitiveTypeCode GetUnderlyingEnumType(IWrapper type)
+        public PrimitiveTypeCode GetUnderlyingEnumType(ITypeNamedWrapper type)
         {
             ((TypeDefinitionHandle)((IHandleWrapper)type).Handle).IsEnum(type.Module, out var primitiveType);
 
@@ -55,21 +55,21 @@ namespace MetadataPublicApiGenerator.Compilation
         }
 
         /// <inheritdoc />
-        public IWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
+        public ITypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
         {
             var element = typeCode.ToKnownTypeCode().ToTypeDefinitionHandle(_compilation);
             return new TypeWrapper(element.module, element.typeDefinition);
         }
 
         /// <inheritdoc />
-        public IWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
+        public ITypeNamedWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
         {
             var module = _compilation.GetCompilationModuleForReader(reader);
             return new TypeWrapper(module, handle);
         }
 
         /// <inheritdoc />
-        public IWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
+        public ITypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
             var module = _compilation.GetCompilationModuleForReader(reader);
             var typeReference = handle.Resolve(module);
@@ -81,68 +81,68 @@ namespace MetadataPublicApiGenerator.Compilation
         }
 
         /// <inheritdoc />
-        public IWrapper GetSZArrayType(IWrapper elementType)
+        public ITypeNamedWrapper GetSZArrayType(ITypeNamedWrapper elementType)
         {
             return new ArrayTypeWrapper(elementType.Module, (ITypeNamedWrapper)elementType, 1);
         }
 
         /// <inheritdoc />
-        public IWrapper GetGenericInstantiation(IWrapper genericType, ImmutableArray<IWrapper> typeArguments)
+        public ITypeNamedWrapper GetGenericInstantiation(ITypeNamedWrapper genericType, ImmutableArray<ITypeNamedWrapper> typeArguments)
         {
             return new ParameterizedTypeWrapper(genericType.Module, genericType, typeArguments);
         }
 
         /// <inheritdoc />
-        public IWrapper GetArrayType(IWrapper elementType, ArrayShape shape)
+        public ITypeNamedWrapper GetArrayType(ITypeNamedWrapper elementType, ArrayShape shape)
         {
             return new ArrayTypeWrapper(elementType.Module, (ITypeNamedWrapper)elementType, shape.Rank);
         }
 
         /// <inheritdoc />
-        public IWrapper GetByReferenceType(IWrapper elementType)
+        public ITypeNamedWrapper GetByReferenceType(ITypeNamedWrapper elementType)
         {
             return new ByReferenceWrapper(elementType.Module, (ITypeWrapper)elementType);
         }
 
         /// <inheritdoc />
-        public IWrapper GetPointerType(IWrapper elementType)
+        public ITypeNamedWrapper GetPointerType(ITypeNamedWrapper elementType)
         {
             return new PointerWrapper(elementType.Module, (ITypeWrapper)elementType);
         }
 
         /// <inheritdoc />
-        public IWrapper GetFunctionPointerType(MethodSignature<IWrapper> signature)
+        public ITypeNamedWrapper GetFunctionPointerType(MethodSignature<ITypeNamedWrapper> signature)
         {
             var element = KnownTypeCode.IntPtr.ToTypeDefinitionHandle(_compilation);
             return new TypeWrapper(element.module, element.typeDefinition);
         }
 
         /// <inheritdoc />
-        public IWrapper GetGenericMethodParameter(GenericContext genericContext, int index)
+        public ITypeNamedWrapper GetGenericMethodParameter(GenericContext genericContext, int index)
         {
             return genericContext.GetMethodTypeParameter(index);
         }
 
         /// <inheritdoc />
-        public IWrapper GetGenericTypeParameter(GenericContext genericContext, int index)
+        public ITypeNamedWrapper GetGenericTypeParameter(GenericContext genericContext, int index)
         {
             return genericContext.GetClassTypeParameter(index);
         }
 
         /// <inheritdoc />
-        public IWrapper GetModifiedType(IWrapper modifier, IWrapper unmodifiedType, bool isRequired)
+        public ITypeNamedWrapper GetModifiedType(ITypeNamedWrapper modifier, ITypeNamedWrapper unmodifiedType, bool isRequired)
         {
             return new ModifiedTypeWrapper(modifier.Module, (ITypeNamedWrapper)modifier, (ITypeNamedWrapper)unmodifiedType, isRequired);
         }
 
         /// <inheritdoc />
-        public IWrapper GetPinnedType(IWrapper elementType)
+        public ITypeNamedWrapper GetPinnedType(ITypeNamedWrapper elementType)
         {
             return new PinnedTypeWrapper(elementType.Module, (ITypeWrapper)elementType);
         }
 
         /// <inheritdoc />
-        public IWrapper GetTypeFromSpecification(MetadataReader reader, GenericContext genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
+        public ITypeNamedWrapper GetTypeFromSpecification(MetadataReader reader, GenericContext genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
         {
             return reader.GetTypeSpecification(handle).DecodeSignature(this, genericContext);
         }

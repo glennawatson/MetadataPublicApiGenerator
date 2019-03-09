@@ -18,6 +18,7 @@ namespace MetadataPublicApiGenerator.Compilation
             MetadataReader = reader.GetMetadataReader();
             Compilation = compilation;
             MethodSemanticsLookup = new MethodSemanticsLookup(MetadataReader);
+            TypeProvider = new TypeProvider(compilation);
         }
 
         /// <summary>
@@ -34,12 +35,17 @@ namespace MetadataPublicApiGenerator.Compilation
         /// Gets all the public type definition handles for this module.
         /// </summary>
         [Lazy]
-        public IImmutableList<TypeDefinitionHandle> PublicTypeDefinitionHandles => MetadataReader.TypeDefinitions.Where(x => (x.Resolve(this).Attributes & System.Reflection.TypeAttributes.Public) != 0).ToImmutableList();
+        public ImmutableList<TypeDefinitionHandle> PublicTypeDefinitionHandles => MetadataReader.TypeDefinitions.Where(x => (x.Resolve(this).Attributes & System.Reflection.TypeAttributes.Public) != 0).ToImmutableList();
 
         /// <summary>
         /// Gets details about methods.
         /// </summary>
         [Lazy]
         public MethodSemanticsLookup MethodSemanticsLookup { get; }
+
+        /// <summary>
+        /// Gets the type provider.
+        /// </summary>
+        public TypeProvider TypeProvider { get; }
     }
 }

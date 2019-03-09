@@ -27,7 +27,7 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <param name="wrapper">The type to convert from.</param>
         /// <param name="value">The value to set.</param>
         /// <returns>The expression syntax.</returns>
-        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, IWrapper wrapper, object value)
+        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, ITypeNamedWrapper wrapper, object value)
         {
             if (wrapper is ArrayTypeWrapper arrayTypeWrapper)
             {

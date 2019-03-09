@@ -10,7 +10,7 @@ using Lazy;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class ModifiedTypeWrapper : IWrapper
+    internal class ModifiedTypeWrapper : ITypeNamedWrapper
     {
         public ModifiedTypeWrapper(CompilationModule module, ITypeNamedWrapper modifier, ITypeNamedWrapper unmodifiedType, bool isRequired)
         {
@@ -28,6 +28,12 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         [Lazy]
         public string Name => Unmodified.Name + (IsRequired ? " modreq" : " modopt") + $"({Modifier.Name})";
+
+        [Lazy]
+        public string FullName => Namespace + "." + Name;
+
+        [Lazy]
+        public string Namespace => Unmodified.Namespace;
 
         public bool IsKnownType => false;
 

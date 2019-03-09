@@ -2,10 +2,12 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 
 namespace MetadataPublicApiGenerator.Extensions
 {
@@ -101,6 +103,16 @@ namespace MetadataPublicApiGenerator.Extensions
         public static TypeSpecification Resolve(this TypeSpecificationHandle handle, CompilationModule compilation)
         {
             return compilation.MetadataReader.GetTypeSpecification(handle);
+        }
+
+        public static ExportedType Resolve(this ExportedTypeHandle handle, CompilationModule compilation)
+        {
+            return compilation.MetadataReader.GetExportedType(handle);
+        }
+
+        public static MethodSpecification Resolve(this MethodSpecificationHandle handle, CompilationModule compilation)
+        {
+            return compilation.MetadataReader.GetMethodSpecification(handle);
         }
     }
 }
