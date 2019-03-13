@@ -74,7 +74,7 @@ namespace MetadataPublicApiGenerator.Compilation
             var module = _compilation.GetCompilationModuleForReader(reader);
             var typeReference = handle.Resolve(module);
 
-            var name = typeReference.Namespace.GetName(module) + "." + typeReference.Name.GetName(module);
+            var name = handle.GetFullName(module);
 
             var resolve = _compilation.GetTypeDefinitionByName(name).FirstOrDefault();
             return new TypeWrapper(resolve.module, resolve.typeDefinitionHandle);

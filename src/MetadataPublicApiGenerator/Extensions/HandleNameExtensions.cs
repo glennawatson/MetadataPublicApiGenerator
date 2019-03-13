@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
@@ -61,7 +62,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static string GetName(this CustomAttribute handle, CompilationModule compilation)
         {
-            return ((MethodDefinitionHandle)handle.Constructor).GetName(compilation);
+            return ((EntityHandle)handle.Constructor).GetName(compilation);
         }
 
         public static string GetName(this PropertyDefinitionHandle handle, CompilationModule compilation)
@@ -109,12 +110,32 @@ namespace MetadataPublicApiGenerator.Extensions
             return handle.Name.GetName(compilation);
         }
 
+        public static string GetName(this TypeReferenceHandle handle, CompilationModule compilation)
+        {
+            return handle.Resolve(compilation).GetName(compilation);
+        }
+
+        public static string GetName(this TypeReference handle, CompilationModule compilation)
+        {
+            return handle.Name.GetName(compilation);
+        }
+
         public static string GetName(this ParameterHandle handle, CompilationModule compilation)
         {
             return handle.Resolve(compilation).GetName(compilation);
         }
 
         public static string GetName(this Parameter handle, CompilationModule compilation)
+        {
+            return handle.Name.GetName(compilation);
+        }
+
+        public static string GetName(this MemberReferenceHandle handle, CompilationModule compilation)
+        {
+            return handle.Resolve(compilation).GetName(compilation);
+        }
+
+        public static string GetName(this MemberReference handle, CompilationModule compilation)
         {
             return handle.Name.GetName(compilation);
         }
@@ -162,19 +183,148 @@ namespace MetadataPublicApiGenerator.Extensions
                     return ((StringHandle)entity).GetName(module);
                 case HandleKind.UserString:
                     return ((UserStringHandle)entity).GetName(module);
+                case HandleKind.TypeReference:
+                    return ((TypeReferenceHandle)entity).GetName(module);
+                case HandleKind.MemberReference:
+                    return ((MemberReferenceHandle)entity).GetName(module);
             }
 
             return null;
         }
 
-        public static string GetFullName(this TypeDefinitionHandle entity, CompilationModule module)
+        public static string GetFullName(this EntityHandle handle, CompilationModule module)
         {
-            return entity.Resolve(module).GetFullName(module);
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
+            switch (handle.Kind)
+            {
+                case HandleKind.TypeReference:
+                    return GetFullName((TypeReferenceHandle)handle, module);
+                case HandleKind.TypeDefinition:
+                    return GetFullName((TypeDefinitionHandle)handle, module);
+                case HandleKind.MemberReference:
+                    return GetFullName((MemberReferenceHandle)handle, module);
+            }
+
+            return null;
         }
 
-        public static string GetFullName(this TypeDefinition handle, CompilationModule compilation)
+        public static string GetFullName(this CustomAttribute handle, CompilationModule compilation)
         {
-            return handle.Namespace.GetName(compilation) + "." + handle.GenerateFullGenericName(compilation);
+            return ((EntityHandle)handle.Constructor).GetFullName(compilation);
+        }
+
+        public static string GetFullName(this TypeDefinitionHandle typeDefinitionHandle, CompilationModule module)
+        {
+            var typeDefinition = typeDefinitionHandle.Resolve(module);
+
+            return typeDefinition.GetFullName(module);
+        }
+
+        public static string GetFullName(this TypeDefinition typeDefinition, CompilationModule module)
+        {
+            var reader = module.MetadataReader;
+            var stringBuilder = new StringBuilder();
+            var namespaceName = reader.GetString(typeDefinition.Namespace);
+
+            if (!string.IsNullOrEmpty(namespaceName))
+            {
+                stringBuilder.Append(namespaceName).Append('.');
+            }
+
+            var nestedNames = typeDefinition.GetNestedTypes().Select(x => x.Resolve(module).GetName(module)).ToList();
+
+            if (nestedNames.Count > 0)
+            {
+                stringBuilder.Append(string.Join(".", nestedNames)).Append('.');
+            }
+
+            stringBuilder.Append(reader.GetString(typeDefinition.Name));
+
+            return stringBuilder.ToString();
+        }
+
+        public static string GetFullName(this MemberReferenceHandle handle, CompilationModule module)
+        {
+            var memberReferenceHandle = handle.Resolve(module);
+
+            return memberReferenceHandle.GetFullName(module);
+        }
+
+        public static string GetFullName(this MemberReference memberReference, CompilationModule module)
+        {
+            var reader = module.MetadataReader;
+            var stringBuilder = new StringBuilder();
+
+            var list = new List<string>();
+            var current = memberReference.Parent;
+            while (!current.IsNil)
+            {
+                var name = current.GetFullName(module);
+
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    list.Insert(0, name);
+                }
+
+                current = current.Kind == HandleKind.MemberReference ?
+                    ((MemberReferenceHandle)current).Resolve(module).Parent :
+                    default;
+            }
+
+            if (list.Count > 0)
+            {
+                stringBuilder.Append(string.Join(".", list)).Append('.');
+            }
+
+            stringBuilder.Append(reader.GetString(memberReference.Name));
+
+            return stringBuilder.ToString();
+        }
+
+        public static string GetFullName(this TypeReferenceHandle typeReferenceHandle, CompilationModule module)
+        {
+            return typeReferenceHandle.Resolve(module).GetFullName(module);
+        }
+
+        public static string GetFullName(this TypeReference typeReference, CompilationModule module)
+        {
+            var reader = module.MetadataReader;
+            var stringBuilder = new StringBuilder();
+            var namespaceName = reader.GetString(typeReference.Namespace);
+
+            if (!string.IsNullOrEmpty(namespaceName))
+            {
+                stringBuilder.Append(namespaceName).Append('.');
+            }
+
+            var list = new List<string>();
+            var current = typeReference.ResolutionScope;
+            while (!current.IsNil)
+            {
+                var name = current.GetFullName(module);
+
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    list.Insert(0, name);
+                }
+
+                current = current.Kind == HandleKind.TypeReference ?
+                    ((TypeReferenceHandle)current).Resolve(module).ResolutionScope :
+                    default;
+            }
+
+            if (list.Count > 0)
+            {
+                stringBuilder.Append(string.Join(".", list)).Append('.');
+            }
+
+            stringBuilder.Append(reader.GetString(typeReference.Name));
+
+            return stringBuilder.ToString();
         }
 
         /// <summary>
@@ -228,8 +378,6 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static string GetRealTypeName(this TypeDefinition type, CompilationModule compilation)
         {
-            var typeName = type.GetName(compilation);
-
             var typeCode = type.IsKnownType(compilation);
 
             if (typeCode == KnownTypeCode.Array)
@@ -242,7 +390,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 return null;
             }
 
-            return typeCode.GetRealTypeName() ?? typeName;
+            return typeCode.GetRealTypeName() ?? type.GetFullName(compilation);
         }
 
         public static string GetRealTypeName(this KnownTypeCode typeCode)

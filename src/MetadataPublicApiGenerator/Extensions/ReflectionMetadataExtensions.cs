@@ -30,13 +30,14 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             void GetTypeMappings(CompilationModule module, Dictionary<string, List<(CompilationModule, TypeDefinitionHandle)>> list)
             {
-                var reader = module.MetadataReader;
                 foreach (var typeDefinitionHandle in module.PublicTypeDefinitionHandles)
                 {
-                    var typeDefinition = typeDefinitionHandle.Resolve(module);
-                    var namespaceName = reader.GetString(typeDefinition.Namespace);
-                    var typeName = reader.GetString(typeDefinition.Name);
-                    var fullName = namespaceName + '.' + typeName;
+                    if (typeDefinitionHandle.IsNil)
+                    {
+                        continue;
+                    }
+
+                    var fullName = typeDefinitionHandle.GetFullName(module);
                     if (!list.TryGetValue(fullName, out var listCurrent))
                     {
                         listCurrent = new List<(CompilationModule, TypeDefinitionHandle)>();
@@ -59,7 +60,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 return list.ToImmutableDictionary(key => key.Key, value => value.Value.ToImmutableList());
             });
 
-            return map.GetValueOrDefault(name);
+            return map.GetValueOrDefault(name) ?? ImmutableList<(CompilationModule, TypeDefinitionHandle)>.Empty;
         }
 
         public static bool IsValueType(this TypeDefinitionHandle handle, CompilationModule reader)

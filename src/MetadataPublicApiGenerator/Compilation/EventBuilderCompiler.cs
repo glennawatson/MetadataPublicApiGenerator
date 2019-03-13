@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using Lazy;
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation
@@ -65,6 +66,10 @@ namespace MetadataPublicApiGenerator.Compilation
 
         /// <inheritdoc />
         public NamespaceDefinition RootNamespace => MainModule.MetadataReader.GetNamespaceDefinitionRoot();
+
+        /// <inheritdoc />
+        [Lazy]
+        public TypeProvider TypeProvider => new TypeProvider(this);
 
         /// <inheritdoc />
         public CompilationModule GetCompilationModuleForReader(MetadataReader reader)

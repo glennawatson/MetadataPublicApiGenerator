@@ -30,6 +30,11 @@ namespace MetadataPublicApiGenerator.Compilation
         IReadOnlyList<CompilationModule> ReferencedModules { get; }
 
         /// <summary>
+        /// Gets the type provider.
+        /// </summary>
+        TypeProvider TypeProvider { get; }
+
+        /// <summary>
         /// Gets the compilation module for a reader.
         /// </summary>
         /// <param name="reader">The reader to use.</param>

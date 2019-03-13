@@ -137,7 +137,7 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var arguments = new List<AttributeArgumentSyntax>();
 
-            var wrapper = customAttribute.DecodeValue(new TypeProvider(compilation.Compilation));
+            var wrapper = customAttribute.DecodeValue(compilation.TypeProvider);
 
             foreach (var fixedArgument in wrapper.FixedArguments)
             {
@@ -149,7 +149,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
             }
 
-            return SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(customAttribute.GetName(compilation))).WithArgumentList(SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(arguments)));
+            return SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(customAttribute.GetFullName(compilation))).WithArgumentList(SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(arguments)));
         }
 
         internal static bool ShouldIncludeEntity(this Handle entity, ISet<string> excludeMembersAttributes, CompilationModule module)

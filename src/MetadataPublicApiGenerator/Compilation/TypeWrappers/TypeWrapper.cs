@@ -40,7 +40,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         /// <inheritdoc />
         [Lazy]
-        public string FullName => Namespace + "." + Name;
+        public string FullName => TypeDefinition.GetFullName(Module);
 
         /// <inheritdoc />
         [Lazy]

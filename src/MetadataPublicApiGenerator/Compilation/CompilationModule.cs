@@ -18,7 +18,7 @@ namespace MetadataPublicApiGenerator.Compilation
             MetadataReader = reader.GetMetadataReader();
             Compilation = compilation;
             MethodSemanticsLookup = new MethodSemanticsLookup(MetadataReader);
-            TypeProvider = new TypeProvider(compilation);
+            TypeProvider = Compilation.TypeProvider;
         }
 
         /// <summary>

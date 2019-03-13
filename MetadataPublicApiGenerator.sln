@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.168
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28705.295
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetadataPublicApiGenerator", "src\MetadataPublicApiGenerator\MetadataPublicApiGenerator.csproj", "{488FDA69-07C1-43B0-9356-388B4D4C2DE2}"
 EndProject
@@ -11,12 +11,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Items", "Items", "{B7B5039D
 	ProjectSection(SolutionItems) = preProject
 		Analyzers.ruleset = Analyzers.ruleset
 		Directory.Build.props = Directory.Build.props
+		global.json = global.json
 		LICENSE = LICENSE
 		README.md = README.md
 		stylecop.json = stylecop.json
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataPublicApiGenerator.Benchmarks", "src\MetadataPublicApiGenerator.Benchmarks\MetadataPublicApiGenerator.Benchmarks.csproj", "{D0528AEA-0618-491F-949C-BCB448D830F0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetadataPublicApiGenerator.Benchmarks", "src\MetadataPublicApiGenerator.Benchmarks\MetadataPublicApiGenerator.Benchmarks.csproj", "{D0528AEA-0618-491F-949C-BCB448D830F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

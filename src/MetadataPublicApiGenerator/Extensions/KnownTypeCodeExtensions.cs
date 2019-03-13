@@ -74,7 +74,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static KnownTypeCode IsKnownType(this TypeDefinition typeDefinition, CompilationModule compilation)
         {
-            string name = typeDefinition.GetName(compilation);
+            string name = typeDefinition.GetFullName(compilation);
             var index = Array.IndexOf(_knownTypeReferences, name);
             if (index < 0)
             {
