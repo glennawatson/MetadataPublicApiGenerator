@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Text;
-using Lazy;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
@@ -14,9 +13,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     {
         public ModifiedTypeWrapper(CompilationModule module, ITypeNamedWrapper modifier, ITypeNamedWrapper unmodifiedType, bool isRequired)
         {
-            Module = module;
-            Modifier = modifier;
-            Unmodified = unmodifiedType;
+            Module = module ?? throw new ArgumentNullException(nameof(module));
+            Modifier = modifier ?? throw new ArgumentNullException(nameof(modifier));
+            Unmodified = unmodifiedType ?? throw new ArgumentNullException(nameof(unmodifiedType));
             IsRequired = isRequired;
         }
 
@@ -26,13 +25,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         public bool IsRequired { get; }
 
-        [Lazy]
         public string Name => Unmodified.Name + (IsRequired ? " modreq" : " modopt") + $"({Modifier.Name})";
 
-        [Lazy]
         public string FullName => Namespace + "." + Name;
 
-        [Lazy]
         public string Namespace => Unmodified.Namespace;
 
         public bool IsKnownType => false;

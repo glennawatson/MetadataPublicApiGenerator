@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -137,23 +138,44 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var arguments = new List<AttributeArgumentSyntax>();
 
-            var wrapper = customAttribute.DecodeValue(compilation.TypeProvider);
+            var attributeNameString = customAttribute.GetFullName(compilation);
 
-            foreach (var fixedArgument in wrapper.FixedArguments)
+            try
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type.Module, fixedArgument.Type, fixedArgument.Value)));
+                var wrapper = customAttribute.DecodeValue(compilation.TypeProvider);
+
+                foreach (var fixedArgument in wrapper.FixedArguments)
+                {
+                    arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type.Module, fixedArgument.Type, fixedArgument.Value)));
+                }
+
+                foreach (var namedArgument in wrapper.NamedArguments)
+                {
+                    arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
+                }
+            }
+            catch (BadImageFormatException)
+            {
             }
 
-            foreach (var namedArgument in wrapper.NamedArguments)
+            var attributeName = SyntaxFactory.IdentifierName(attributeNameString);
+            var attribute = SyntaxFactory.Attribute(attributeName);
+
+            if (arguments.Count > 0)
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
+                attribute = attribute.WithArgumentList(SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(arguments)));
             }
 
-            return SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(customAttribute.GetFullName(compilation))).WithArgumentList(SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(arguments)));
+            return attribute;
         }
 
         internal static bool ShouldIncludeEntity(this Handle entity, ISet<string> excludeMembersAttributes, CompilationModule module)
         {
+            if (entity.IsNil)
+            {
+                return false;
+            }
+
             var isPublic = entity.IsEntityPublic(module);
 
             if (!isPublic)

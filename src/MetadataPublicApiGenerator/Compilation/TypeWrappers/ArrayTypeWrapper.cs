@@ -3,24 +3,31 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Linq;
-using Lazy;
+using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class ArrayTypeWrapper : TypeWrapper
+    internal class ArrayTypeWrapper : ITypeWrapper
     {
+        private readonly TypeWrapper _parentWrapper;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ArrayTypeWrapper"/> class.
         /// </summary>
         /// <param name="module">The module that owns the array.</param>
         /// <param name="elementType">The wrapper to the element type.</param>
         /// <param name="dimensions">The dimension of the array.</param>
-        public ArrayTypeWrapper(CompilationModule module, ITypeNamedWrapper elementType, int dimensions)
-            : base(module, module.Compilation.GetTypeDefinitionByName("System.Array").FirstOrDefault().typeDefinitionHandle)
+        public ArrayTypeWrapper(ICompilation module, ITypeNamedWrapper elementType, int dimensions)
         {
-            ElementType = elementType;
+            if (module == null)
+            {
+                throw new System.ArgumentNullException(nameof(module));
+            }
+
+            _parentWrapper = module.GetTypeDefinitionByName("System.Array").FirstOrDefault().typeWrapper;
+            ElementType = elementType ?? throw new System.ArgumentNullException(nameof(elementType));
             Dimensions = dimensions;
         }
 
@@ -35,10 +42,21 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public int Dimensions { get; }
 
         /// <inheritdoc />
-        [Lazy]
-        public override string Name => ElementType.Name + "[" + new string(',', Dimensions - 1) + "]";
+        public string Name => ElementType.Name + "[" + new string(',', Dimensions - 1) + "]";
 
         /// <inheritdoc />
-        public override bool IsKnownType => true;
+        public string FullName => _parentWrapper.FullName;
+
+        /// <inheritdoc />
+        public string Namespace => _parentWrapper.Namespace;
+
+        /// <inheritdoc />
+        public bool IsKnownType => true;
+
+        /// <inheritdoc />
+        public CompilationModule Module => _parentWrapper?.Module;
+
+        /// <inheritdoc />
+        public Handle Handle => _parentWrapper.Handle;
     }
 }

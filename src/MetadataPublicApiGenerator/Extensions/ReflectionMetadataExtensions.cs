@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -17,8 +18,8 @@ namespace MetadataPublicApiGenerator.Extensions
 {
     internal static class ReflectionMetadataExtensions
     {
-        private static readonly ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeDefinitionHandle)>>> _typeNameMapping
-            = new ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeDefinitionHandle)>>>();
+        private static readonly ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeWrapper)>>> _typeNameMapping
+            = new ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeWrapper)>>>();
 
         /// <summary>
         /// Gets type definitions matching the full name and in the reference and main libraries.
@@ -26,21 +27,16 @@ namespace MetadataPublicApiGenerator.Extensions
         /// <param name="compilation">The compilation to scan.</param>
         /// <param name="name">The name of the item to get.</param>
         /// <returns>The name of the items.</returns>
-        public static ImmutableList<(CompilationModule module, TypeDefinitionHandle typeDefinitionHandle)> GetTypeDefinitionByName(this ICompilation compilation, string name)
+        public static ImmutableList<(CompilationModule module, TypeWrapper typeWrapper)> GetTypeDefinitionByName(this ICompilation compilation, string name)
         {
-            void GetTypeMappings(CompilationModule module, Dictionary<string, List<(CompilationModule, TypeDefinitionHandle)>> list)
+            void GetTypeMappings(CompilationModule module, Dictionary<string, List<(CompilationModule, TypeWrapper)>> list)
             {
-                foreach (var typeDefinitionHandle in module.PublicTypeDefinitionHandles)
+                foreach (var typeDefinitionHandle in module.PublicTypes)
                 {
-                    if (typeDefinitionHandle.IsNil)
-                    {
-                        continue;
-                    }
-
-                    var fullName = typeDefinitionHandle.GetFullName(module);
+                    var fullName = typeDefinitionHandle.FullName;
                     if (!list.TryGetValue(fullName, out var listCurrent))
                     {
-                        listCurrent = new List<(CompilationModule, TypeDefinitionHandle)>();
+                        listCurrent = new List<(CompilationModule, TypeWrapper)>();
                         list[fullName] = listCurrent;
                     }
 
@@ -50,17 +46,22 @@ namespace MetadataPublicApiGenerator.Extensions
 
             var map = _typeNameMapping.GetOrAdd(compilation, comp =>
             {
-                var list = new Dictionary<string, List<(CompilationModule, TypeDefinitionHandle)>>();
+                var list = new Dictionary<string, List<(CompilationModule, TypeWrapper)>>();
                 GetTypeMappings(comp.MainModule, list);
                 foreach (var subModule in comp.ReferencedModules)
                 {
                     GetTypeMappings(subModule, list);
                 }
 
-                return list.ToImmutableDictionary(key => key.Key, value => value.Value.ToImmutableList());
+                var returnValue = list.ToImmutableDictionary(key => key.Key, value => value.Value.ToImmutableList());
+
+                File.WriteAllLines("knownmodules.txt", returnValue.Values.SelectMany(x => x.Select(y => y.Item1.FileName)).Distinct().OrderBy(x => x));
+                File.WriteAllLines("knowntypes.txt", returnValue.Keys.OrderBy(x => x).ToList());
+
+                return returnValue;
             });
 
-            return map.GetValueOrDefault(name) ?? ImmutableList<(CompilationModule, TypeDefinitionHandle)>.Empty;
+            return map.GetValueOrDefault(name) ?? ImmutableList<(CompilationModule, TypeWrapper)>.Empty;
         }
 
         public static bool IsValueType(this TypeDefinitionHandle handle, CompilationModule reader)
@@ -108,13 +109,18 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static bool IsEnum(this TypeDefinition typeDefinition, CompilationModule module)
         {
-            var baseType = (TypeDefinitionHandle)typeDefinition.GetBaseTypeOrNil();
+            var baseType = typeDefinition.GetBaseTypeOrNil();
             if (baseType.IsNil)
             {
                 return false;
             }
 
-            return baseType.IsKnownType(module) == KnownTypeCode.Enum;
+            if (baseType.Kind == HandleKind.TypeDefinition)
+            {
+                return ((TypeDefinitionHandle)baseType).IsKnownType(module) == KnownTypeCode.Enum;
+            }
+
+            return false;
         }
 
         public static bool IsEnum(this TypeDefinitionHandle handle, CompilationModule module, out PrimitiveTypeCode underlyingType)
@@ -203,6 +209,11 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static bool IsEntityPublic(this Handle entity, CompilationModule module)
         {
+            if (entity.IsNil)
+            {
+                return false;
+            }
+
             switch (entity.Kind)
             {
                 case HandleKind.EventDefinition:
@@ -351,19 +362,19 @@ namespace MetadataPublicApiGenerator.Extensions
             return (default, MethodKind.Ordinary);
         }
 
-        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this PropertyDefinitionHandle handle, CompilationModule module, GenericContext? genericContext = default)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this PropertyDefinitionHandle handle, CompilationModule module, GenericContext genericContext = default)
         {
             var instance = handle.Resolve(module);
             return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
         }
 
-        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodDefinitionHandle handle, CompilationModule module, GenericContext? genericContext = default)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodDefinitionHandle handle, CompilationModule module, GenericContext genericContext = default)
         {
             var instance = handle.Resolve(module);
             return instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
         }
 
-        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodSpecificationHandle handle, CompilationModule module, GenericContext? genericContext = default)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MethodSpecificationHandle handle, CompilationModule module, GenericContext genericContext = default)
         {
             var instance = handle.Resolve(module);
             var methodTypeArgs = instance.DecodeSignature(new TypeProvider(module.Compilation), genericContext ?? new GenericContext(module, handle));
@@ -376,7 +387,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return ((MemberReferenceHandle)instance.Method).DecodeSignature(module, genericContext);
         }
 
-        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MemberReferenceHandle handle, CompilationModule module, GenericContext? context = default)
+        public static MethodSignature<ITypeNamedWrapper>? DecodeSignature(this MemberReferenceHandle handle, CompilationModule module, GenericContext context = default)
         {
             var reference = handle.Resolve(module);
 

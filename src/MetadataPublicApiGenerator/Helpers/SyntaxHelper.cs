@@ -36,23 +36,21 @@ namespace MetadataPublicApiGenerator.Helpers
 
             if (wrapper is TypeWrapper typeWrapper)
             {
-                var type = typeWrapper.TypeDefinition;
+                var knownType = typeWrapper.TypeDefinition.IsKnownType(compilation);
 
-                return LiteralParameterFromType(compilation, type, value);
+                return LiteralParameterFromType(knownType, value);
             }
 
             return null;
         }
 
-        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, TypeDefinition type, object value)
-        {
-            var knownType = type.IsKnownType(compilation);
-
-            return LiteralParameterFromType(knownType, value);
-        }
-
         public static ExpressionSyntax LiteralParameterFromType(KnownTypeCode underlyingType, object value)
         {
+            if (value == null)
+            {
+                return SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
+            }
+
             switch (underlyingType)
             {
                 case KnownTypeCode.Char:
@@ -84,6 +82,8 @@ namespace MetadataPublicApiGenerator.Helpers
                     return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal((string)value));
                 case KnownTypeCode.Object:
                     return SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(((Type)value).FullName));
+                case KnownTypeCode.Type:
+                    return SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(value.ToString()));
             }
 
             throw new Exception($"Unknown parameter type for a parameter: {underlyingType}");
@@ -102,9 +102,9 @@ namespace MetadataPublicApiGenerator.Helpers
                 case "op_LessThan":
                     return SyntaxFactory.Token(SyntaxKind.LessThanToken);
                 case "op_GreaterThanOrEqual":
-                    return SyntaxFactory.Token(SyntaxKind.GreaterThanGreaterThanEqualsToken);
-                case "op_LessThanOrEqual:":
-                    return SyntaxFactory.Token(SyntaxKind.LessThanLessThanEqualsToken);
+                    return SyntaxFactory.Token(SyntaxKind.GreaterThanEqualsToken);
+                case "op_LessThanOrEqual":
+                    return SyntaxFactory.Token(SyntaxKind.LessThanEqualsToken);
                 case "op_BitwiseAnd":
                     return SyntaxFactory.Token(SyntaxKind.AmpersandToken);
                 case "op_BitwiseOr":
@@ -141,6 +141,10 @@ namespace MetadataPublicApiGenerator.Helpers
                     return SyntaxFactory.Token(SyntaxKind.MinusMinusToken);
                 case "op_OnesComplement":
                     return SyntaxFactory.Token(SyntaxKind.TildeToken);
+                case "op_Implicit":
+                    return SyntaxFactory.Token(SyntaxKind.ImplicitKeyword);
+                case "op_Explicit":
+                    return SyntaxFactory.Token(SyntaxKind.ExplicitKeyword);
             }
 
             throw new Exception($"Unknown name for a operator: {operatorName}");

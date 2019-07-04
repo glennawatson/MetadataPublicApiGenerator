@@ -37,36 +37,53 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 throw new Exception("Could not get a valid signature");
             }
 
+            var methodName = method.GetName(compilation);
+            var methodDeclaringTypeName = method.GetDeclaringType().GetName(compilation);
             switch (methodKind)
             {
                 case MethodKind.Constructor:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.ConstructorDeclaration(method.GetDeclaringType().GetName(compilation)), method);
+                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.ConstructorDeclaration(methodDeclaringTypeName), method);
                 case MethodKind.Destructor:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.DestructorDeclaration(method.GetDeclaringType().GetName(compilation)), method);
+                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.DestructorDeclaration(methodDeclaringTypeName), method);
                 case MethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), method.GetName(compilation))
+                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), methodName)
                         .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, method.GetCustomAttributes(), ExcludeAttributes));
 
                     return GenerateFromMethodSyntax(Factory, compilation, methodDeclaration, method);
                 case MethodKind.BuiltinOperator:
                 case MethodKind.UserDefinedOperator:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), SyntaxHelper.OperatorNameToToken(method.GetName(compilation))), method);
+                    switch (methodName)
+                    {
+                        case "op_Implicit":
+                        case "op_Explicit":
+                            return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value))), method);
+                        default:
+                            return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), SyntaxHelper.OperatorNameToToken(methodName)), method);
+                    }
+
                 default:
-                    throw new Exception("Unknown method type: " + methodKind);
+                    return null;
             }
         }
 
         private static string GetReturnTypeName(in MethodSignature<ITypeNamedWrapper> signature)
         {
-            return signature.ReturnType.FullName;
+            return signature.ReturnType?.FullName ?? "System.Void";
         }
 
         private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, CompilationModule compilation, BaseMethodDeclarationSyntax item, in MethodDefinition member)
         {
-            return item
-                .WithModifiers(member.GetModifiers())
-                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(member.GetParameters().Select(x => factory.Generate<ParameterSyntax>(x, compilation)))))
-                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            var parameters = member.GetParameters().Select(x => factory.Generate<ParameterSyntax>(x, compilation)).Where(x => x != null).ToList();
+
+            var returnItem = item.WithModifiers(member.GetModifiers());
+
+            if (parameters.Count > 0)
+            {
+                return returnItem.WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameters)))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            }
+
+            return returnItem.WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
     }
 }

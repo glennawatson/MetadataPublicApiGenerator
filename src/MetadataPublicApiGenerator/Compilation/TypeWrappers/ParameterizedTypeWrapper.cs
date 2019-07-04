@@ -2,12 +2,12 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
-using Lazy;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
@@ -22,17 +22,44 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// </remarks>
     internal class ParameterizedTypeWrapper : ITypeNamedWrapper
     {
+        private readonly Lazy<string> _name;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ParameterizedTypeWrapper"/> class.
         /// </summary>
         /// <param name="module">The module that owns the parameterized type.</param>
         /// <param name="genericType">The type that is generic.</param>
         /// <param name="typeArguments">The type arguments provided to the class.</param>
-        public ParameterizedTypeWrapper(CompilationModule module, ITypeNamedWrapper genericType, IEnumerable<ITypeNamedWrapper> typeArguments)
+        public ParameterizedTypeWrapper(CompilationModule module, ITypeNamedWrapper genericType, IReadOnlyList<ITypeNamedWrapper> typeArguments)
         {
-            GenericType = genericType;
+            if (typeArguments == null)
+            {
+                throw new ArgumentNullException(nameof(typeArguments));
+            }
+
+            if (typeArguments.Any(x => x == null))
+            {
+                throw new ArgumentNullException(nameof(typeArguments));
+            }
+
+            GenericType = genericType ?? throw new ArgumentNullException(nameof(genericType));
             TypeArguments = typeArguments.ToImmutableArray();
-            Module = module;
+            Module = module ?? throw new ArgumentNullException(nameof(module));
+
+            _name = new Lazy<string>(
+                () =>
+                    {
+                        var sb = new StringBuilder(GenericType.Name);
+
+                        if (TypeArguments.Length > 0)
+                        {
+                            sb.Append("<")
+                                .Append(string.Join(", ", TypeArguments.Select(x => x.FullName)))
+                                .Append(">");
+                        }
+
+                        return sb.ToString();
+                    });
         }
 
         /// <summary>
@@ -45,7 +72,6 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// </summary>
         public ImmutableArray<ITypeNamedWrapper> TypeArguments { get; }
 
-        [Lazy]
         public string FullName => Namespace + "." + Name;
 
         public string Namespace => GenericType.Namespace;
@@ -56,22 +82,6 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <inheritdoc />
         public CompilationModule Module { get; }
 
-        [Lazy]
-        public string Name
-        {
-            get
-            {
-                StringBuilder sb = new StringBuilder(GenericType.Name);
-
-                if (TypeArguments.Length > 0)
-                {
-                    sb.Append("<")
-                        .Append(string.Join(", ", TypeArguments.Select(x => x.FullName)))
-                        .Append(">");
-                }
-
-                return sb.ToString();
-            }
-        }
+        public string Name => _name.Value;
     }
 }

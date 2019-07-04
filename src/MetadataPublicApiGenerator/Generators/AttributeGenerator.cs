@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -52,12 +53,32 @@ namespace MetadataPublicApiGenerator.Generators
             var validAttributes = new List<CustomAttribute>();
             foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => x.Resolve(compilation)))
             {
-                var memberReference = ((MemberReferenceHandle)attribute.Constructor).Resolve(compilation);
+                MethodSignature<ITypeNamedWrapper>? methodSignature = null;
 
-                // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                var method = memberReference.DecodeMethodSignature(new TypeProvider(compilation.Compilation), default);
+                switch (attribute.Constructor.Kind)
+                {
+                    case HandleKind.MethodDefinition:
+                        var methodDefinition = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation);
 
-                if (excludeAttributes.Contains(method.ReturnType.FullName))
+                        methodSignature = methodDefinition.DecodeSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation));
+                        break;
+
+                    case HandleKind.MemberReference:
+                        var memberReference = ((MemberReferenceHandle)attribute.Constructor).Resolve(compilation);
+
+                        // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
+                        methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation));
+                        break;
+                    default:
+                        throw new Exception("Unknown method type");
+                }
+
+                if (methodSignature == null)
+                {
+                    continue;
+                }
+
+                if (excludeAttributes.Contains(methodSignature.Value.ReturnType.FullName))
                 {
                     continue;
                 }

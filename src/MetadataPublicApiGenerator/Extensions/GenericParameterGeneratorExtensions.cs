@@ -61,9 +61,9 @@ namespace MetadataPublicApiGenerator.Extensions
                 return typeDeclarationSyntax;
             }
 
-            var typeConstraints = constraintDictionary.Select(kvp =>
+            var typeConstraints = constraintDictionary.Where(x => x.Value.Any(y => y != null)).Select(kvp =>
                 SyntaxFactory.TypeParameterConstraintClause(kvp.Key)
-                    .WithConstraints(SyntaxFactory.SeparatedList<TypeParameterConstraintSyntax>(kvp.Value.Select(c => SyntaxFactory.TypeConstraint(SyntaxFactory.IdentifierName(c))))));
+                    .WithConstraints(SyntaxFactory.SeparatedList<TypeParameterConstraintSyntax>(kvp.Value.Where(c => c != null).Select(c => SyntaxFactory.TypeConstraint(SyntaxFactory.IdentifierName(c))))));
 
             return (T)typeDeclarationSyntax.WithTypeParameterList(SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(parameterList))).WithConstraintClauses(SyntaxFactory.List(typeConstraints));
         }
@@ -81,9 +81,13 @@ namespace MetadataPublicApiGenerator.Extensions
                     var parameter = constraint.Parameter.Resolve(compilation);
                     var parameterName = parameter.Name.GetName(compilation);
 
-                    var constraintType = ((TypeDefinitionHandle)constraint.Type).Resolve(compilation);
+                    if (constraint.Type.IsNil)
+                    {
+                        continue;
+                    }
 
-                    if (constraintType.GetFullName(compilation) != "System.Object")
+                    var constraintTypeName = constraint.Type.GetFullName(compilation);
+                    if (constraintTypeName != "System.Object")
                     {
                         if (!constraintDictionary.TryGetValue(parameterName, out var constraints))
                         {
@@ -91,7 +95,7 @@ namespace MetadataPublicApiGenerator.Extensions
                             constraintDictionary[parameterName] = constraints;
                         }
 
-                        constraints.Add(constraintType.GetFullName(compilation));
+                        constraints.Add(constraintTypeName);
                     }
                 }
 

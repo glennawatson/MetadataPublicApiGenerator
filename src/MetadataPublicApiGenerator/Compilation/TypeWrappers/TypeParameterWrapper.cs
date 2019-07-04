@@ -75,8 +75,6 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
                 return ImmutableArray<TypeParameterWrapper>.Empty;
             }
 
-            var returnValue = new TypeParameterWrapper[handles.Count];
-
             var builder = ImmutableArray.CreateBuilder<TypeParameterWrapper>(handles.Count);
 
             int i = 0;
@@ -86,7 +84,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
                 i++;
             }
 
-            return returnValue.ToImmutableArray();
+            return builder.ToImmutable();
         }
 
         /// <summary>

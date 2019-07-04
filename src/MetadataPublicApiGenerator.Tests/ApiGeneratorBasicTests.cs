@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Tests
         [Fact]
         public void FirstTest()
         {
-            var value = ApiGenerator.GeneratePublicApi(Assembly.GetAssembly(typeof(JsonConvert)));
+            var value = ApiGenerator.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
 
             Assert.NotNull(value);
         }

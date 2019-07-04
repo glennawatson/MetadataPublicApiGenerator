@@ -30,7 +30,7 @@ namespace MetadataPublicApiGenerator.Compilation
         public ITypeNamedWrapper GetSystemType()
         {
             var value = _compilation.GetTypeDefinitionByName("System.Type").First();
-            return new TypeWrapper(value.module, _compilation.GetTypeDefinitionByName("System.Type").First().typeDefinitionHandle);
+            return _compilation.GetTypeDefinitionByName("System.Type").First().typeWrapper;
         }
 
         /// <inheritdoc />
@@ -42,8 +42,8 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetTypeFromSerializedName(string name)
         {
-            var value = _compilation.GetTypeDefinitionByName(name).First();
-            return new TypeWrapper(value.module, value.typeDefinitionHandle);
+            var value = _compilation.GetTypeDefinitionByName(name).FirstOrDefault();
+            return value.typeWrapper;
         }
 
         /// <inheritdoc />
@@ -58,7 +58,8 @@ namespace MetadataPublicApiGenerator.Compilation
         public ITypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
         {
             var element = typeCode.ToKnownTypeCode().ToTypeDefinitionHandle(_compilation);
-            return new TypeWrapper(element.module, element.typeDefinition);
+
+            return element.module == null ? null : element.typeDefinition;
         }
 
         /// <inheritdoc />
@@ -72,18 +73,23 @@ namespace MetadataPublicApiGenerator.Compilation
         public ITypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
             var module = _compilation.GetCompilationModuleForReader(reader);
-            var typeReference = handle.Resolve(module);
 
             var name = handle.GetFullName(module);
 
             var resolve = _compilation.GetTypeDefinitionByName(name).FirstOrDefault();
-            return new TypeWrapper(resolve.module, resolve.typeDefinitionHandle);
+
+            if (resolve.module != null)
+            {
+                return resolve.typeWrapper;
+            }
+
+            return new UnknownType(module, handle);
         }
 
         /// <inheritdoc />
         public ITypeNamedWrapper GetSZArrayType(ITypeNamedWrapper elementType)
         {
-            return new ArrayTypeWrapper(elementType.Module, (ITypeNamedWrapper)elementType, 1);
+            return new ArrayTypeWrapper(_compilation, elementType, 1);
         }
 
         /// <inheritdoc />
@@ -95,13 +101,13 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetArrayType(ITypeNamedWrapper elementType, ArrayShape shape)
         {
-            return new ArrayTypeWrapper(elementType.Module, (ITypeNamedWrapper)elementType, shape.Rank);
+            return new ArrayTypeWrapper(_compilation, elementType, shape.Rank);
         }
 
         /// <inheritdoc />
         public ITypeNamedWrapper GetByReferenceType(ITypeNamedWrapper elementType)
         {
-            return new ByReferenceWrapper(elementType.Module, (ITypeWrapper)elementType);
+            return new ByReferenceWrapper(elementType.Module, elementType);
         }
 
         /// <inheritdoc />
@@ -114,7 +120,7 @@ namespace MetadataPublicApiGenerator.Compilation
         public ITypeNamedWrapper GetFunctionPointerType(MethodSignature<ITypeNamedWrapper> signature)
         {
             var element = KnownTypeCode.IntPtr.ToTypeDefinitionHandle(_compilation);
-            return new TypeWrapper(element.module, element.typeDefinition);
+            return element.typeDefinition;
         }
 
         /// <inheritdoc />
@@ -132,7 +138,7 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetModifiedType(ITypeNamedWrapper modifier, ITypeNamedWrapper unmodifiedType, bool isRequired)
         {
-            return new ModifiedTypeWrapper(modifier.Module, (ITypeNamedWrapper)modifier, (ITypeNamedWrapper)unmodifiedType, isRequired);
+            return new ModifiedTypeWrapper(modifier.Module, modifier, unmodifiedType, isRequired);
         }
 
         /// <inheritdoc />

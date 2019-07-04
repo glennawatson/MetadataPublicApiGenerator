@@ -2,12 +2,17 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
+using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Extensions
 {
@@ -207,14 +212,18 @@ namespace MetadataPublicApiGenerator.Extensions
                     return GetFullName((TypeDefinitionHandle)handle, module);
                 case HandleKind.MemberReference:
                     return GetFullName((MemberReferenceHandle)handle, module);
+                case HandleKind.MethodDefinition:
+                    return GetFullName((MethodDefinitionHandle)handle, module);
             }
 
             return null;
         }
 
-        public static string GetFullName(this CustomAttribute handle, CompilationModule compilation)
+        public static string GetFullName(this CustomAttribute attribute, CompilationModule compilation)
         {
-            return ((EntityHandle)handle.Constructor).GetFullName(compilation);
+            var attributeType = attribute.GetAttributeType(compilation);
+
+            return attributeType.GetFullName(compilation);
         }
 
         public static string GetFullName(this TypeDefinitionHandle typeDefinitionHandle, CompilationModule module)
@@ -227,22 +236,28 @@ namespace MetadataPublicApiGenerator.Extensions
         public static string GetFullName(this TypeDefinition typeDefinition, CompilationModule module)
         {
             var reader = module.MetadataReader;
+
+            var declaringType = typeDefinition.GetDeclaringType();
+
             var stringBuilder = new StringBuilder();
-            var namespaceName = reader.GetString(typeDefinition.Namespace);
-
-            if (!string.IsNullOrEmpty(namespaceName))
+            if (declaringType.IsNil)
             {
-                stringBuilder.Append(namespaceName).Append('.');
+                if (!typeDefinition.Namespace.IsNil)
+                {
+                    var namespaceName = reader.GetString(typeDefinition.Namespace);
+                    if (!string.IsNullOrEmpty(namespaceName))
+                    {
+                        stringBuilder.Append(namespaceName).Append('.');
+                    }
+                }
+
+                stringBuilder.Append(reader.GetString(typeDefinition.Name));
             }
-
-            var nestedNames = typeDefinition.GetNestedTypes().Select(x => x.Resolve(module).GetName(module)).ToList();
-
-            if (nestedNames.Count > 0)
+            else
             {
-                stringBuilder.Append(string.Join(".", nestedNames)).Append('.');
+                stringBuilder.Append(GetFullName(declaringType, module)).Append('.')
+                    .Append(reader.GetString(typeDefinition.Name));
             }
-
-            stringBuilder.Append(reader.GetString(typeDefinition.Name));
 
             return stringBuilder.ToString();
         }
@@ -279,6 +294,23 @@ namespace MetadataPublicApiGenerator.Extensions
             {
                 stringBuilder.Append(string.Join(".", list)).Append('.');
             }
+
+            stringBuilder.Append(reader.GetString(memberReference.Name));
+
+            return stringBuilder.ToString();
+        }
+
+        public static string GetFullName(this MethodDefinitionHandle handle, CompilationModule module)
+        {
+            var memberReferenceHandle = handle.Resolve(module);
+
+            return memberReferenceHandle.GetFullName(module);
+        }
+
+        public static string GetFullName(this MethodDefinition memberReference, CompilationModule module)
+        {
+            var reader = module.MetadataReader;
+            var stringBuilder = new StringBuilder();
 
             stringBuilder.Append(reader.GetString(memberReference.Name));
 
@@ -325,6 +357,28 @@ namespace MetadataPublicApiGenerator.Extensions
             stringBuilder.Append(reader.GetString(typeReference.Name));
 
             return stringBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Gets a string form of the type and generic arguments for a type.
+        /// </summary>
+        /// <param name="typeHandle">The type to generate the arguments for.</param>
+        /// <param name="compilation">The compilation information source.</param>
+        /// <returns>A type descriptor including the generic arguments.</returns>
+        public static string GenerateFullGenericName(this TypeSpecificationHandle typeHandle, CompilationModule compilation)
+        {
+            return GenerateFullGenericName(typeHandle.Resolve(compilation), compilation);
+        }
+
+        /// <summary>
+        /// Gets a string form of the type and generic arguments for a type.
+        /// </summary>
+        /// <param name="typeSpecification">The type to generate the arguments for.</param>
+        /// <param name="compilation">The compilation information source.</param>
+        /// <returns>A type descriptor including the generic arguments.</returns>
+        public static string GenerateFullGenericName(this TypeSpecification typeSpecification, CompilationModule compilation)
+        {
+            return typeSpecification.DecodeSignature(compilation.TypeProvider, new GenericContext(compilation))?.FullName;
         }
 
         /// <summary>

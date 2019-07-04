@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Text;
-using Lazy;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
@@ -38,15 +37,12 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public Handle Handle => TypeDefinition.Handle;
 
         /// <inheritdoc />
-        [Lazy]
         public virtual string Name => TypeDefinition.Name + " pinned";
 
         /// <inheritdoc />
-        [Lazy]
         public string Namespace => TypeDefinition.Namespace;
 
         /// <inheritdoc />
-        [Lazy]
         public string FullName => Namespace + "." + Name;
     }
 }

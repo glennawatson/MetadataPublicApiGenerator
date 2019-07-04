@@ -2,28 +2,33 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal readonly struct GenericContext
+    internal class GenericContext
     {
-        public GenericContext(ImmutableArray<TypeParameterWrapper> classTypeParameters)
-        {
-            ClassTypeParameters = classTypeParameters;
-            MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
-        }
+        private readonly CompilationModule _module;
 
-        public GenericContext(ImmutableArray<TypeParameterWrapper> classTypeParameters, ImmutableArray<TypeParameterWrapper> methodTypeParameters)
+        internal GenericContext(CompilationModule module)
         {
-            ClassTypeParameters = classTypeParameters;
-            MethodTypeParameters = methodTypeParameters;
+            ClassTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
+            MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
+            _module = module;
         }
 
         internal GenericContext(CompilationModule module, Handle context)
         {
+            _module = module;
+            if (module == null)
+            {
+                throw new System.ArgumentNullException(nameof(module));
+            }
+
             switch (context.Kind)
             {
                 case HandleKind.TypeDefinition:
@@ -46,20 +51,25 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
                     MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
                     break;
             }
+
+            if (ClassTypeParameters.Any(x => x == null))
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
         }
 
         public ImmutableArray<TypeParameterWrapper> ClassTypeParameters { get; }
 
         public ImmutableArray<TypeParameterWrapper> MethodTypeParameters { get; }
 
-        public TypeParameterWrapper GetClassTypeParameter(int index)
+        public ITypeNamedWrapper GetClassTypeParameter(int index)
         {
-            return ClassTypeParameters[index];
+            return index < ClassTypeParameters.Length ? (ITypeNamedWrapper)ClassTypeParameters[index] : new DummyTypeParameterWrapper(index, "Class", _module);
         }
 
-        public TypeParameterWrapper GetMethodTypeParameter(int index)
+        public ITypeNamedWrapper GetMethodTypeParameter(int index)
         {
-            return MethodTypeParameters[index];
+            return index < MethodTypeParameters.Length ? (ITypeNamedWrapper)MethodTypeParameters[index] : new DummyTypeParameterWrapper(index, "Method", _module);
         }
     }
 }

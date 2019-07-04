@@ -8,6 +8,8 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
 using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Extensions
@@ -84,7 +86,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return (KnownTypeCode)index;
         }
 
-        public static (CompilationModule module, TypeDefinitionHandle typeDefinition) ToTypeDefinitionHandle(this KnownTypeCode knownType, ICompilation compilation)
+        public static (CompilationModule module, TypeWrapper typeDefinition) ToTypeDefinitionHandle(this KnownTypeCode knownType, ICompilation compilation)
         {
             var name = _knownTypeReferences[(int)knownType];
             return compilation.GetTypeDefinitionByName(name).FirstOrDefault();
@@ -109,6 +111,11 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static KnownTypeCode IsKnownType(this Handle typeDefinition, CompilationModule compilation)
         {
+            if (typeDefinition.IsNil)
+            {
+                return KnownTypeCode.None;
+            }
+
             string name = typeDefinition.GetName(compilation);
             var index = Array.IndexOf(_knownTypeReferences, name);
             if (index < 0)

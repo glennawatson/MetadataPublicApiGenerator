@@ -48,11 +48,19 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var invokeMember = type.GetDelegateInvokeMethod(compilation);
 
-            return SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), type.GetName(compilation))
+            var parameters = invokeMember.GetParameters().Select(x => Factory.Generate<ParameterSyntax>(x, compilation)).Where(x => x != null).ToList();
+
+            var returnValue = SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), type.GetName(compilation))
                 .WithGenericParameterList(compilation, invokeMember)
                 .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, type.GetCustomAttributes().Select(x => x.Resolve(compilation)), ExcludeAttributes))
-                .WithModifiers(type.GetModifiers())
-                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(invokeMember.GetParameters().Select(x => Factory.Generate<ParameterSyntax>(x, compilation)))));
+                .WithModifiers(type.GetModifiers());
+
+            if (parameters.Count > 0)
+            {
+                returnValue.WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameters)));
+            }
+
+            return returnValue;
         }
     }
 }
