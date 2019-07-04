@@ -8,7 +8,7 @@ using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using Microsoft.CodeAnalysis;
+
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

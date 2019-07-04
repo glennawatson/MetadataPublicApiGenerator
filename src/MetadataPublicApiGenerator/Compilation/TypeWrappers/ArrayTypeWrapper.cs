@@ -54,6 +54,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public bool IsKnownType => true;
 
         /// <inheritdoc />
+        public bool IsEnumType => _parentWrapper.IsEnumType;
+
+        /// <inheritdoc />
         public CompilationModule Module => _parentWrapper?.Module;
 
         /// <inheritdoc />

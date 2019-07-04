@@ -3,14 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Text;
+
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-
-using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Extensions
 {
@@ -99,7 +96,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static KnownTypeCode IsKnownType(this TypeDefinitionHandle typeDefinition, CompilationModule compilation)
         {
-            string name = typeDefinition.GetName(compilation);
+            string name = typeDefinition.GetFullName(compilation);
             var index = Array.IndexOf(_knownTypeReferences, name);
             if (index < 0)
             {
@@ -109,14 +106,14 @@ namespace MetadataPublicApiGenerator.Extensions
             return (KnownTypeCode)index;
         }
 
-        public static KnownTypeCode IsKnownType(this Handle typeDefinition, CompilationModule compilation)
+        public static KnownTypeCode IsKnownType(this ITypeNamedWrapper typeDefinition)
         {
-            if (typeDefinition.IsNil)
+            if (typeDefinition == null)
             {
                 return KnownTypeCode.None;
             }
 
-            string name = typeDefinition.GetName(compilation);
+            string name = typeDefinition.FullName;
             var index = Array.IndexOf(_knownTypeReferences, name);
             if (index < 0)
             {

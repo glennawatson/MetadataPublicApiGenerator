@@ -2,8 +2,11 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Collections.Generic;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -33,11 +36,10 @@ namespace MetadataPublicApiGenerator.Generators
             where TOutput : CSharpSyntaxNode;
 
         /// <summary>
-        /// Generates a namespace declaration.
+        /// Generates the members for the namespace.
         /// </summary>
         /// <param name="namespaceInfo">The namespace to generate for.</param>
-        /// <param name="compilation">The compilation which contains the type information.</param>
-        /// <returns>The generated namespace.</returns>
-        NamespaceDeclarationSyntax Generate(NamespaceDefinition namespaceInfo, CompilationModule compilation);
+        /// <returns>The generated members.</returns>
+        IReadOnlyCollection<MemberDeclarationSyntax> GenerateMembers(NamespaceWrapper namespaceInfo);
     }
 }

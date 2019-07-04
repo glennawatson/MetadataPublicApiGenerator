@@ -6,10 +6,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Text;
+
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using MetadataPublicApiGenerator.Helpers;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,7 +26,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="excludeFunc">A func to determine if we exclude a type or not.</param>
         /// <param name="factory">The factory for generating children.</param>
-        internal DelegateTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeDefinition, bool> excludeFunc, IGeneratorFactory factory)
+        internal DelegateTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<ITypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
             : base(excludeAttributes, excludeMembersAttributes, factory)
         {
             ExcludeFunc = excludeFunc;
@@ -35,17 +36,11 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public TypeKind TypeKind => TypeKind.Delegate;
 
         /// <inheritdoc />
-        public Func<TypeDefinition, bool> ExcludeFunc { get; }
+        public Func<ITypeWrapper, bool> ExcludeFunc { get; }
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(CompilationModule compilation, TypeDefinitionHandle typeHandle)
+        public MemberDeclarationSyntax Generate(ITypeWrapper type)
         {
-            var type = typeHandle.Resolve(compilation);
-            if (ExcludeFunc(type))
-            {
-                return null;
-            }
-
             var invokeMember = type.GetDelegateInvokeMethod(compilation);
 
             var parameters = invokeMember.GetParameters().Select(x => Factory.Generate<ParameterSyntax>(x, compilation)).Where(x => x != null).ToList();

@@ -2,10 +2,6 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
     /// <summary>
@@ -29,9 +25,24 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         string Namespace { get; }
 
         /// <summary>
-        /// Gets a value indicating whether this is a known type.
+        /// Gets a value indicating whether if this is a known type.
         /// </summary>
         bool IsKnownType { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether if this is a enum type.
+        /// </summary>
+        bool IsEnumType { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether if this is a public type.
+        /// </summary>
+        bool IsPublic { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether if this type if abstract.
+        /// </summary>
+        bool IsAbstract { get; }
 
         /// <summary>
         /// Gets the module that this wrapped item belongs to.

@@ -12,15 +12,15 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator.Generators
 {
-    internal class NamespaceGenerator
+    internal class NamespaceMembersGenerator
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="NamespaceGenerator"/> class.
+        /// Initializes a new instance of the <see cref="NamespaceMembersGenerator"/> class.
         /// </summary>
         /// <param name="excludeAttributes">A set of attributes to exclude from being generated.</param>
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="factory">The factory for generating children.</param>
-        public NamespaceGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
+        public NamespaceMembersGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
         {
             ExcludeAttributes = excludeAttributes;
             ExcludeMembersAttributes = excludeMembersAttributes;
@@ -33,14 +33,13 @@ namespace MetadataPublicApiGenerator.Generators
 
         public IGeneratorFactory Factory { get; }
 
-        public NamespaceDeclarationSyntax Generate(CompilationModule compilation, NamespaceDefinition namespaceInfo)
+        public IReadOnlyCollection<MemberDeclarationSyntax> Generate(CompilationModule compilation, NamespaceDefinition namespaceInfo)
         {
             // Get a list of valid types that don't have attributes matching our exclude list.
-            var childMembers = namespaceInfo.TypeDefinitions.Select(x => (Handle)x).OrderByAndExclude(ExcludeMembersAttributes, compilation)
+            return namespaceInfo.TypeDefinitions.Select(x => (Handle)x)
+                .OrderByAndExclude(ExcludeMembersAttributes, compilation)
                 .Select(x => Factory.Generate((TypeDefinitionHandle)x, compilation))
                 .ToList();
-
-            return SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceInfo.GetName(compilation))).WithMembers(SyntaxFactory.List(childMembers));
         }
     }
 }

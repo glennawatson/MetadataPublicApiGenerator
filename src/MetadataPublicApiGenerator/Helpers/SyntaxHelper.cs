@@ -3,9 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
+
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
@@ -36,7 +34,16 @@ namespace MetadataPublicApiGenerator.Helpers
 
             if (wrapper is TypeWrapper typeWrapper)
             {
-                var knownType = typeWrapper.TypeDefinition.IsKnownType(compilation);
+                KnownTypeCode knownType;
+                if (typeWrapper.IsEnumType)
+                {
+                    typeWrapper.TypeDefinitionHandle.IsEnum(compilation, out var primitiveType);
+                    knownType = primitiveType.ToKnownTypeCode();
+                }
+                else
+                {
+                    knownType = typeWrapper.TypeDefinition.IsKnownType(compilation);
+                }
 
                 return LiteralParameterFromType(knownType, value);
             }

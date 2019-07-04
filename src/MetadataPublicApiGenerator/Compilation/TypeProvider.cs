@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -13,70 +14,47 @@ namespace MetadataPublicApiGenerator.Compilation
     /// <summary>
     /// A type provider for the System.Reflection.Metadata based set of methods to decode attributes and method signatures.
     /// </summary>
-    internal class TypeProvider : ICustomAttributeTypeProvider<ITypeNamedWrapper>, ISignatureTypeProvider<ITypeNamedWrapper, GenericContext>
+    internal class TypeProvider : ISignatureTypeProvider<ITypeNamedWrapper, GenericContext>
     {
-        private readonly ICompilation _compilation;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeProvider"/> class.
         /// </summary>
         /// <param name="compilation">The compilation to use to determine types.</param>
         public TypeProvider(ICompilation compilation)
         {
-            _compilation = compilation;
+            Compilation = compilation;
         }
 
-        /// <inheritdoc />
-        public ITypeNamedWrapper GetSystemType()
-        {
-            var value = _compilation.GetTypeDefinitionByName("System.Type").First();
-            return _compilation.GetTypeDefinitionByName("System.Type").First().typeWrapper;
-        }
-
-        /// <inheritdoc />
-        public bool IsSystemType(ITypeNamedWrapper type)
-        {
-            return type.IsKnownType;
-        }
-
-        /// <inheritdoc />
-        public ITypeNamedWrapper GetTypeFromSerializedName(string name)
-        {
-            var value = _compilation.GetTypeDefinitionByName(name).FirstOrDefault();
-            return value.typeWrapper;
-        }
-
-        /// <inheritdoc />
-        public PrimitiveTypeCode GetUnderlyingEnumType(ITypeNamedWrapper type)
-        {
-            ((TypeDefinitionHandle)((IHandleWrapper)type).Handle).IsEnum(type.Module, out var primitiveType);
-
-            return primitiveType;
-        }
+        protected ICompilation Compilation { get; }
 
         /// <inheritdoc />
         public ITypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
         {
-            var element = typeCode.ToKnownTypeCode().ToTypeDefinitionHandle(_compilation);
+            var element = typeCode.ToKnownTypeCode().ToTypeDefinitionHandle(Compilation);
 
-            return element.module == null ? null : element.typeDefinition;
+            if (element.typeDefinition == null)
+            {
+                throw new InvalidOperationException("type definition is null for a primitive type.");
+            }
+
+            return element.typeDefinition;
         }
 
         /// <inheritdoc />
         public ITypeNamedWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
         {
-            var module = _compilation.GetCompilationModuleForReader(reader);
-            return new TypeWrapper(module, handle);
+            var module = Compilation.GetCompilationModuleForReader(reader);
+            return TypeWrapper.Create(handle, module);
         }
 
         /// <inheritdoc />
         public ITypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
-            var module = _compilation.GetCompilationModuleForReader(reader);
+            var module = Compilation.GetCompilationModuleForReader(reader);
 
             var name = handle.GetFullName(module);
 
-            var resolve = _compilation.GetTypeDefinitionByName(name).FirstOrDefault();
+            var resolve = Compilation.GetTypeDefinitionByName(name).FirstOrDefault();
 
             if (resolve.module != null)
             {
@@ -89,7 +67,7 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetSZArrayType(ITypeNamedWrapper elementType)
         {
-            return new ArrayTypeWrapper(_compilation, elementType, 1);
+            return new ArrayTypeWrapper(Compilation, elementType, 1);
         }
 
         /// <inheritdoc />
@@ -101,7 +79,7 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetArrayType(ITypeNamedWrapper elementType, ArrayShape shape)
         {
-            return new ArrayTypeWrapper(_compilation, elementType, shape.Rank);
+            return new ArrayTypeWrapper(Compilation, elementType, shape.Rank);
         }
 
         /// <inheritdoc />
@@ -119,7 +97,7 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <inheritdoc />
         public ITypeNamedWrapper GetFunctionPointerType(MethodSignature<ITypeNamedWrapper> signature)
         {
-            var element = KnownTypeCode.IntPtr.ToTypeDefinitionHandle(_compilation);
+            var element = KnownTypeCode.IntPtr.ToTypeDefinitionHandle(Compilation);
             return element.typeDefinition;
         }
 

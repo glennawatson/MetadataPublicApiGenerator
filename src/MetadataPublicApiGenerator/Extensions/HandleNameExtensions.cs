@@ -2,17 +2,13 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-
-using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Extensions
 {
@@ -23,21 +19,6 @@ namespace MetadataPublicApiGenerator.Extensions
         public static string GetName(this TypeDefinitionHandle handle, CompilationModule compilation)
         {
             return handle.Resolve(compilation).Name.GetName(compilation);
-        }
-
-        public static string GetName(this TypeDefinition handle, CompilationModule compilation)
-        {
-            return handle.Name.GetName(compilation);
-        }
-
-        public static string GetName(this MethodDefinitionHandle handle, CompilationModule compilation)
-        {
-            return handle.Resolve(compilation).Name.GetName(compilation);
-        }
-
-        public static string GetName(this MethodDefinition handle, CompilationModule compilation)
-        {
-            return handle.Name.GetName(compilation);
         }
 
         public static string GetName(this EventDefinitionHandle handle, CompilationModule compilation)
@@ -58,16 +39,6 @@ namespace MetadataPublicApiGenerator.Extensions
         public static string GetName(this FieldDefinition handle, CompilationModule compilation)
         {
             return handle.Name.GetName(compilation);
-        }
-
-        public static string GetName(this CustomAttributeHandle handle, CompilationModule compilation)
-        {
-            return handle.Resolve(compilation).GetName(compilation);
-        }
-
-        public static string GetName(this CustomAttribute handle, CompilationModule compilation)
-        {
-            return ((EntityHandle)handle.Constructor).GetName(compilation);
         }
 
         public static string GetName(this PropertyDefinitionHandle handle, CompilationModule compilation)
@@ -103,16 +74,6 @@ namespace MetadataPublicApiGenerator.Extensions
         public static string GetName(this GenericParameterConstraint handle, CompilationModule compilation)
         {
             return handle.Parameter.GetName(compilation);
-        }
-
-        public static string GetName(this NamespaceDefinitionHandle handle, CompilationModule compilation)
-        {
-            return handle.Resolve(compilation).GetName(compilation);
-        }
-
-        public static string GetName(this NamespaceDefinition handle, CompilationModule compilation)
-        {
-            return handle.Name.GetName(compilation);
         }
 
         public static string GetName(this TypeReferenceHandle handle, CompilationModule compilation)
@@ -180,8 +141,6 @@ namespace MetadataPublicApiGenerator.Extensions
                     return ((GenericParameterHandle)entity).GetName(module);
                 case HandleKind.GenericParameterConstraint:
                     return ((GenericParameterConstraintHandle)entity).GetName(module);
-                case HandleKind.NamespaceDefinition:
-                    return ((NamespaceDefinitionHandle)entity).GetName(module);
                 case HandleKind.Parameter:
                     return ((ParameterHandle)entity).GetName(module);
                 case HandleKind.String:

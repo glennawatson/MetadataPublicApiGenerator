@@ -3,9 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -18,8 +16,8 @@ namespace MetadataPublicApiGenerator.Extensions
 {
     internal static class ReflectionMetadataExtensions
     {
-        private static readonly ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeWrapper)>>> _typeNameMapping
-            = new ConcurrentDictionary<ICompilation, ImmutableDictionary<string, ImmutableList<(CompilationModule, TypeWrapper)>>>();
+        private static readonly Dictionary<ICompilation, Dictionary<string, IReadOnlyList<(CompilationModule, TypeWrapper)>>> _typeNameMapping
+            = new Dictionary<ICompilation, Dictionary<string, IReadOnlyList<(CompilationModule, TypeWrapper)>>>();
 
         /// <summary>
         /// Gets type definitions matching the full name and in the reference and main libraries.
@@ -27,7 +25,7 @@ namespace MetadataPublicApiGenerator.Extensions
         /// <param name="compilation">The compilation to scan.</param>
         /// <param name="name">The name of the item to get.</param>
         /// <returns>The name of the items.</returns>
-        public static ImmutableList<(CompilationModule module, TypeWrapper typeWrapper)> GetTypeDefinitionByName(this ICompilation compilation, string name)
+        public static IReadOnlyList<(CompilationModule module, TypeWrapper typeWrapper)> GetTypeDefinitionByName(this ICompilation compilation, string name)
         {
             void GetTypeMappings(CompilationModule module, Dictionary<string, List<(CompilationModule, TypeWrapper)>> list)
             {
@@ -53,7 +51,7 @@ namespace MetadataPublicApiGenerator.Extensions
                     GetTypeMappings(subModule, list);
                 }
 
-                var returnValue = list.ToImmutableDictionary(key => key.Key, value => value.Value.ToImmutableList());
+                var returnValue = list.ToDictionary(key => key.Key, value => (IReadOnlyList<(CompilationModule, TypeWrapper)>)value.Value);
 
                 File.WriteAllLines("knownmodules.txt", returnValue.Values.SelectMany(x => x.Select(y => y.Item1.FileName)).Distinct().OrderBy(x => x));
                 File.WriteAllLines("knowntypes.txt", returnValue.Keys.OrderBy(x => x).ToList());
@@ -61,108 +59,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 return returnValue;
             });
 
-            return map.GetValueOrDefault(name) ?? ImmutableList<(CompilationModule, TypeWrapper)>.Empty;
-        }
-
-        public static bool IsValueType(this TypeDefinitionHandle handle, CompilationModule reader)
-        {
-            return handle.Resolve(reader).IsValueType(reader);
-        }
-
-        public static bool IsValueType(this TypeDefinition typeDefinition, CompilationModule reader)
-        {
-            Handle baseType = typeDefinition.GetBaseTypeOrNil();
-            if (baseType.IsNil)
-            {
-                return false;
-            }
-
-            if (baseType.IsKnownType(reader) == KnownTypeCode.Enum)
-            {
-                return true;
-            }
-
-            if (baseType.IsKnownType(reader) != KnownTypeCode.ValueType)
-            {
-                return false;
-            }
-
-            return false;
-        }
-
-        public static bool IsDelegate(this TypeDefinitionHandle handle, CompilationModule reader)
-        {
-            return handle.Resolve(reader).IsDelegate(reader);
-        }
-
-        public static bool IsDelegate(this TypeDefinition typeDefinition, CompilationModule reader)
-        {
-            Handle baseType = typeDefinition.GetBaseTypeOrNil();
-            var knownType = baseType.IsKnownType(reader);
-            return !baseType.IsNil && knownType == KnownTypeCode.MulticastDelegate;
-        }
-
-        public static bool IsEnum(this TypeDefinitionHandle handle, CompilationModule module)
-        {
-            return handle.Resolve(module).IsEnum(module);
-        }
-
-        public static bool IsEnum(this TypeDefinition typeDefinition, CompilationModule module)
-        {
-            var baseType = typeDefinition.GetBaseTypeOrNil();
-            if (baseType.IsNil)
-            {
-                return false;
-            }
-
-            if (baseType.Kind == HandleKind.TypeDefinition)
-            {
-                return ((TypeDefinitionHandle)baseType).IsKnownType(module) == KnownTypeCode.Enum;
-            }
-
-            return false;
-        }
-
-        public static bool IsEnum(this TypeDefinitionHandle handle, CompilationModule module, out PrimitiveTypeCode underlyingType)
-        {
-            return handle.Resolve(module).IsEnum(module, out underlyingType);
-        }
-
-        public static bool IsEnum(this TypeDefinition typeDefinition, CompilationModule module, out PrimitiveTypeCode underlyingType)
-        {
-            underlyingType = 0;
-            var baseType = (TypeDefinitionHandle)typeDefinition.GetBaseTypeOrNil();
-            if (baseType.IsNil)
-            {
-                return false;
-            }
-
-            if (baseType.IsKnownType(module) != KnownTypeCode.Enum)
-            {
-                return false;
-            }
-
-            var field = module.MetadataReader.GetFieldDefinition(typeDefinition.GetFields().First());
-            var blob = module.MetadataReader.GetBlobReader(field.Signature);
-            if (blob.ReadSignatureHeader().Kind != SignatureKind.Field)
-            {
-                return false;
-            }
-
-            underlyingType = (PrimitiveTypeCode)blob.ReadByte();
-            return true;
-        }
-
-        public static EntityHandle GetBaseTypeOrNil(this TypeDefinition definition)
-        {
-            try
-            {
-                return definition.BaseType;
-            }
-            catch (BadImageFormatException)
-            {
-                return default;
-            }
+            return map.GetValueOrDefault(name) ?? Array.Empty<(CompilationModule, TypeWrapper)>();
         }
 
         public static bool HasKnownAttribute(this CustomAttributeHandleCollection customAttributes, CompilationModule metadata, KnownAttribute type)

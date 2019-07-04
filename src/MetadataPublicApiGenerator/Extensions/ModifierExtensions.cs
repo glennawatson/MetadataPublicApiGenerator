@@ -7,6 +7,8 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -44,36 +46,36 @@ namespace MetadataPublicApiGenerator.Extensions
             return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
         }
 
-        public static SyntaxTokenList GetModifiers(this MethodDefinition method)
+        public static SyntaxTokenList GetModifiers(this MethodWrapper method)
         {
             var modifierList = new List<SyntaxKind>();
 
-            if ((method.Attributes & MethodAttributes.Public) != 0)
+            if (method.IsPublic)
             {
                 modifierList.Add(SyntaxKind.PublicKeyword);
             }
 
-            if ((method.Attributes & MethodAttributes.Abstract) != 0)
+            if (method.IsAbstract)
             {
                 modifierList.Add(SyntaxKind.AbstractKeyword);
             }
 
-            if ((method.Attributes & MethodAttributes.Static) != 0)
+            if (method.IsStatic)
             {
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if ((method.Attributes & (MethodAttributes.Abstract | MethodAttributes.Final | MethodAttributes.NewSlot | MethodAttributes.Static)) == MethodAttributes.Final)
+            if (method.IsSealed)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }
 
-            if ((method.Attributes & (MethodAttributes.NewSlot | MethodAttributes.Virtual)) == MethodAttributes.Virtual)
+            if (method.IsOverride)
             {
                 modifierList.Add(SyntaxKind.OverrideKeyword);
             }
 
-            if ((method.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual | MethodAttributes.NewSlot | MethodAttributes.Final)) == (MethodAttributes.Virtual | MethodAttributes.NewSlot))
+            if (method.IsVirtual)
             {
                 modifierList.Add(SyntaxKind.VirtualKeyword);
             }

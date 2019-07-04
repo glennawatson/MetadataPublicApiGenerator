@@ -2,10 +2,6 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
     internal class DummyTypeParameterWrapper : ITypeNamedWrapper
@@ -16,6 +12,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             FullName = Name;
             Namespace = string.Empty;
             IsKnownType = false;
+            IsEnumType = false;
             Module = module;
         }
 
@@ -30,6 +27,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         /// <inheritdoc />
         public bool IsKnownType { get; }
+
+        /// <inheritdoc />
+        public bool IsEnumType { get; }
 
         /// <inheritdoc />
         public CompilationModule Module { get; }

@@ -5,6 +5,8 @@
 using System;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -23,14 +25,13 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <summary>
         /// Gets a exclusion func which will potentially exclude attributes.
         /// </summary>
-        Func<TypeDefinition, bool> ExcludeFunc { get; }
+        Func<ITypeWrapper, bool> ExcludeFunc { get; }
 
         /// <summary>
         /// Generate the member declaration.
         /// </summary>
-        /// <param name="compilation">The compilation that contains the information for the assembly we are generating for.</param>
         /// <param name="type">The type we are generating for.</param>
         /// <returns>a member declaration syntax.</returns>
-        MemberDeclarationSyntax Generate(CompilationModule compilation, TypeDefinitionHandle type);
+        MemberDeclarationSyntax Generate(ITypeWrapper type);
     }
 }

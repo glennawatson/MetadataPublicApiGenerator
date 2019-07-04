@@ -3,9 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Generic;
-using System.Reflection.Metadata;
-using System.Text;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
@@ -32,6 +29,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace => Unmodified.Namespace;
 
         public bool IsKnownType => false;
+
+        /// <inheritdoc />
+        public bool IsEnumType => Unmodified.IsEnumType;
 
         public CompilationModule Module { get; }
     }

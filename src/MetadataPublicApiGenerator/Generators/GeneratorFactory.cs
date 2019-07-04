@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 using MetadataPublicApiGenerator.Generators.TypeGenerators;
@@ -22,7 +23,7 @@ namespace MetadataPublicApiGenerator.Generators
     {
         private readonly Dictionary<TypeKind, ITypeGenerator> _typeKindGenerators;
         private readonly Dictionary<HandleKind, ISymbolGenerator> _symbolKindGenerators;
-        private readonly NamespaceGenerator _namespaceGenerator;
+        private readonly NamespaceMembersGenerator _namespaceGenerator;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GeneratorFactory"/> class.
@@ -36,7 +37,7 @@ namespace MetadataPublicApiGenerator.Generators
             ExcludeMembersAttributes = excludeMembersAttributes;
             ExcludeFunc = excludeFunc ?? (_ => false);
 
-            _namespaceGenerator = new NamespaceGenerator(ExcludeAttributes, ExcludeMembersAttributes, this);
+            _namespaceGenerator = new NamespaceMembersGenerator(ExcludeAttributes, ExcludeMembersAttributes, this);
             _typeKindGenerators = new Dictionary<TypeKind, ITypeGenerator>
             {
                 [TypeKind.Class] = new ClassDefinitionGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
@@ -83,9 +84,9 @@ namespace MetadataPublicApiGenerator.Generators
             where TOutput : CSharpSyntaxNode => (TOutput)_symbolKindGenerators[symbol.Kind].Generate(compilation, symbol);
 
         /// <inheritdoc />
-        public NamespaceDeclarationSyntax Generate(NamespaceDefinition namespaceInfo, CompilationModule compilation)
+        public IReadOnlyCollection<MemberDeclarationSyntax> GenerateMembers(NamespaceWrapper namespaceInfo)
         {
-            return _namespaceGenerator.Generate(compilation, namespaceInfo);
+            return _namespaceGenerator.Generate(namespaceInfo);
         }
     }
 }

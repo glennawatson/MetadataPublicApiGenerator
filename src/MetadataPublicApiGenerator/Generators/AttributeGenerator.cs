@@ -20,19 +20,20 @@ namespace MetadataPublicApiGenerator.Generators
     /// </summary>
     internal static class AttributeGenerator
     {
-        internal static SyntaxList<AttributeListSyntax> GenerateAttributes(CompilationModule compilation, IEnumerable<CustomAttributeHandle> attributes, ISet<string> excludeAttributes)
+        public static SyntaxList<AttributeListSyntax> GenerateAttributes(CompilationModule compilation, IEnumerable<AttributeWrapper> attributes, ISet<string> excludeAttributes)
         {
-            return GenerateAttributes(compilation, attributes.Select(x => x.Resolve(compilation)), excludeAttributes);
-        }
-
-        internal static SyntaxList<AttributeListSyntax> GenerateAttributes(CompilationModule compilation, IEnumerable<CustomAttribute> attributes, ISet<string> excludeAttributes)
-        {
-            var validAttributes = new List<CustomAttribute>();
+            var validAttributes = new List<AttributeWrapper>();
             foreach (var attribute in attributes)
             {
-                var attributeType = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation).GetDeclaringType().Resolve(compilation);
+                var attributeType = attribute.Constructor.DeclaringType;
 
-                if (excludeAttributes.Contains(attributeType.GetFullName(compilation)))
+                if (!attributeType.IsPublic)
+                {
+                    continue;
+                }
+
+                var attributeName = attributeType.FullName;
+                if (excludeAttributes.Contains(attributeName))
                 {
                     continue;
                 }
@@ -48,34 +49,22 @@ namespace MetadataPublicApiGenerator.Generators
             return SyntaxFactory.List(validAttributes.Select(attribute => attribute.GenerateAttributeList(compilation)));
         }
 
-        internal static SyntaxList<AttributeListSyntax> GenerateAssemblyCustomAttributes(CompilationModule compilation, ISet<string> excludeAttributes)
+        public static SyntaxList<AttributeListSyntax> GenerateAssemblyCustomAttributes(CompilationModule compilation, ISet<string> excludeAttributes)
         {
-            var validAttributes = new List<CustomAttribute>();
-            foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => x.Resolve(compilation)))
+            var validAttributes = new List<AttributeWrapper>();
+            foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => AttributeWrapper.Create(x, compilation)))
             {
-                MethodSignature<ITypeNamedWrapper>? methodSignature = null;
+                var attributeType = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation).GetDeclaringType().Resolve(compilation);
+
+                if ((attributeType.Attributes & System.Reflection.TypeAttributes.Public) == 0)
+                {
+                    continue;
+                }
+
+                MethodSignature<ITypeNamedWrapper>? methodSignature;
 
                 switch (attribute.Constructor.Kind)
                 {
-                    case HandleKind.MethodDefinition:
-                        var methodDefinition = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation);
-
-                        methodSignature = methodDefinition.DecodeSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation));
-                        break;
-
-                    case HandleKind.MemberReference:
-                        var memberReference = ((MemberReferenceHandle)attribute.Constructor).Resolve(compilation);
-
-                        // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                        methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(compilation.Compilation), new GenericContext(compilation));
-                        break;
-                    default:
-                        throw new Exception("Unknown method type");
-                }
-
-                if (methodSignature == null)
-                {
-                    continue;
                 }
 
                 if (excludeAttributes.Contains(methodSignature.Value.ReturnType.FullName))

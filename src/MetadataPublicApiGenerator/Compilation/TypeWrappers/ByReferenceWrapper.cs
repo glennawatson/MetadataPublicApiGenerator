@@ -18,6 +18,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         public bool IsKnownType => TypeDefinition.IsKnownType;
 
+        /// <inheritdoc />
+        public bool IsEnumType => TypeDefinition.IsEnumType;
+
         public CompilationModule Module { get; }
 
         /// <inheritdoc />

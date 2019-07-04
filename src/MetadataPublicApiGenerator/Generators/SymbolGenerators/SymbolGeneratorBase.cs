@@ -5,7 +5,7 @@
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
-using Microsoft.CodeAnalysis;
+
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators

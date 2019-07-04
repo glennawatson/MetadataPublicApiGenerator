@@ -2,13 +2,11 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Metadata;
-using System.Text;
+
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
@@ -42,6 +40,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// Gets a set of attributes about the type.
         /// </summary>
         public GenericParameterAttributes Attributes { get; }
+
+        /// <inheritdoc />
+        public bool IsEnumType => false;
 
         /// <inheritdoc />
         public CompilationModule Module { get; }

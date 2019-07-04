@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
@@ -60,6 +59,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
                         return sb.ToString();
                     });
+
+            IsPublic = genericType.IsPublic;
+            IsAbstract = genericType.IsAbstract;
         }
 
         /// <summary>
@@ -77,7 +79,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace => GenericType.Namespace;
 
         /// <inheritdoc />
-        public bool IsKnownType => false;
+        public bool IsPublic { get; }
+
+        /// <inheritdoc />
+        public bool IsAbstract { get; }
 
         /// <inheritdoc />
         public CompilationModule Module { get; }

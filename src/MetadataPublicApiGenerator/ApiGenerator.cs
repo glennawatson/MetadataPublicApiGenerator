@@ -8,8 +8,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
+
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Generators;
 using Microsoft.CodeAnalysis;
@@ -103,30 +104,47 @@ namespace MetadataPublicApiGenerator
 
             var factory = new GeneratorFactory(excludeAttributes, excludeMembersAttributes, excludeFunc);
 
-            compilationUnit = GenerateNamespaces(compilation, compilationUnit, factory);
+            compilationUnit = GenerateCompilationUnit(compilation, compilationUnit, factory);
 
             return compilationUnit.NormalizeWhitespace().ToFullString();
         }
 
-        internal static CompilationUnitSyntax GenerateNamespaces(ICompilation compilation, CompilationUnitSyntax compilationUnit, IGeneratorFactory factory)
+        internal static CompilationUnitSyntax GenerateCompilationUnit(ICompilation compilation, CompilationUnitSyntax compilationUnit, IGeneratorFactory factory)
         {
-            var namespaceProcessingStack = new Stack<NamespaceDefinition>(new[] { compilation.RootNamespace });
+            var namespaceProcessingStack = new Stack<NamespaceWrapper>(new[] { compilation.RootNamespace });
 
-            var list = new List<NamespaceDeclarationSyntax>(128);
+            var list = new List<MemberDeclarationSyntax>(128);
+
+            var outsideNamespaceList = new List<MemberDeclarationSyntax>();
 
             while (namespaceProcessingStack.Count > 0)
             {
                 var namespaceInfo = namespaceProcessingStack.Pop();
 
-                list.Add(factory.Generate(namespaceInfo, compilation.MainModule));
+                var members = factory.GenerateMembers(namespaceInfo, compilation.MainModule);
 
-                foreach (var child in namespaceInfo.NamespaceDefinitions)
+                if (members.Count != 0)
+                {
+                    var namespaceName = namespaceInfo.GetFullName(compilation.MainModule);
+                    if (string.IsNullOrEmpty(namespaceName))
+                    {
+                        outsideNamespaceList.AddRange(members);
+                    }
+                    else
+                    {
+                        var namespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceName)).WithMembers(SyntaxFactory.List(members));
+
+                        list.Add(namespaceDeclaration);
+                    }
+                }
+
+                foreach (var child in namespaceInfo.ChildNamespaces))
                 {
                     namespaceProcessingStack.Push(child.Resolve(compilation.MainModule));
                 }
             }
 
-            return compilationUnit.WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(list));
+            return compilationUnit.WithMembers(SyntaxFactory.List(outsideNamespaceList.Concat(list)));
         }
     }
 }

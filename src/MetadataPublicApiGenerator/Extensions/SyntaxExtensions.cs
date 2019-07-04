@@ -2,15 +2,12 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Metadata;
-using System.Text;
-using MetadataPublicApiGenerator.Compilation;
+
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -63,102 +60,32 @@ namespace MetadataPublicApiGenerator.Extensions
         /// Generate a attribute list individually for a single attribute.
         /// </summary>
         /// <param name="attribute">The attribute to generate the attribute list for.</param>
-        /// <param name="compilation">The compilation unit for details about types.</param>
         /// <returns>The attribute list syntax containing the single attribute.</returns>
-        public static AttributeListSyntax GenerateAttributeList(this CustomAttribute attribute, CompilationModule compilation)
+        public static AttributeListSyntax GenerateAttributeList(this AttributeWrapper attribute)
         {
-            return SyntaxFactory.AttributeList(SyntaxFactory.SeparatedList(new[] { GenerateAttributeSyntax(attribute, compilation) }));
-        }
-
-        public static TypeKind GetTypeKind(this TypeDefinitionHandle typeDefinitionHandle, CompilationModule module)
-        {
-            return GetTypeKind(typeDefinitionHandle.Resolve(module), module);
-        }
-
-        public static TypeKind GetTypeKind(this TypeDefinition typeDefinition, CompilationModule module)
-        {
-            var attributes = typeDefinition.Attributes;
-
-            if ((attributes & TypeAttributes.ClassSemanticsMask) == TypeAttributes.Interface)
-            {
-                return TypeKind.Interface;
-            }
-
-            if (typeDefinition.IsEnum(module))
-            {
-                return TypeKind.Enum;
-            }
-
-            var knownType = typeDefinition.IsKnownType(module);
-
-            if (typeDefinition.IsValueType(module))
-            {
-                return TypeKind.Struct;
-            }
-
-            if (typeDefinition.IsDelegate(module))
-            {
-                return TypeKind.Delegate;
-            }
-
-            return TypeKind.Class;
-        }
-
-        /// <summary>
-        /// Generate a attribute list individually for a single attribute.
-        /// </summary>
-        /// <param name="attribute">The attribute to generate the attribute list for.</param>
-        /// <param name="compilation">The compilation unit for details about types.</param>
-        /// <returns>The attribute list syntax containing the single attribute.</returns>
-        public static AttributeListSyntax GenerateAttributeList(this CustomAttributeHandle attribute, CompilationModule compilation)
-        {
-            return GenerateAttributeList(attribute.Resolve(compilation), compilation);
-        }
-
-        /// <summary>
-        /// Generates the attribute syntax for a specified attribute.
-        /// </summary>
-        /// <param name="customAttributeHandle">The attribute to generate the AttributeSyntax for.</param>
-        /// <param name="compilation">The compilation unit for details about types.</param>
-        /// <returns>The attribute syntax for the single attribute.</returns>
-        public static AttributeSyntax GenerateAttributeSyntax(this CustomAttributeHandle customAttributeHandle, CompilationModule compilation)
-        {
-            var customAttribute = customAttributeHandle.Resolve(compilation);
-
-            return GenerateAttributeSyntax(customAttribute, compilation);
+            return SyntaxFactory.AttributeList(SyntaxFactory.SeparatedList(new[] { GenerateAttributeSyntax(attribute) }));
         }
 
         /// <summary>
         /// Generates the attribute syntax for a specified attribute.
         /// </summary>
         /// <param name="customAttribute">The attribute to generate the AttributeSyntax for.</param>
-        /// <param name="compilation">The compilation unit for details about types.</param>
         /// <returns>The attribute syntax for the single attribute.</returns>
-        public static AttributeSyntax GenerateAttributeSyntax(this CustomAttribute customAttribute, CompilationModule compilation)
+        public static AttributeSyntax GenerateAttributeSyntax(this AttributeWrapper customAttribute)
         {
             var arguments = new List<AttributeArgumentSyntax>();
 
-            var attributeNameString = customAttribute.GetFullName(compilation);
-
-            try
+            foreach (var fixedArgument in customAttribute.FixedArguments)
             {
-                var wrapper = customAttribute.DecodeValue(compilation.TypeProvider);
-
-                foreach (var fixedArgument in wrapper.FixedArguments)
-                {
-                    arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type.Module, fixedArgument.Type, fixedArgument.Value)));
-                }
-
-                foreach (var namedArgument in wrapper.NamedArguments)
-                {
-                    arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
-                }
-            }
-            catch (BadImageFormatException)
-            {
+                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type.Module, fixedArgument.Type, fixedArgument.Value)));
             }
 
-            var attributeName = SyntaxFactory.IdentifierName(attributeNameString);
+            foreach (var namedArgument in customAttribute.NamedArguments)
+            {
+                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
+            }
+
+            var attributeName = SyntaxFactory.IdentifierName(customAttribute.FullName);
             var attribute = SyntaxFactory.Attribute(attributeName);
 
             if (arguments.Count > 0)
@@ -169,33 +96,28 @@ namespace MetadataPublicApiGenerator.Extensions
             return attribute;
         }
 
-        internal static bool ShouldIncludeEntity(this Handle entity, ISet<string> excludeMembersAttributes, CompilationModule module)
+        internal static bool ShouldIncludeEntity(this ITypeWrapper entity, ISet<string> excludeMembersAttributes)
         {
-            if (entity.IsNil)
-            {
-                return false;
-            }
-
-            var isPublic = entity.IsEntityPublic(module);
+            var isPublic = entity.IsPublic;
 
             if (!isPublic)
             {
                 return false;
             }
 
-            var attributes = entity.GetEntityCustomAttributes(module);
+            var attributes = entity.Attributes;
 
             if (attributes == null)
             {
                 return true;
             }
 
-            return !attributes.Value.Any(attr => excludeMembersAttributes.Contains(attr.GetName(module)));
+            return !attributes.Any(attr => excludeMembersAttributes.Contains(attr.FullName));
         }
 
-        internal static IEnumerable<Handle> OrderByAndExclude(this IEnumerable<Handle> entities, ISet<string> excludeMembersAttributes, CompilationModule module)
+        internal static IEnumerable<ITypeWrapper> OrderByAndExclude(this IEnumerable<ITypeWrapper> entities, ISet<string> excludeMembersAttributes)
         {
-            return entities.Where(x => ShouldIncludeEntity(x, excludeMembersAttributes, module)).OrderBy(x => _symbolKindPreferredOrderWeights[x.Kind]).ThenBy(x => x.GetName(module));
+            return entities.Where(x => ShouldIncludeEntity(x, excludeMembersAttributes)).OrderBy(x => _symbolKindPreferredOrderWeights[x.Handle.Kind]).ThenBy(x => x.Name);
         }
     }
 }
