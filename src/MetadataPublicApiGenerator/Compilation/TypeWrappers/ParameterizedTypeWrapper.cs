@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
@@ -19,17 +20,16 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// type parameters in the signatures of the members are replaced with
     /// the type arguments.
     /// </remarks>
-    internal class ParameterizedTypeWrapper : ITypeNamedWrapper
+    internal class ParameterizedTypeWrapper : IHandleTypeNamedWrapper
     {
         private readonly Lazy<string> _name;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ParameterizedTypeWrapper"/> class.
         /// </summary>
-        /// <param name="module">The module that owns the parameterized type.</param>
         /// <param name="genericType">The type that is generic.</param>
         /// <param name="typeArguments">The type arguments provided to the class.</param>
-        public ParameterizedTypeWrapper(CompilationModule module, ITypeNamedWrapper genericType, IReadOnlyList<ITypeNamedWrapper> typeArguments)
+        public ParameterizedTypeWrapper(IHandleTypeNamedWrapper genericType, IReadOnlyList<IHandleTypeNamedWrapper> typeArguments)
         {
             if (typeArguments == null)
             {
@@ -43,7 +43,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
             GenericType = genericType ?? throw new ArgumentNullException(nameof(genericType));
             TypeArguments = typeArguments.ToImmutableArray();
-            Module = module ?? throw new ArgumentNullException(nameof(module));
+            Module = genericType.Module;
 
             _name = new Lazy<string>(
                 () =>
@@ -67,15 +67,17 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <summary>
         /// Gets the main type.
         /// </summary>
-        public ITypeNamedWrapper GenericType { get; }
+        public IHandleTypeNamedWrapper GenericType { get; }
 
         /// <summary>
         /// Gets the type arguments.
         /// </summary>
-        public ImmutableArray<ITypeNamedWrapper> TypeArguments { get; }
+        public ImmutableArray<IHandleTypeNamedWrapper> TypeArguments { get; }
 
+        /// <inheritdoc />
         public string FullName => Namespace + "." + Name;
 
+        /// <inheritdoc />
         public string Namespace => GenericType.Namespace;
 
         /// <inheritdoc />
@@ -87,6 +89,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <inheritdoc />
         public CompilationModule Module { get; }
 
+        /// <inheritdoc />
         public string Name => _name.Value;
+
+        /// <inheritdoc />
+        public Handle Handle => GenericType.Handle;
     }
 }

@@ -15,5 +15,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// Gets the handle for the wrapped type.
         /// </summary>
         Handle Handle { get; }
+
+        /// <summary>
+        /// Gets the module that this wrapped item belongs to.
+        /// </summary>
+        CompilationModule Module { get; }
     }
 }

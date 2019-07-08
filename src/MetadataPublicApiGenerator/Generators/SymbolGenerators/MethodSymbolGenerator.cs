@@ -23,42 +23,37 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override BaseMethodDeclarationSyntax Generate(CompilationModule compilation, Handle handle)
+        public override BaseMethodDeclarationSyntax Generate(IHandleNameWrapper handle)
         {
-            var member = (MethodDefinitionHandle)handle;
-            var (_, methodKind) = member.GetMethodSymbolKind(compilation);
-
-            var method = member.Resolve(compilation);
-
-            var signature = member.DecodeSignature(compilation);
-
-            if (signature == null)
+            if (!(handle is MethodWrapper method))
             {
-                throw new Exception("Could not get a valid signature");
+                return null;
             }
 
-            var methodName = method.GetName(compilation);
-            var methodDeclaringTypeName = method.GetDeclaringType().GetName(compilation);
+            var methodKind = method.MethodKind;
+
+            var methodName = method.Name;
+            var methodDeclaringTypeName = method.DeclaringType.Name;
             switch (methodKind)
             {
                 case MethodKind.Constructor:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.ConstructorDeclaration(methodDeclaringTypeName), method);
+                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConstructorDeclaration(methodDeclaringTypeName), method);
                 case MethodKind.Destructor:
-                    return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.DestructorDeclaration(methodDeclaringTypeName), method);
+                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.DestructorDeclaration(methodDeclaringTypeName), method);
                 case MethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), methodName)
-                        .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, method.GetCustomAttributes(), ExcludeAttributes));
+                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.FullName), methodName)
+                        .WithAttributeLists(AttributeGenerator.GenerateAttributes(method.Attributes, ExcludeAttributes));
 
-                    return GenerateFromMethodSyntax(Factory, compilation, methodDeclaration, method);
+                    return GenerateFromMethodSyntax(Factory, methodDeclaration, method);
                 case MethodKind.BuiltinOperator:
                 case MethodKind.UserDefinedOperator:
                     switch (methodName)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value))), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(method.ReturningType.FullName)), method);
                         default:
-                            return GenerateFromMethodSyntax(Factory, compilation, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(GetReturnTypeName(signature.Value)), SyntaxHelper.OperatorNameToToken(methodName)), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.FullName), SyntaxHelper.OperatorNameToToken(methodName)), method);
                     }
 
                 default:
@@ -71,9 +66,9 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             return signature.ReturnType?.FullName ?? "System.Void";
         }
 
-        private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, CompilationModule compilation, BaseMethodDeclarationSyntax item, in MethodDefinition member)
+        private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, BaseMethodDeclarationSyntax item, in MethodWrapper member)
         {
-            var parameters = member.GetParameters().Select(x => factory.Generate<ParameterSyntax>(x, compilation)).Where(x => x != null).ToList();
+            var parameters = member.Parameters.Select(factory.Generate<ParameterSyntax>).Where(x => x != null).ToList();
 
             var returnItem = item.WithModifiers(member.GetModifiers());
 

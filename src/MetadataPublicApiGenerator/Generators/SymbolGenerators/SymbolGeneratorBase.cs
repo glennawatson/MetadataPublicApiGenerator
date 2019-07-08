@@ -3,9 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
@@ -21,14 +19,13 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         /// <summary>
         /// Generates the symbol for the item.
         /// </summary>
-        /// <param name="compilation">The compilation that contains the information for the assembly we are generating for.</param>
         /// <param name="member">The member we are generating for.</param>
         /// <returns>a member declaration syntax.</returns>
-        public abstract TOutput Generate(CompilationModule compilation, Handle member);
+        public abstract TOutput Generate(IHandleNameWrapper member);
 
-        CSharpSyntaxNode ISymbolGenerator.Generate(CompilationModule compilation, Handle member)
+        CSharpSyntaxNode ISymbolGenerator.Generate(IHandleNameWrapper member)
         {
-            return Generate(compilation, member);
+            return Generate(member);
         }
     }
 }

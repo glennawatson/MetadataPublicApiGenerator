@@ -25,16 +25,6 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         string Namespace { get; }
 
         /// <summary>
-        /// Gets a value indicating whether if this is a known type.
-        /// </summary>
-        bool IsKnownType { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether if this is a enum type.
-        /// </summary>
-        bool IsEnumType { get; }
-
-        /// <summary>
         /// Gets a value indicating whether if this is a public type.
         /// </summary>
         bool IsPublic { get; }
@@ -43,10 +33,5 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// Gets a value indicating whether if this type if abstract.
         /// </summary>
         bool IsAbstract { get; }
-
-        /// <summary>
-        /// Gets the module that this wrapped item belongs to.
-        /// </summary>
-        CompilationModule Module { get; }
     }
 }

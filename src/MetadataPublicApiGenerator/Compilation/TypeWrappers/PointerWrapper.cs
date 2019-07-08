@@ -9,35 +9,24 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// Represents a type that is wrapped by a pointer.
     /// </summary>
-    internal class PointerWrapper : ITypeWrapper
+    internal class PointerWrapper : IHandleTypeNamedWrapper
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="PointerWrapper"/> class.
         /// </summary>
-        /// <param name="module">The module where the type belongs.</param>
         /// <param name="typeDefinition">The type definition.</param>
-        public PointerWrapper(CompilationModule module, ITypeWrapper typeDefinition)
+        public PointerWrapper(TypeWrapper typeDefinition)
         {
             TypeDefinition = typeDefinition;
-            Module = module;
         }
 
         /// <summary>
         /// Gets the type definition that is wrapped by the pointer.
         /// </summary>
-        public ITypeWrapper TypeDefinition { get; }
+        public TypeWrapper TypeDefinition { get; }
 
         /// <inheritdoc />
-        public bool IsKnownType => TypeDefinition.IsKnownType;
-
-        /// <inheritdoc />
-        public bool IsEnumType => TypeDefinition.IsEnumType;
-
-        /// <inheritdoc />
-        public CompilationModule Module { get; }
-
-        /// <inheritdoc />
-        public Handle Handle => TypeDefinition.Handle;
+        public bool IsAbstract => TypeDefinition.IsAbstract;
 
         /// <inheritdoc />
         public virtual string Name => TypeDefinition.Name + "*";
@@ -46,6 +35,15 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace => TypeDefinition.Namespace;
 
         /// <inheritdoc />
+        public bool IsPublic => TypeDefinition.IsPublic;
+
+        /// <inheritdoc />
         public string FullName => Namespace + "." + Name;
+
+        /// <inheritdoc />
+        public Handle Handle => TypeDefinition.Handle;
+
+        /// <inheritdoc />
+        public CompilationModule Module => TypeDefinition.Module;
     }
 }

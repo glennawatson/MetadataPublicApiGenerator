@@ -11,12 +11,12 @@ using System.Reflection.PortableExecutable;
 using System.Threading;
 
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation
 {
     internal sealed class CompilationModule : IDisposable
     {
+        private readonly Lazy<IReadOnlyDictionary<string, TypeWrapper>> _publicTypesFromName;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _publicTypes;
         private readonly Lazy<IReadOnlyList<TypeReferenceHandle>> _typeReferenceHandles;
         private readonly Lazy<MethodSemanticsLookup> _methodSemanticsLookup;
@@ -30,7 +30,8 @@ namespace MetadataPublicApiGenerator.Compilation
             _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
             TypeProvider = Compilation.TypeProvider;
-            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => MetadataReader.TypeDefinitions.Where(x => (x.Resolve(this).Attributes & System.Reflection.TypeAttributes.Public) != 0).Select(x => new TypeWrapper(this, x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => (IReadOnlyList<TypeWrapper>)MetadataReader.TypeDefinitions.Select(x => TypeWrapper.Create(x, this)).Where(x => x.IsPublic).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _publicTypesFromName = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => PublicTypes.ToDictionary(x => x.FullName, x => x), LazyThreadSafetyMode.PublicationOnly);
             _typeReferenceHandles = new Lazy<IReadOnlyList<TypeReferenceHandle>>(() => MetadataReader.TypeReferences.ToList(), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
         }
@@ -54,6 +55,11 @@ namespace MetadataPublicApiGenerator.Compilation
         /// Gets all the public type reference handles for this module.
         /// </summary>
         public IReadOnlyList<TypeReferenceHandle> TypeReferenceHandles => _typeReferenceHandles.Value;
+
+        /// <summary>
+        /// Gets a dictionary that maps types full names to their type wrapper.
+        /// </summary>
+        public IReadOnlyDictionary<string, TypeWrapper> PublicTypesByFullName => _publicTypesFromName.Value;
 
         /// <summary>
         /// Gets details about methods.

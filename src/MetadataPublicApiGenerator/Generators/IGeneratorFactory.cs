@@ -21,18 +21,16 @@ namespace MetadataPublicApiGenerator.Generators
         /// Generates a <see cref="MemberDeclarationSyntax"/>.
         /// </summary>
         /// <param name="type">The type to generate the <see cref="MemberDeclarationSyntax"/> for.</param>
-        /// <param name="compilation">The compilation which contains the type information.</param>
         /// <returns>The generated <see cref="MemberDeclarationSyntax"/>.</returns>
-        MemberDeclarationSyntax Generate(TypeDefinitionHandle type, CompilationModule compilation);
+        MemberDeclarationSyntax Generate(TypeWrapper type);
 
         /// <summary>
         /// Gets the generator for the symbol kind.
         /// </summary>
         /// <param name="symbol">The symbol to generate.</param>
-        /// <param name="compilation">The compilation which contains the type information.</param>
         /// <typeparam name="TOutput">The output syntax node.</typeparam>
         /// <returns>The generated syntax node.</returns>
-        TOutput Generate<TOutput>(Handle symbol, CompilationModule compilation)
+        TOutput Generate<TOutput>(IHandleNameWrapper symbol)
             where TOutput : CSharpSyntaxNode;
 
         /// <summary>

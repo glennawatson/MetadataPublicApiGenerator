@@ -17,27 +17,16 @@ namespace MetadataPublicApiGenerator.Benchmarks
     [MarkdownExporterAttribute.GitHub]
     public class MetadataPublicApiGeneratorBenchmarks
     {
-        private Assembly _assembly;
-
         /// <summary>
-        /// Setup for all benchmark instances being run.
+        /// Benchmark for when adding a item to a ReactiveList.
         /// </summary>
-        [GlobalSetup]
-        public void Setup()
-        {
-            _assembly = typeof(JsonConvert).Assembly;
-        }
+        [Benchmark]
+        public void MetadataApiGenerator() => ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
 
         /// <summary>
         /// Benchmark for when adding a item to a ReactiveList.
         /// </summary>
         [Benchmark]
-        public void MetadataApiGenerator() => ApiGenerator.GeneratePublicApi(_assembly);
-
-        /// <summary>
-        /// Benchmark for when adding a item to a ReactiveList.
-        /// </summary>
-        [Benchmark]
-        public void PublicApiGenerator() => global::PublicApiGenerator.ApiGenerator.GeneratePublicApi(_assembly);
+        public void PublicApiGenerator() => global::PublicApiGenerator.ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
     }
 }

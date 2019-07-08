@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis;
@@ -27,7 +28,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="excludeFunc">A function to determine if we should exclude a type definition.</param>
         /// <param name="factory">The factory for generating children.</param>
-        internal EnumTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeDefinition, bool> excludeFunc, IGeneratorFactory factory)
+        internal EnumTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
             : base(excludeAttributes, excludeMembersAttributes, factory)
         {
             ExcludeFunc = excludeFunc;
@@ -37,81 +38,51 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public TypeKind TypeKind => TypeKind.Enum;
 
         /// <inheritdoc />
-        public Func<TypeDefinition, bool> ExcludeFunc { get; }
+        public Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(CompilationModule compilation, TypeDefinitionHandle typeHandle)
+        public MemberDeclarationSyntax Generate(TypeWrapper type)
         {
-            var type = typeHandle.Resolve(compilation);
-
             if (ExcludeFunc(type))
             {
                 return null;
             }
 
-            if (!type.IsEnum(compilation, out var enumType))
+            if (!type.TryGetEnumType(out var enumType))
             {
-                throw new Exception("Processing enum type despite it not having a underlying type.");
+                return null;
             }
 
-            var enumDeclaration = SyntaxFactory.EnumDeclaration(type.GetName(compilation))
+            var enumDeclaration = SyntaxFactory.EnumDeclaration(type.Name)
                 .WithModifiers(type.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, type.GetCustomAttributes(), ExcludeAttributes));
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(type.Attributes, ExcludeAttributes));
 
-            var name = type.GetFullName(compilation);
+            var enumKnownType = enumType.IsKnownType();
 
-            var enumTypeName = enumType.ToKnownTypeCode();
-
-            if (enumType != PrimitiveTypeCode.Int32)
+            if (enumKnownType != KnownTypeCode.Int32)
             {
                 enumDeclaration = enumDeclaration.WithBaseList(
                     SyntaxFactory.BaseList(
                         SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(
                             SyntaxFactory.SimpleBaseType(
-                                EnumType(enumTypeName, name)))));
+                                SyntaxFactory.IdentifierName(enumType.FullName)))));
             }
 
-            var members = type.GetFields().Where(x => ((Handle)x).ShouldIncludeEntity(ExcludeMembersAttributes, compilation)).Select(x =>
+            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes)).Select(field =>
             {
-                var memberName = x.GetName(compilation);
-                var field = x.Resolve(compilation);
-                var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, field.GetCustomAttributes(), ExcludeAttributes));
+                var memberName = field.Name;
+                var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(AttributeGenerator.GenerateAttributes(field.Attributes, ExcludeAttributes));
 
-                if (!field.GetDefaultValue().IsNil)
+                if (field.DefaultValue != null)
                 {
-                    var constant = field.GetDefaultValue().ReadConstant(compilation);
-                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.LiteralParameterFromType(enumTypeName, constant)));
+                    var constant = field.DefaultValue;
+                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.LiteralParameterFromType(enumKnownType, constant)));
                 }
 
                 return enumMember;
             });
 
             return enumDeclaration.WithMembers(SyntaxFactory.SeparatedList(members));
-        }
-
-        private static PredefinedTypeSyntax EnumType(KnownTypeCode type, string name)
-        {
-            switch (type)
-            {
-                case KnownTypeCode.SByte:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.SByteKeyword));
-                case KnownTypeCode.Byte:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword));
-                case KnownTypeCode.Int16:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ShortKeyword));
-                case KnownTypeCode.UInt16:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.UShortKeyword));
-                case KnownTypeCode.Int32:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword));
-                case KnownTypeCode.UInt32:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.UIntKeyword));
-                case KnownTypeCode.Int64:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.LongKeyword));
-                case KnownTypeCode.UInt64:
-                    return SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ULongKeyword));
-            }
-
-            throw new Exception($"Unknown parameter type for a enum base type: {name}");
         }
     }
 }

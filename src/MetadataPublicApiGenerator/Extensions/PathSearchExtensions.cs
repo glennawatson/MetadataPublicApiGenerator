@@ -172,7 +172,7 @@ namespace MetadataPublicApiGenerator.Extensions
             var version = reference.Version;
             var corlib = typeof(object).Assembly.GetName();
 
-            if (corlib.Version == version || IsSpecialVersionOrRetargetable(reference, compilation))
+            if (corlib.Version == version || IsSpecialVersionOrRetargetable(reference))
             {
                 return typeof(object).Module.FullyQualifiedName;
             }
@@ -201,7 +201,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return null;
         }
 
-        private static bool IsSpecialVersionOrRetargetable(AssemblyReference reference, CompilationModule compilation)
+        private static bool IsSpecialVersionOrRetargetable(AssemblyReference reference)
         {
             return IsZeroOrAllOnes(reference.Version) || (reference.Flags & AssemblyFlags.Retargetable) != 0;
         }

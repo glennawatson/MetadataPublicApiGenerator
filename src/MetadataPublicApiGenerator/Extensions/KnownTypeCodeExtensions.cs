@@ -71,9 +71,9 @@ namespace MetadataPublicApiGenerator.Extensions
             "System.Memory`1",
         };
 
-        public static KnownTypeCode IsKnownType(this TypeDefinition typeDefinition, CompilationModule compilation)
+        public static KnownTypeCode IsKnownType(this TypeWrapper typeDefinition)
         {
-            string name = typeDefinition.GetFullName(compilation);
+            string name = typeDefinition.FullName;
             var index = Array.IndexOf(_knownTypeReferences, name);
             if (index < 0)
             {
@@ -83,27 +83,15 @@ namespace MetadataPublicApiGenerator.Extensions
             return (KnownTypeCode)index;
         }
 
-        public static (CompilationModule module, TypeWrapper typeDefinition) ToTypeDefinitionHandle(this KnownTypeCode knownType, ICompilation compilation)
+        public static TypeWrapper ToTypeDefinitionHandle(this KnownTypeCode knownType, ICompilation compilation)
         {
             var name = _knownTypeReferences[(int)knownType];
-            return compilation.GetTypeDefinitionByName(name).FirstOrDefault();
+            return compilation.GetTypeByName(name);
         }
 
         public static string ToTypeName(this KnownTypeCode knownType)
         {
             return _knownTypeReferences[(int)knownType];
-        }
-
-        public static KnownTypeCode IsKnownType(this TypeDefinitionHandle typeDefinition, CompilationModule compilation)
-        {
-            string name = typeDefinition.GetFullName(compilation);
-            var index = Array.IndexOf(_knownTypeReferences, name);
-            if (index < 0)
-            {
-                return KnownTypeCode.None;
-            }
-
-            return (KnownTypeCode)index;
         }
 
         public static KnownTypeCode IsKnownType(this ITypeNamedWrapper typeDefinition)

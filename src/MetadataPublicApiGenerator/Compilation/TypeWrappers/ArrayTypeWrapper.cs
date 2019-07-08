@@ -2,14 +2,14 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Linq;
+using System.Collections.Generic;
 using System.Reflection.Metadata;
 
-using MetadataPublicApiGenerator.Extensions;
+using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class ArrayTypeWrapper : ITypeWrapper
+    internal class ArrayTypeWrapper : IHandleTypeNamedWrapper
     {
         private readonly TypeWrapper _parentWrapper;
 
@@ -19,14 +19,14 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <param name="module">The module that owns the array.</param>
         /// <param name="elementType">The wrapper to the element type.</param>
         /// <param name="dimensions">The dimension of the array.</param>
-        public ArrayTypeWrapper(ICompilation module, ITypeNamedWrapper elementType, int dimensions)
+        public ArrayTypeWrapper(ICompilation module, IHandleTypeNamedWrapper elementType, int dimensions)
         {
             if (module == null)
             {
                 throw new System.ArgumentNullException(nameof(module));
             }
 
-            _parentWrapper = module.GetTypeDefinitionByName("System.Array").FirstOrDefault().typeWrapper;
+            _parentWrapper = module.GetTypeByName("System.Array");
             ElementType = elementType ?? throw new System.ArgumentNullException(nameof(elementType));
             Dimensions = dimensions;
         }
@@ -34,7 +34,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <summary>
         /// Gets the type that the array elements.
         /// </summary>
-        public ITypeNamedWrapper ElementType { get; }
+        public IHandleTypeNamedWrapper ElementType { get; }
 
         /// <summary>
         /// Gets the number of dimensions ot the array.
@@ -51,10 +51,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace => _parentWrapper.Namespace;
 
         /// <inheritdoc />
-        public bool IsKnownType => true;
+        public bool IsPublic => _parentWrapper.IsPublic;
 
         /// <inheritdoc />
-        public bool IsEnumType => _parentWrapper.IsEnumType;
+        public bool IsAbstract => _parentWrapper.IsAbstract;
 
         /// <inheritdoc />
         public CompilationModule Module => _parentWrapper?.Module;

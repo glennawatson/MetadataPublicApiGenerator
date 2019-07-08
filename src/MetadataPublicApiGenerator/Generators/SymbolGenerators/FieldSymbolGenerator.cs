@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 
 using Microsoft.CodeAnalysis.CSharp;
@@ -20,15 +21,17 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override FieldDeclarationSyntax Generate(CompilationModule compilation, Handle handle)
+        public override FieldDeclarationSyntax Generate(IHandleNameWrapper member)
         {
-            var memberHandle = (FieldDefinitionHandle)handle;
-            var field = memberHandle.Resolve(compilation);
+            if (!(member is FieldWrapper field))
+            {
+                return null;
+            }
 
             return SyntaxFactory.FieldDeclaration(SyntaxFactory
-                .VariableDeclaration(SyntaxFactory.IdentifierName(field.GetDeclaringType().GenerateFullGenericName(compilation)))
-                .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(field.GetName(compilation)))))
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, field.GetCustomAttributes(), ExcludeAttributes))
+                .VariableDeclaration(SyntaxFactory.IdentifierName(field.DeclaringType.FullGenericName))
+                .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(field.Name))))
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(field.Attributes, ExcludeAttributes))
                 .WithModifiers(field.GetModifiers());
         }
     }

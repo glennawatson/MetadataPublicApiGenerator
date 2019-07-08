@@ -7,11 +7,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Compilation;
 using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Generators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -86,14 +84,15 @@ namespace MetadataPublicApiGenerator
                 System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(),
             };
 
-            var compilation = new EventBuilderCompiler(assemblyPath, searchDirectories);
+            using (var compilation = new EventBuilderCompiler(assemblyPath, searchDirectories))
+            {
+                Func<TypeWrapper, bool> excludeFunc = tr => false;
 
-            Func<TypeDefinition, bool> excludeFunc = tr => false;
-
-            return CreatePublicApiForAssembly(compilation, excludeFunc, shouldIncludeAssemblyAttributes, whitelistedNamespacePrefixes, attributesToExclude, attributesMembersToExclude);
+                return CreatePublicApiForAssembly(compilation, excludeFunc, shouldIncludeAssemblyAttributes, whitelistedNamespacePrefixes, attributesToExclude, attributesMembersToExclude);
+            }
         }
 
-        internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<TypeDefinition, bool> excludeFunc, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
+        internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<TypeWrapper, bool> excludeFunc, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
         {
             var compilationUnit = SyntaxFactory.CompilationUnit();
 
@@ -121,11 +120,11 @@ namespace MetadataPublicApiGenerator
             {
                 var namespaceInfo = namespaceProcessingStack.Pop();
 
-                var members = factory.GenerateMembers(namespaceInfo, compilation.MainModule);
+                var members = factory.GenerateMembers(namespaceInfo);
 
                 if (members.Count != 0)
                 {
-                    var namespaceName = namespaceInfo.GetFullName(compilation.MainModule);
+                    var namespaceName = namespaceInfo.FullName;
                     if (string.IsNullOrEmpty(namespaceName))
                     {
                         outsideNamespaceList.AddRange(members);
@@ -138,9 +137,9 @@ namespace MetadataPublicApiGenerator
                     }
                 }
 
-                foreach (var child in namespaceInfo.ChildNamespaces))
+                foreach (var child in namespaceInfo.ChildNamespaces)
                 {
-                    namespaceProcessingStack.Push(child.Resolve(compilation.MainModule));
+                    namespaceProcessingStack.Push(child);
                 }
             }
 

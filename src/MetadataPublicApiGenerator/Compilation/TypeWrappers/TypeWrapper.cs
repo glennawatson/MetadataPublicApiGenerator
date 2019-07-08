@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Threading;
 
 using MetadataPublicApiGenerator.Extensions;
@@ -18,33 +19,28 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// A wrapper around a type.
     /// </summary>
-    internal class TypeWrapper : ITypeWrapper
+    internal class TypeWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly IDictionary<TypeDefinitionHandle, ITypeWrapper> _types = new Dictionary<TypeDefinitionHandle, ITypeWrapper>();
-
-        private readonly Lazy<TypeDefinition> _typeDefinition;
+        private static readonly IDictionary<TypeDefinitionHandle, TypeWrapper> _types = new Dictionary<TypeDefinitionHandle, TypeWrapper>();
 
         private readonly Lazy<string> _name;
-
         private readonly Lazy<string> _namespace;
-
         private readonly Lazy<string> _fullName;
-
         private readonly Lazy<bool> _isKnownType;
-
         private readonly Lazy<bool> _isEnumType;
-
         private readonly Lazy<bool> _isPublic;
-
         private readonly Lazy<bool> _isAbstract;
-
-        private readonly Lazy<ITypeNamedWrapper> _base;
-
+        private readonly Lazy<IHandleTypeNamedWrapper> _base;
         private readonly Lazy<TypeKind> _typeKind;
-
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-
-        private readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>> _constraints;
+        private readonly Lazy<IReadOnlyList<TypeParameterWrapper>> _genericParameters;
+        private readonly Lazy<IReadOnlyList<MethodWrapper>> _methods;
+        private readonly Lazy<IReadOnlyList<PropertyWrapper>> _properties;
+        private readonly Lazy<IReadOnlyList<FieldWrapper>> _fields;
+        private readonly Lazy<IReadOnlyList<EventWrapper>> _events;
+        private readonly Lazy<IReadOnlyList<TypeWrapper>> _nestedTypes;
+        private readonly Lazy<TypeWrapper> _declaringType;
+        private readonly Lazy<string> _fullGenericName;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeWrapper"/> class.
@@ -56,19 +52,26 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             Module = module ?? throw new ArgumentNullException(nameof(module));
             TypeDefinitionHandle = typeDefinition;
             Handle = typeDefinition;
+            TypeDefinition = Module.MetadataReader.GetTypeDefinition(typeDefinition);
 
-            _typeDefinition = new Lazy<TypeDefinition>(() => ((TypeDefinitionHandle)Handle).Resolve(Module), LazyThreadSafetyMode.PublicationOnly);
-            _name = new Lazy<string>(() => GetName(TypeDefinition, Module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Module.MetadataReader.GetString(TypeDefinition.Name), LazyThreadSafetyMode.PublicationOnly);
             _namespace = new Lazy<string>(() => TypeDefinition.Namespace.GetName(Module), LazyThreadSafetyMode.PublicationOnly);
-            _fullName = new Lazy<string>(() => TypeDefinition.GetFullName(Module), LazyThreadSafetyMode.PublicationOnly);
-            _isKnownType = new Lazy<bool>(() => TypeDefinition.IsKnownType(Module) != KnownTypeCode.None, LazyThreadSafetyMode.PublicationOnly);
+            _fullName = new Lazy<string>(() => GetFullName(this), LazyThreadSafetyMode.PublicationOnly);
+            _fullGenericName = new Lazy<string>(GenerateFullGenericName, LazyThreadSafetyMode.PublicationOnly);
+            _isKnownType = new Lazy<bool>(() => this.IsKnownType() != KnownTypeCode.None, LazyThreadSafetyMode.PublicationOnly);
             _isEnumType = new Lazy<bool>(IsEnum, LazyThreadSafetyMode.PublicationOnly);
             _isAbstract = new Lazy<bool>(() => (TypeDefinition.Attributes & TypeAttributes.Abstract) != 0, LazyThreadSafetyMode.PublicationOnly);
             _typeKind = new Lazy<TypeKind>(GetTypeKind, LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => TypeDefinition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _constraints = new Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>>(GetConstraints, LazyThreadSafetyMode.PublicationOnly);
+            _genericParameters = new Lazy<IReadOnlyList<TypeParameterWrapper>>(() => TypeParameterWrapper.Create(Module, TypeDefinitionHandle, TypeDefinition.GetGenericParameters()), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(TypeDefinition.GetDeclaringType(), Module));
+            _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => TypeDefinition.GetMethods().Select(x => MethodWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => TypeDefinition.GetProperties().Select(x => PropertyWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _fields = new Lazy<IReadOnlyList<FieldWrapper>>(() => TypeDefinition.GetFields().Select(x => FieldWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _events = new Lazy<IReadOnlyList<EventWrapper>>(() => TypeDefinition.GetEvents().Select(x => EventWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeDefinition.GetNestedTypes().Select(x => TypeWrapper.Create(x, Module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
 
-            _base = new Lazy<ITypeNamedWrapper>(
+            _base = new Lazy<IHandleTypeNamedWrapper>(
                 () =>
                     {
                         var baseType = GetBaseTypeOrNil();
@@ -82,12 +85,25 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
                     }, LazyThreadSafetyMode.PublicationOnly);
 
             _isPublic = new Lazy<bool>(() => (TypeDefinition.Attributes & TypeAttributes.Public) != 0, LazyThreadSafetyMode.PublicationOnly);
+
+            IsStatic = (TypeDefinition.Attributes & (TypeAttributes.Abstract | TypeAttributes.Sealed)) == (TypeAttributes.Abstract | TypeAttributes.Sealed);
+            IsSealed = (TypeDefinition.Attributes & TypeAttributes.Sealed) != 0;
         }
 
         /// <summary>
         /// Gets the type definition for the type.
         /// </summary>
-        public TypeDefinition TypeDefinition => _typeDefinition.Value;
+        public TypeDefinition TypeDefinition { get; }
+
+        public IReadOnlyList<EventWrapper> Events => _events.Value;
+
+        public IReadOnlyList<FieldWrapper> Fields => _fields.Value;
+
+        public IReadOnlyList<MethodWrapper> Methods => _methods.Value;
+
+        public IReadOnlyList<PropertyWrapper> Properties => _properties.Value;
+
+        public IReadOnlyList<TypeWrapper> NestedTypes => _nestedTypes.Value;
 
         /// <inheritdoc />
         public virtual string Name => _name.Value;
@@ -98,10 +114,8 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <inheritdoc />
         public string FullName => _fullName.Value;
 
-        /// <inheritdoc />
         public virtual bool IsKnownType => _isKnownType.Value;
 
-        /// <inheritdoc />
         public virtual bool IsEnumType => _isEnumType.Value;
 
         /// <inheritdoc />
@@ -110,18 +124,24 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <inheritdoc />
         public bool IsPublic => _isPublic.Value;
 
+        public bool IsStatic { get; }
+
+        public bool IsSealed { get; }
+
         /// <inheritdoc />
         public Handle Handle { get; }
 
-        /// <inheritdoc />
-        public ITypeNamedWrapper Base => _base.Value;
+        public IHandleTypeNamedWrapper Base => _base.Value;
 
-        /// <inheritdoc />
         public TypeKind TypeKind => _typeKind.Value;
+
+        public TypeWrapper DeclaringType => _declaringType.Value;
 
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
 
-        public IReadOnlyDictionary<string, IReadOnlyList<string>> Constraints => _constraints.Value;
+        public IReadOnlyList<TypeParameterWrapper> GenericParameters => _genericParameters.Value;
+
+        public string FullGenericName => _fullGenericName.Value;
 
         /// <inheritdoc />
         public CompilationModule Module { get; }
@@ -131,8 +151,13 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// </summary>
         public TypeDefinitionHandle TypeDefinitionHandle { get; }
 
-        public static ITypeWrapper Create(TypeDefinitionHandle handle, CompilationModule module)
+        public static TypeWrapper Create(TypeDefinitionHandle handle, CompilationModule module)
         {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
             return _types.GetOrAdd(handle, createHandle => new TypeWrapper(module, createHandle));
         }
 
@@ -142,78 +167,72 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             return FullName;
         }
 
-        public bool IsValueType()
+        public bool TryGetEnumType(out IHandleTypeNamedWrapper underlyingType)
         {
-            Handle baseType = GetBaseTypeOrNil();
-            if (baseType.IsNil)
+            var baseType = Base;
+            underlyingType = null;
+            if (baseType == null)
             {
                 return false;
             }
 
-            if (baseType.IsKnownType(Module) == KnownTypeCode.Enum)
+            if (baseType.IsKnownType() != KnownTypeCode.Enum)
+            {
+                return false;
+            }
+
+            if (Fields.Count == 0)
+            {
+                return false;
+            }
+
+            underlyingType = Fields[0].FieldType;
+
+            return true;
+        }
+
+        private bool IsValueType()
+        {
+            var baseType = Base;
+            if (baseType == null)
+            {
+                return false;
+            }
+
+            if (baseType.IsKnownType() == KnownTypeCode.Enum)
             {
                 return true;
             }
 
-            if (baseType.IsKnownType(Module) != KnownTypeCode.ValueType)
+            if (baseType.IsKnownType() != KnownTypeCode.ValueType)
             {
                 return false;
             }
 
-            return false;
-        }
-
-        public bool IsDelegate()
-        {
-            Handle baseType = GetBaseTypeOrNil();
-            var knownType = baseType.IsKnownType(Module);
-            return !baseType.IsNil && knownType == KnownTypeCode.MulticastDelegate;
-        }
-
-        public bool IsEnum()
-        {
-            var baseType = GetBaseTypeOrNil();
-            if (baseType.IsNil)
-            {
-                return false;
-            }
-
-            if (baseType.Kind == HandleKind.TypeDefinition)
-            {
-                return ((TypeDefinitionHandle)baseType).IsKnownType(Module) == KnownTypeCode.Enum;
-            }
-
-            return false;
-        }
-
-        public bool TryGetEnumType(out PrimitiveTypeCode underlyingType)
-        {
-            underlyingType = 0;
-            Handle baseType = GetBaseTypeOrNil();
-            if (baseType.IsNil)
-            {
-                return false;
-            }
-
-            if (baseType.IsKnownType(Module) != KnownTypeCode.Enum)
-            {
-                return false;
-            }
-
-            var field = Module.MetadataReader.GetFieldDefinition(TypeDefinition.GetFields().First());
-            var blob = Module.MetadataReader.GetBlobReader(field.Signature);
-            if (blob.ReadSignatureHeader().Kind != SignatureKind.Field)
-            {
-                return false;
-            }
-
-            underlyingType = (PrimitiveTypeCode)blob.ReadByte();
             return true;
         }
 
-        private static string GetName(TypeDefinition handle, CompilationModule compilation)
+        private bool IsDelegate()
         {
-            return handle.Name.GetName(compilation);
+            var baseType = Base;
+            if (baseType == null)
+            {
+                return false;
+            }
+
+            var knownType = baseType.IsKnownType();
+            return knownType == KnownTypeCode.MulticastDelegate;
+        }
+
+        private bool IsEnum()
+        {
+            var baseType = Base;
+            if (baseType == null)
+            {
+                return false;
+            }
+
+            return baseType.IsKnownType() == KnownTypeCode.Enum;
         }
 
         private EntityHandle GetBaseTypeOrNil()
@@ -255,38 +274,47 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             return TypeKind.Class;
         }
 
-        private IReadOnlyDictionary<string, IReadOnlyList<string>> GetConstraints()
+        private string GetFullName(TypeWrapper typeWrapper)
         {
-            var constraintDictionary = new Dictionary<string, ISet<string>>();
+            var reader = Module.MetadataReader;
 
-            foreach (var typeParameterHandle in TypeDefinition.GetGenericParameters())
+            var declaringType = typeWrapper.DeclaringType;
+
+            var stringBuilder = new StringBuilder();
+            if (declaringType == null)
             {
-                var typeParameter = typeParameterHandle.Resolve(Module);
-                foreach (var constraint in typeParameter.GetConstraints().Select(x => x.Resolve(Module)))
+                if (!string.IsNullOrWhiteSpace(typeWrapper.Namespace))
                 {
-                    var parameter = constraint.Parameter.Resolve(Module);
-                    var parameterName = parameter.Name.GetName(Module);
-
-                    if (constraint.Type.IsNil)
-                    {
-                        continue;
-                    }
-
-                    var constraintType = WrapperFactory.Create(constraint.Type, Module);
-                    if (constraintType.FullName != "System.Object")
-                    {
-                        if (!constraintDictionary.TryGetValue(parameterName, out var constraints))
-                        {
-                            constraints = new HashSet<string>();
-                            constraintDictionary[parameterName] = constraints;
-                        }
-
-                        constraints.Add(constraintType.FullName);
-                    }
+                        stringBuilder.Append(typeWrapper.Namespace).Append('.');
                 }
+
+                stringBuilder.Append(typeWrapper.Name);
+            }
+            else
+            {
+                stringBuilder.Append(GetFullName(declaringType)).Append('.')
+                    .Append(typeWrapper.Name);
             }
 
-            return constraintDictionary.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.ToList());
+            return stringBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Gets a string form of the type and generic arguments for a type.
+        /// </summary>
+        /// <returns>A type descriptor including the generic arguments.</returns>
+        private string GenerateFullGenericName()
+        {
+            var sb = new StringBuilder(this.GetRealTypeName());
+
+            if (GenericParameters.Count > 0)
+            {
+                sb.Append("<")
+                    .Append(string.Join(", ", GenericParameters.Select(x => x.Name)))
+                    .Append(">");
+            }
+
+            return sb.ToString();
         }
     }
 }

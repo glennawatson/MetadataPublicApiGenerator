@@ -21,11 +21,10 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <summary>
         /// Get the ExpressionSyntax from a type.
         /// </summary>
-        /// <param name="compilation">The compilation for the current class.</param>
         /// <param name="wrapper">The type to convert from.</param>
         /// <param name="value">The value to set.</param>
         /// <returns>The expression syntax.</returns>
-        public static ExpressionSyntax LiteralParameterFromType(CompilationModule compilation, ITypeNamedWrapper wrapper, object value)
+        public static ExpressionSyntax LiteralParameterFromType(ITypeNamedWrapper wrapper, object value)
         {
             if (wrapper is ArrayTypeWrapper arrayTypeWrapper)
             {
@@ -37,12 +36,12 @@ namespace MetadataPublicApiGenerator.Helpers
                 KnownTypeCode knownType;
                 if (typeWrapper.IsEnumType)
                 {
-                    typeWrapper.TypeDefinitionHandle.IsEnum(compilation, out var primitiveType);
-                    knownType = primitiveType.ToKnownTypeCode();
+                    typeWrapper.TryGetEnumType(out var primitiveType);
+                    knownType = primitiveType.IsKnownType();
                 }
                 else
                 {
-                    knownType = typeWrapper.TypeDefinition.IsKnownType(compilation);
+                    knownType = typeWrapper.IsKnownType();
                 }
 
                 return LiteralParameterFromType(knownType, value);

@@ -5,6 +5,8 @@
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+
 namespace MetadataPublicApiGenerator.Compilation
 {
     /// <summary>
@@ -20,7 +22,7 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <summary>
         /// Gets the main namespace.
         /// </summary>
-        NamespaceDefinition RootNamespace { get; }
+        NamespaceWrapper RootNamespace { get; }
 
         /// <summary>
         /// Gets any referenced modules.
@@ -38,5 +40,12 @@ namespace MetadataPublicApiGenerator.Compilation
         /// <param name="reader">The reader to use.</param>
         /// <returns>The compilation module.</returns>
         CompilationModule GetCompilationModuleForReader(MetadataReader reader);
+
+        /// <summary>
+        /// Gets a type by the full name.
+        /// </summary>
+        /// <param name="fullName">The full name.</param>
+        /// <returns>The type wrapper.</returns>
+        TypeWrapper GetTypeByName(string fullName);
     }
 }

@@ -31,7 +31,7 @@ namespace MetadataPublicApiGenerator.Generators
         /// <param name="excludeAttributes">A set of attributes to exclude from being generated.</param>
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="excludeFunc">An exclusion func which will potentially exclude attributes.</param>
-        public GeneratorFactory(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeDefinition, bool> excludeFunc)
+        public GeneratorFactory(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc)
         {
             ExcludeAttributes = excludeAttributes;
             ExcludeMembersAttributes = excludeMembersAttributes;
@@ -70,18 +70,18 @@ namespace MetadataPublicApiGenerator.Generators
         /// <summary>
         /// Gets an exclusion func which will potentially exclude attributes.
         /// </summary>
-        public Func<TypeDefinition, bool> ExcludeFunc { get; }
+        public Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeDefinitionHandle type, CompilationModule compilation)
+        public MemberDeclarationSyntax Generate(TypeWrapper typeWrapper)
         {
-            var typeKind = type.GetTypeKind(compilation);
-            return _typeKindGenerators[typeKind].Generate(compilation, type);
+            var typeKind = typeWrapper.TypeKind;
+            return _typeKindGenerators[typeKind].Generate(typeWrapper);
         }
 
         /// <inheritdoc />
-        public TOutput Generate<TOutput>(Handle symbol, CompilationModule compilation)
-            where TOutput : CSharpSyntaxNode => (TOutput)_symbolKindGenerators[symbol.Kind].Generate(compilation, symbol);
+        public TOutput Generate<TOutput>(IHandleNameWrapper wrapper)
+            where TOutput : CSharpSyntaxNode => (TOutput)_symbolKindGenerators[wrapper.Handle.Kind].Generate(wrapper);
 
         /// <inheritdoc />
         public IReadOnlyCollection<MemberDeclarationSyntax> GenerateMembers(NamespaceWrapper namespaceInfo)

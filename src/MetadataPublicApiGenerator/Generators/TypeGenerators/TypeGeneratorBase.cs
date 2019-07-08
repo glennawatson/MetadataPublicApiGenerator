@@ -27,7 +27,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="excludeFunc">An exclusion func which will potentially exclude attributes.</param>
         /// <param name="factory">The factory for generating children.</param>
-        protected TypeGeneratorBase(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<ITypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
+        protected TypeGeneratorBase(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
             : base(excludeAttributes, excludeMembersAttributes, factory)
         {
             ExcludeFunc = excludeFunc;
@@ -37,17 +37,17 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public abstract TypeKind TypeKind { get; }
 
         /// <inheritdoc />
-        public Func<ITypeWrapper, bool> ExcludeFunc { get; }
+        public Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <summary>
         /// Generates the syntax required.
         /// </summary>
         /// <param name="typeDefinition">The definition to generate for.</param>
         /// <returns>The syntax.</returns>
-        public abstract TypeDeclarationSyntax GenerateSyntax(ITypeWrapper typeDefinition);
+        public abstract TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition);
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(ITypeWrapper type)
+        public MemberDeclarationSyntax Generate(TypeWrapper type)
         {
             if (ExcludeFunc(type))
             {
@@ -56,26 +56,27 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var item = GenerateSyntax(type);
 
-            item = item.WithGenericParameterList(compilation, type);
+            item = item.WithGenericParameterList(type);
             return item.WithModifiers(type.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, type.GetCustomAttributes(), ExcludeAttributes))
-                .WithMembers(GenerateMemberDeclaration(compilation, type));
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(type.Attributes, ExcludeAttributes))
+                .WithMembers(GenerateMemberDeclaration(type));
         }
 
-        internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(ITypeWrapper typeWrapper)
+        internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper)
         {
-            var validHandles = typeDefinition.GetFields().Select(x => (Handle)x)
-                .Concat(typeDefinition.GetEvents().Select(x => (Handle)x))
-                .Concat(typeDefinition.GetProperties().Select(x => (Handle)x))
-                .Concat(typeDefinition.GetMethods().Select(x => (Handle)x))
-                .OrderByAndExclude(ExcludeMembersAttributes, compilation).ToList();
+            var validHandles = typeWrapper.Fields.Cast<IHasAttributes>()
+                .Concat(typeWrapper.Events)
+                .Concat(typeWrapper.Properties)
+                .Concat(typeWrapper.Methods)
+                .OrderByAndExclude(ExcludeMembersAttributes)
+                .ToList();
 
             if (validHandles.Count == 0)
             {
                 return SyntaxFactory.List<MemberDeclarationSyntax>();
             }
 
-            var members = validHandles.Select(x => Factory.Generate<MemberDeclarationSyntax>(x, compilation)).Where(x => x != null);
+            var members = validHandles.Select(x => Factory.Generate<MemberDeclarationSyntax>(x)).Where(x => x != null);
 
             return SyntaxFactory.List(members);
         }

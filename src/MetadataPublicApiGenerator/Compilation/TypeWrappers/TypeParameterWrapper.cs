@@ -2,11 +2,15 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
-
+using System.Threading;
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
@@ -14,9 +18,12 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
     /// <summary>
     /// Type parameter of a generic class/method.
     /// </summary>
-    internal class TypeParameterWrapper : IHandleWrapper, ITypeNamedWrapper
+    internal class TypeParameterWrapper : IHandleTypeNamedWrapper
     {
-        private TypeParameterWrapper(CompilationModule module, Handle owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes attr)
+        private readonly Lazy<IReadOnlyList<string>> _constraints;
+        private readonly Lazy<IHandleTypeNamedWrapper> _owner;
+
+        private TypeParameterWrapper(CompilationModule module, EntityHandle owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes attr)
         {
             Module = module;
             Owner = owner;
@@ -24,6 +31,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             Attributes = attr;
             Name = name;
             Index = index;
+            GenericParameter = module.MetadataReader.GetGenericParameter(handle);
+
+            _owner = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(owner, module));
+            _constraints = new Lazy<IReadOnlyList<string>>(GetConstraints, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -41,11 +52,15 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// </summary>
         public GenericParameterAttributes Attributes { get; }
 
-        /// <inheritdoc />
-        public bool IsEnumType => false;
+        /// <summary>
+        /// Gets the generic parameter instance.
+        /// </summary>
+        public GenericParameter GenericParameter { get; }
 
         /// <inheritdoc />
         public CompilationModule Module { get; }
+
+        public IReadOnlyList<string> Constraints => _constraints.Value;
 
         /// <summary>
         /// Gets the ordering index of the parameter.
@@ -55,12 +70,19 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <inheritdoc />
         public string Name { get; }
 
-        public string FullName => Name;
-
-        public string Namespace => string.Empty;
+        public IHandleTypeNamedWrapper OwnerInstance => _owner.Value;
 
         /// <inheritdoc />
-        public bool IsKnownType => false;
+        public string FullName => OwnerInstance.FullName + "." + Name;
+
+        /// <inheritdoc />
+        public string Namespace => OwnerInstance.Namespace;
+
+        /// <inheritdoc />
+        public bool IsPublic => true;
+
+        /// <inheritdoc />
+        public bool IsAbstract => false;
 
         /// <summary>
         /// Creates the instances of the <see cref="TypeParameterWrapper"/> from the specified handles.
@@ -69,7 +91,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <param name="owner">The owner of the type parameters.</param>
         /// <param name="handles">The type parameter handles to wrap individually.</param>
         /// <returns>A list of <see cref="TypeParameterWrapper"/>.</returns>
-        public static ImmutableArray<TypeParameterWrapper> Create(CompilationModule module, Handle owner, GenericParameterHandleCollection handles)
+        public static IReadOnlyList<TypeParameterWrapper> Create(CompilationModule module, EntityHandle owner, GenericParameterHandleCollection handles)
         {
             if (handles.Count == 0)
             {
@@ -96,12 +118,32 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <param name="index">The index of the type parameter.</param>
         /// <param name="handle">The type parameter handle to wrap.</param>
         /// <returns>A <see cref="TypeParameterWrapper"/>.</returns>
-        public static TypeParameterWrapper Create(CompilationModule module, Handle owner, int index, GenericParameterHandle handle)
+        public static TypeParameterWrapper Create(CompilationModule module, EntityHandle owner, int index, GenericParameterHandle handle)
         {
-            var genericParameter = handle.Resolve(module);
-            var name = handle.GetName(module);
+            var genericParameter = module.MetadataReader.GetGenericParameter(handle);
+            var name = genericParameter.Name.GetName(module);
             Debug.Assert(genericParameter.Index == index, "The index must match on the generic parameter: " + name);
             return new TypeParameterWrapper(module, owner, index, name, handle, genericParameter.Attributes);
+        }
+
+        private IReadOnlyList<string> GetConstraints()
+        {
+            var constraints = new HashSet<string>();
+            foreach (var constraint in GenericParameter.GetConstraints().Select(x => Module.MetadataReader.GetGenericParameterConstraint(x)))
+            {
+                if (constraint.Type.IsNil)
+                {
+                    continue;
+                }
+
+                var constraintType = WrapperFactory.Create(constraint.Type, Module);
+                if (constraintType.FullName != "System.Object")
+                {
+                    constraints.Add(constraintType.FullName);
+                }
+            }
+
+            return constraints.ToList();
         }
     }
 }

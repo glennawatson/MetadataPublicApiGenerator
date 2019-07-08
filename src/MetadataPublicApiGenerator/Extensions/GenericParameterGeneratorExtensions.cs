@@ -53,7 +53,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return methodSyntax.WithTypeParameterList(SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(parameterList))).WithConstraintClauses(SyntaxFactory.List(typeConstraints));
         }
 
-        internal static T WithGenericParameterList<T>(this T typeDeclarationSyntax, ITypeWrapper type)
+        internal static T WithGenericParameterList<T>(this T typeDeclarationSyntax, TypeWrapper type)
             where T : TypeDeclarationSyntax
         {
             var (constraintDictionary, parameterList) = GenerateTypeParameters(type);
@@ -71,13 +71,21 @@ namespace MetadataPublicApiGenerator.Extensions
             return (T)typeDeclarationSyntax.WithTypeParameterList(SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(parameterList))).WithConstraintClauses(SyntaxFactory.List(typeConstraints));
         }
 
-        private static (IReadOnlyDictionary<string, IReadOnlyList<string>> constraints, IReadOnlyCollection<TypeParameterSyntax> typeParams) GenerateTypeParameters(ITypeWrapper typeWrapper)
+        private static (IReadOnlyDictionary<string, IReadOnlyList<string>> constraints, IReadOnlyCollection<TypeParameterSyntax> typeParams) GenerateTypeParameters(TypeWrapper typeWrapper)
         {
-            var constraintDictionary = typeWrapper.Constraints;
+            var constraints = typeWrapper.GenericParameters.Select(x => (x.Name, x.Constraints));
 
-            var parameterList = constraintDictionary.Select(constraint => SyntaxFactory.TypeParameter(constraint.Key)).ToList();
+            Dictionary<string, IReadOnlyList<string>> elements = new Dictionary<string, IReadOnlyList<string>>();
+            var parameterList = new List<TypeParameterSyntax>();
 
-            return (constraintDictionary, parameterList);
+            foreach (var constraint in constraints)
+            {
+                parameterList.Add(SyntaxFactory.TypeParameter(constraint.Name));
+
+                elements.Add(constraint.Name, constraint.Constraints);
+            }
+
+            return (elements, parameterList);
         }
     }
 }

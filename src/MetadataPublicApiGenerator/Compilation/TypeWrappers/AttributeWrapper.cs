@@ -4,103 +4,35 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
 using System.Reflection.Metadata;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 
 using MetadataPublicApiGenerator.Extensions;
-using MetadataPublicApiGenerator.Helpers;
-
-using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class AttributeWrapper : ITypeNamedWrapper
+    internal class AttributeWrapper : IHandleTypeNamedWrapper
     {
-        private static readonly string[] typeNames =
-        {
-            default,
-            "System.Runtime.CompilerServices." + nameof(CompilerGeneratedAttribute),
-            "System.Runtime.CompilerServices." + nameof(ExtensionAttribute),
-            "System.Runtime.CompilerServices." + nameof(DynamicAttribute),
-            "System.Runtime.CompilerServices." + nameof(TupleElementNamesAttribute),
-            "System.Diagnostics." + nameof(ConditionalAttribute),
-            "System." + nameof(ObsoleteAttribute),
-            "System.Runtime.CompilerServices." + "IsReadOnlyAttribute",
-            "System.Diagnostics." + nameof(DebuggerHiddenAttribute),
-            "System.Diagnostics." + nameof(DebuggerStepThroughAttribute),
-
-            // Assembly attributes:
-            "System.Reflection." + nameof(AssemblyVersionAttribute),
-            "System.Runtime.CompilerServices." + nameof(InternalsVisibleToAttribute),
-            "System.Runtime.CompilerServices." + nameof(TypeForwardedToAttribute),
-            "System.Runtime.CompilerServices." + nameof(ReferenceAssemblyAttribute),
-
-            // Type attributes:
-            "System." + nameof(SerializableAttribute),
-            "System." + nameof(FlagsAttribute),
-            "System.Runtime.InteropServices." + nameof(ComImportAttribute),
-            "System.Runtime.InteropServices." + nameof(CoClassAttribute),
-            "System.Runtime.InteropServices." + nameof(StructLayoutAttribute),
-            "System.Reflection." + nameof(DefaultMemberAttribute),
-            "System.Runtime.CompilerServices." + "IsByRefLikeAttribute",
-            "System.Runtime.CompilerServices." + nameof(IteratorStateMachineAttribute),
-            "System.Runtime.CompilerServices." + nameof(AsyncStateMachineAttribute),
-
-            // Field attributes:
-            "System.Runtime.InteropServices." + nameof(FieldOffsetAttribute),
-            "System." + nameof(NonSerializedAttribute),
-            "System.Runtime.CompilerServices." + nameof(DecimalConstantAttribute),
-            "System.Runtime.CompilerServices." + nameof(FixedBufferAttribute),
-
-            // Method attributes:
-            "System.Runtime.InteropServices." + nameof(DllImportAttribute),
-            "System.Runtime.InteropServices." + nameof(PreserveSigAttribute),
-            "System.Runtime.CompilerServices." + nameof(MethodImplAttribute),
-
-            // Property attributes:
-            "System.Runtime.CompilerServices." + nameof(IndexerNameAttribute),
-
-            // Parameter attributes:
-            "System." + nameof(ParamArrayAttribute),
-            "System.Runtime.InteropServices." + nameof(InAttribute),
-            "System.Runtime.InteropServices." + nameof(OutAttribute),
-            "System.Runtime.InteropServices." + nameof(OptionalAttribute),
-            "System.Runtime.CompilerServices." + nameof(CallerMemberNameAttribute),
-            "System.Runtime.CompilerServices." + nameof(CallerFilePathAttribute),
-            "System.Runtime.CompilerServices." + nameof(CallerLineNumberAttribute),
-
-            // Marshalling attributes:
-            "System.Runtime.InteropServices." + nameof(MarshalAsAttribute),
-
-            // Security attributes:
-            "System.Security.Permissions." + "PermissionSetAttribute",
-        };
-
         private static readonly Dictionary<CustomAttributeHandle, AttributeWrapper> _registeredTypes = new Dictionary<CustomAttributeHandle, AttributeWrapper>();
 
-        private readonly Lazy<MethodSignature<ITypeNamedWrapper>> _methodSignature;
+        private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _methodSignature;
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
 
         private readonly Lazy<KnownAttribute> _knownType;
 
-        private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<ITypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<ITypeNamedWrapper>> namedArguments)> _arguments;
+        private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
 
         private AttributeWrapper(CustomAttributeHandle handle, CompilationModule module)
         {
             Module = module;
-            Definition = Resolve(handle, module);
             AttributeHandle = handle;
+            Handle = handle;
+            Definition = Resolve(handle, module);
 
-            _methodSignature = new Lazy<MethodSignature<ITypeNamedWrapper>>(GetMethodSignature, LazyThreadSafetyMode.PublicationOnly);
+            _methodSignature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(GetMethodSignature, LazyThreadSafetyMode.PublicationOnly);
 
             _attributeType = new Lazy<ITypeNamedWrapper>(GetAttributeType, LazyThreadSafetyMode.PublicationOnly);
-            _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<ITypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<ITypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
+            _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
             _knownType = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
 
             _registeredTypes.TryAdd(handle, this);
@@ -109,6 +41,8 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public CustomAttribute Definition { get; }
 
         public CustomAttributeHandle AttributeHandle { get; }
+
+        public Handle Handle { get; }
 
         /// <summary>Gets the return type of the method.</summary>
         /// <returns>The return type.</returns>
@@ -145,15 +79,22 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         public KnownAttribute KnownType => _knownType.Value;
 
-        public IReadOnlyList<CustomAttributeTypedArgument<ITypeNamedWrapper>> FixedArguments => _arguments.Value.fixedArguments;
+        public bool IsKnownType => KnownType != KnownAttribute.None;
 
-        public IReadOnlyList<CustomAttributeNamedArgument<ITypeNamedWrapper>> NamedArguments => _arguments.Value.namedArguments;
+        public IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> FixedArguments => _arguments.Value.fixedArguments;
+
+        public IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> NamedArguments => _arguments.Value.namedArguments;
 
         /// <inheritdoc />
         public CompilationModule Module { get; }
 
         public static AttributeWrapper Create(CustomAttributeHandle handle, CompilationModule module)
         {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
             return _registeredTypes.GetOrAdd(handle, handleCreate => new AttributeWrapper(handleCreate, module));
         }
 
@@ -162,19 +103,19 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             return compilation.MetadataReader.GetCustomAttribute(handle);
         }
 
-        private MethodSignature<ITypeNamedWrapper> GetMethodSignature()
+        private MethodSignature<IHandleTypeNamedWrapper> GetMethodSignature()
         {
-            MethodSignature<ITypeNamedWrapper> methodSignature;
+            MethodSignature<IHandleTypeNamedWrapper> methodSignature;
             switch (Definition.Constructor.Kind)
             {
                 case HandleKind.MethodDefinition:
-                    var methodDefinition = ((MethodDefinitionHandle)Definition.Constructor).Resolve(Module);
+                    var methodDefinition = Module.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
 
                     methodSignature = methodDefinition.DecodeSignature(new TypeProvider(Module.Compilation), new GenericContext(Module));
                     break;
 
                 case HandleKind.MemberReference:
-                    var memberReference = ((MemberReferenceHandle)Definition.Constructor).Resolve(Module);
+                    var memberReference = Module.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
 
                     // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
                     methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(Module.Compilation), new GenericContext(Module));
@@ -200,17 +141,17 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             }
         }
 
-        private (IReadOnlyList<CustomAttributeTypedArgument<ITypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<ITypeNamedWrapper>> namedArguments) GetArguments()
+        private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()
         {
-            var wrapper = Definition.DecodeValue(new CustomAttributeTypeProvider(Module.Compilation));
+            var wrapper = Definition.DecodeValue(new TypeProvider(Module.Compilation));
             return (wrapper.FixedArguments, wrapper.NamedArguments);
         }
 
         private KnownAttribute IsKnownAttributeType()
         {
-            var method = ((MethodDefinitionHandle)Definition.Constructor).Resolve(Module);
-            var declaredType = method.GetDeclaringType().GetName(Module);
-            var index = Array.IndexOf(typeNames, declaredType);
+            var methodDefinition = MethodWrapper.Create((MethodDefinitionHandle)Definition.Constructor, Module);
+            var declaredType = methodDefinition.DeclaringType.Name;
+            var index = Array.IndexOf(KnownTypeCodeNames.TypeNames, declaredType);
             if (index < 0)
             {
                 return KnownAttribute.None;
@@ -218,6 +159,5 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
             return (KnownAttribute)index;
         }
-
     }
 }

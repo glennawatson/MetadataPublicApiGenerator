@@ -13,7 +13,7 @@ using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class MethodSpecificationWrapper
+    internal class MethodSpecificationWrapper : IHandleWrapper
     {
         private static readonly Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper> _registerTypes = new Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper>();
 
@@ -22,11 +22,12 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         private MethodSpecificationWrapper(MethodSpecificationHandle handle, CompilationModule module)
         {
-            Definition = Resolve(handle, module);
             MethodSpecificationHandle = handle;
             Module = module;
+            Handle = handle;
+            Definition = Resolve(handle, module);
 
-            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(module, MethodSpecificationHandle)));
+            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)));
             _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, module), LazyThreadSafetyMode.PublicationOnly);
 
             _registerTypes.TryAdd(handle, this);
@@ -52,6 +53,9 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// </summary>
         public IReadOnlyList<ITypeNamedWrapper> Types => _signature.Value;
 
+        /// <inheritdoc />
+        public Handle Handle { get; }
+
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
@@ -65,6 +69,11 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <returns>The wrapper.</returns>
         public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, CompilationModule module)
         {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
             return _registerTypes.GetOrAdd(handle, handleCreate => new MethodSpecificationWrapper(handleCreate, module));
         }
 

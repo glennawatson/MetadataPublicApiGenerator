@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Text;
 using System.Threading;
 
 using MetadataPublicApiGenerator.Extensions;
@@ -23,22 +22,31 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         private readonly Lazy<NamespaceWrapper> _parent;
 
-        private readonly Lazy<IReadOnlyList<ITypeWrapper>> _members;
+        private readonly Lazy<IReadOnlyList<TypeWrapper>> _members;
 
         private readonly Lazy<IReadOnlyList<NamespaceWrapper>> _childNamespaces;
 
+        internal NamespaceWrapper(NamespaceDefinition definition, CompilationModule module)
+        {
+            Definition = definition;
+
+            _parent = new Lazy<NamespaceWrapper>(() => null);
+            _name = new Lazy<string>(() => GetName(Definition, module), LazyThreadSafetyMode.PublicationOnly);
+            _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
+            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+        }
+
         private NamespaceWrapper(NamespaceDefinitionHandle handle, CompilationModule module)
         {
-            Definition = Resolve(handle, module);
             NamespaceHandle = handle;
+            Definition = Resolve(handle, module);
 
             _parent = new Lazy<NamespaceWrapper>(() => GetParent(Definition.Parent, module), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => GetName(Definition, module), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
-            _members = new Lazy<IReadOnlyList<ITypeWrapper>>(() => Definition.TypeDefinitions.Select(x => (ITypeWrapper)new TypeWrapper(module, x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-
-            _registeredNamespaces.TryAdd(handle, this);
         }
 
         public NamespaceDefinition Definition { get; }
@@ -51,12 +59,17 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         public string Name => _name.Value;
 
-        public IEnumerable<ITypeNamedWrapper> Members => _members.Value;
+        public IEnumerable<TypeWrapper> Members => _members.Value;
 
         public IReadOnlyList<NamespaceWrapper> ChildNamespaces => _childNamespaces.Value;
 
         public static NamespaceWrapper Create(NamespaceDefinitionHandle handle, CompilationModule module)
         {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
             return _registeredNamespaces.GetOrAdd(handle, handleCreate => new NamespaceWrapper(handleCreate, module));
         }
 

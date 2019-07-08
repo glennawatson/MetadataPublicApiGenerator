@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Compilation;
-
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using MetadataPublicApiGenerator.Extensions;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
@@ -21,14 +23,17 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override ParameterSyntax Generate(CompilationModule compilation, Handle handle)
+        public override ParameterSyntax Generate(IHandleNameWrapper nameWrapper)
         {
-            ////return SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.GetName(compilation)))
-            ////    .WithModifiers(parameter.GetModifiers(compilation))
-            ////    .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, parameter.GetCustomAttributes(), ExcludeAttributes))
-            ////    .WithType(SyntaxFactory.IdentifierName(parameter..GenerateFullGenericName(compilation)));
+            if (!(nameWrapper is ParameterWrapper parameter))
+            {
+                return null;
+            }
 
-            return null;
+            return SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.Name))
+                .WithModifiers(parameter.GetModifiers())
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(parameter.Attributes, ExcludeAttributes))
+                .WithType(SyntaxFactory.IdentifierName(parameter.ParameterType.FullName));
         }
     }
 }

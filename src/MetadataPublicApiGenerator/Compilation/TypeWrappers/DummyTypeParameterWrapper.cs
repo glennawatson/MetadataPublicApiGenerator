@@ -2,18 +2,21 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Reflection.Metadata;
+
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class DummyTypeParameterWrapper : ITypeNamedWrapper
+    internal class DummyTypeParameterWrapper : IHandleTypeNamedWrapper
     {
         public DummyTypeParameterWrapper(int index, string type, CompilationModule module)
         {
             Name = index + " " + type;
             FullName = Name;
             Namespace = string.Empty;
-            IsKnownType = false;
-            IsEnumType = false;
+            IsPublic = false;
+            IsAbstract = false;
             Module = module;
+            Handle = default;
         }
 
         /// <inheritdoc />
@@ -26,10 +29,13 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace { get; }
 
         /// <inheritdoc />
-        public bool IsKnownType { get; }
+        public bool IsPublic { get; }
 
         /// <inheritdoc />
-        public bool IsEnumType { get; }
+        public bool IsAbstract { get; }
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
 
         /// <inheritdoc />
         public CompilationModule Module { get; }

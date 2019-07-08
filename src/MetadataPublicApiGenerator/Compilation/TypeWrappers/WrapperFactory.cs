@@ -7,50 +7,38 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Text;
 
+using MetadataPublicApiGenerator.Extensions;
+
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
     internal static class WrapperFactory
     {
-        public static ITypeNamedWrapper Create(EntityHandle entity, CompilationModule module)
+        public static IHandleTypeNamedWrapper Create(EntityHandle entity, CompilationModule module)
         {
-            if (handle.IsNil)
+            if (entity.IsNil)
             {
                 return null;
-            }
-
-            switch (handle.Kind)
-            {
             }
 
             switch (entity.Kind)
             {
                 case HandleKind.EventDefinition:
-                    return ((EventDefinitionHandle)entity).GetName(module);
+                    return EventWrapper.Create((EventDefinitionHandle)entity, module);
                 case HandleKind.FieldDefinition:
-                    return ((FieldDefinitionHandle)entity).GetName(module);
+                    return FieldWrapper.Create((FieldDefinitionHandle)entity, module);
                 case HandleKind.MethodDefinition:
-                    return ((MethodDefinitionHandle)entity).GetName(module);
+                    return MethodWrapper.Create((MethodDefinitionHandle)entity, module);
                 case HandleKind.PropertyDefinition:
-                    return ((PropertyDefinitionHandle)entity).GetName(module);
+                    return PropertyWrapper.Create((PropertyDefinitionHandle)entity, module);
                 case HandleKind.TypeDefinition:
-                    return TypeWrapper.Create((TypeDefinitionHandle)handle, module);
-                case HandleKind.GenericParameter:
-                    return ((GenericParameterHandle)entity).GetName(module);
-                case HandleKind.GenericParameterConstraint:
-                    return ((GenericParameterConstraintHandle)entity).GetName(module);
-                case HandleKind.Parameter:
-                    return ((ParameterHandle)entity).GetName(module);
-                case HandleKind.String:
-                    return ((StringHandle)entity).GetName(module);
-                case HandleKind.UserString:
-                    return ((UserStringHandle)entity).GetName(module);
+                    return TypeWrapper.Create((TypeDefinitionHandle)entity, module);
                 case HandleKind.TypeReference:
-                    return ((TypeReferenceHandle)entity).GetName(module);
+                    return TypeReferenceWrapper.Create((TypeReferenceHandle)entity, module);
                 case HandleKind.MemberReference:
-                    return ((MemberReferenceHandle)entity).GetName(module);
+                    return MemberReferenceWrapper.Create((MemberReferenceHandle)entity, module);
+                case HandleKind.TypeSpecification:
+                    return TypeSpecificationWrapper.Create((TypeSpecificationHandle)entity, module);
             }
-
-            return null;
 
             return null;
         }

@@ -3,25 +3,21 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+using System.Reflection.Metadata;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class ByReferenceWrapper : ITypeNamedWrapper
+    internal class ByReferenceWrapper : IHandleTypeNamedWrapper
     {
-        public ByReferenceWrapper(CompilationModule module, ITypeNamedWrapper typeDefinition)
+        public ByReferenceWrapper(IHandleTypeNamedWrapper typeDefinition)
         {
             TypeDefinition = typeDefinition ?? throw new ArgumentNullException(nameof(typeDefinition));
-            Module = module ?? throw new ArgumentNullException(nameof(module));
         }
 
-        public ITypeNamedWrapper TypeDefinition { get; }
-
-        public bool IsKnownType => TypeDefinition.IsKnownType;
+        public IHandleTypeNamedWrapper TypeDefinition { get; }
 
         /// <inheritdoc />
-        public bool IsEnumType => TypeDefinition.IsEnumType;
-
-        public CompilationModule Module { get; }
+        public bool IsAbstract => TypeDefinition.IsAbstract;
 
         /// <inheritdoc />
         public virtual string Name => TypeDefinition.Name + "&";
@@ -30,6 +26,15 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public string Namespace => TypeDefinition.Namespace;
 
         /// <inheritdoc />
+        public bool IsPublic => TypeDefinition.IsPublic;
+
+        /// <inheritdoc />
         public string FullName => Namespace + "." + Name;
+
+        /// <inheritdoc />
+        public Handle Handle => TypeDefinition.Handle;
+
+        /// <inheritdoc />
+        public CompilationModule Module => TypeDefinition.Module;
     }
 }

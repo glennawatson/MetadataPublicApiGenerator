@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -23,7 +24,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
         /// <param name="excludeFunc">An exclusion func which will potentially exclude attributes.</param>
         /// <param name="factory">A factory for generating sub types.</param>
-        public InterfaceTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeDefinition, bool> excludeFunc, IGeneratorFactory factory)
+        public InterfaceTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
             : base(excludeAttributes, excludeMembersAttributes, excludeFunc, factory)
         {
         }
@@ -32,9 +33,9 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public override TypeKind TypeKind => TypeKind.Interface;
 
         /// <inheritdoc />
-        public override TypeDeclarationSyntax GenerateSyntax(CompilationModule compilation, TypeDefinition typeDefinition)
+        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper wrapper)
         {
-            return SyntaxFactory.InterfaceDeclaration(typeDefinition.GetName(compilation));
+            return SyntaxFactory.InterfaceDeclaration(wrapper.Name);
         }
     }
 }

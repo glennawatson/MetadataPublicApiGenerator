@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -33,12 +34,12 @@ namespace MetadataPublicApiGenerator.Generators
 
         public IGeneratorFactory Factory { get; }
 
-        public IReadOnlyCollection<MemberDeclarationSyntax> Generate(CompilationModule compilation, NamespaceDefinition namespaceInfo)
+        public IReadOnlyCollection<MemberDeclarationSyntax> Generate(NamespaceWrapper namespaceInfo)
         {
             // Get a list of valid types that don't have attributes matching our exclude list.
-            return namespaceInfo.TypeDefinitions.Select(x => (Handle)x)
-                .OrderByAndExclude(ExcludeMembersAttributes, compilation)
-                .Select(x => Factory.Generate((TypeDefinitionHandle)x, compilation))
+            return namespaceInfo.Members
+                .OrderByAndExclude(ExcludeMembersAttributes)
+                .Select(x => Factory.Generate(x))
                 .ToList();
         }
     }

@@ -77,12 +77,12 @@ namespace MetadataPublicApiGenerator.Extensions
 
             foreach (var fixedArgument in customAttribute.FixedArguments)
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type.Module, fixedArgument.Type, fixedArgument.Value)));
+                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(fixedArgument.Type, fixedArgument.Value)));
             }
 
             foreach (var namedArgument in customAttribute.NamedArguments)
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type.Module, namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
+                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.LiteralParameterFromType(namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
             }
 
             var attributeName = SyntaxFactory.IdentifierName(customAttribute.FullName);
@@ -96,11 +96,9 @@ namespace MetadataPublicApiGenerator.Extensions
             return attribute;
         }
 
-        internal static bool ShouldIncludeEntity(this ITypeWrapper entity, ISet<string> excludeMembersAttributes)
+        internal static bool ShouldIncludeEntity(this IHasAttributes entity, ISet<string> excludeMembersAttributes)
         {
-            var isPublic = entity.IsPublic;
-
-            if (!isPublic)
+            if (entity is IHandleTypeNamedWrapper typeNameWrapper && !typeNameWrapper.IsPublic)
             {
                 return false;
             }
@@ -115,7 +113,8 @@ namespace MetadataPublicApiGenerator.Extensions
             return !attributes.Any(attr => excludeMembersAttributes.Contains(attr.FullName));
         }
 
-        internal static IEnumerable<ITypeWrapper> OrderByAndExclude(this IEnumerable<ITypeWrapper> entities, ISet<string> excludeMembersAttributes)
+        internal static IEnumerable<T> OrderByAndExclude<T>(this IEnumerable<T> entities, ISet<string> excludeMembersAttributes)
+            where T : IHasAttributes
         {
             return entities.Where(x => ShouldIncludeEntity(x, excludeMembersAttributes)).OrderBy(x => _symbolKindPreferredOrderWeights[x.Handle.Kind]).ThenBy(x => x.Name);
         }

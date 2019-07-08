@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation
@@ -67,7 +68,7 @@ namespace MetadataPublicApiGenerator.Compilation
         }
 
         /// <inheritdoc />
-        public NamespaceDefinition RootNamespace => MainModule.MetadataReader.GetNamespaceDefinitionRoot();
+        public NamespaceWrapper RootNamespace => new NamespaceWrapper(MainModule.MetadataReader.GetNamespaceDefinitionRoot(), MainModule);
 
         /// <inheritdoc />
         public TypeProvider TypeProvider => _typeProvider.Value;
@@ -81,6 +82,25 @@ namespace MetadataPublicApiGenerator.Compilation
             }
 
             return _referencedAssemblies.First(x => x.MetadataReader == reader);
+        }
+
+        /// <inheritdoc />
+        public TypeWrapper GetTypeByName(string fullName)
+        {
+            if (MainModule.PublicTypesByFullName.TryGetValue(fullName, out var typeWrapper))
+            {
+                return typeWrapper;
+            }
+
+            foreach (var referenceModule in ReferencedModules)
+            {
+                if (referenceModule.PublicTypesByFullName.TryGetValue(fullName, out typeWrapper))
+                {
+                    return typeWrapper;
+                }
+            }
+
+            return null;
         }
 
         /// <inheritdoc />

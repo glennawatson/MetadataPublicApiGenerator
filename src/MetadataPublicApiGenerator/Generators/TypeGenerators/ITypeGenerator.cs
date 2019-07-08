@@ -25,13 +25,13 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <summary>
         /// Gets a exclusion func which will potentially exclude attributes.
         /// </summary>
-        Func<ITypeWrapper, bool> ExcludeFunc { get; }
+        Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <summary>
         /// Generate the member declaration.
         /// </summary>
         /// <param name="type">The type we are generating for.</param>
         /// <returns>a member declaration syntax.</returns>
-        MemberDeclarationSyntax Generate(ITypeWrapper type);
+        MemberDeclarationSyntax Generate(TypeWrapper type);
     }
 }

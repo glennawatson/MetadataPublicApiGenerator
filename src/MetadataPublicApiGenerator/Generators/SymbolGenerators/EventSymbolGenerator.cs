@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 
 using MetadataPublicApiGenerator.Compilation;
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 
 using Microsoft.CodeAnalysis.CSharp;
@@ -20,28 +21,14 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override EventFieldDeclarationSyntax Generate(CompilationModule compilation, Handle handle)
+        public override EventFieldDeclarationSyntax Generate(IHandleNameWrapper member)
         {
-            var memberHandle = (EventDefinitionHandle)handle;
-
-            if (memberHandle.IsNil)
+            if (!(member is EventWrapper eventWrapper))
             {
                 return null;
             }
 
-            var member = memberHandle.Resolve(compilation);
-
-            string memberName = null;
-
-            switch (member.Type.Kind)
-            {
-                case HandleKind.TypeDefinition:
-                    memberName = ((TypeDefinitionHandle)member.Type).GenerateFullGenericName(compilation);
-                    break;
-                case HandleKind.TypeSpecification:
-                    memberName = ((TypeSpecificationHandle)member.Type).GenerateFullGenericName(compilation);
-                    break;
-            }
+            var memberName = eventWrapper.FullName;
 
             if (string.IsNullOrWhiteSpace(memberName))
             {
@@ -50,9 +37,9 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             return SyntaxFactory.EventFieldDeclaration(
                     SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(memberName))
-                        .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(member.GetName(compilation))))))
-                    .WithModifiers(member.GetModifiers(compilation))
-                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, member.GetCustomAttributes(), ExcludeAttributes));
+                        .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(member.Name)))))
+                    .WithModifiers(eventWrapper.GetModifiers())
+                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(eventWrapper.Attributes, ExcludeAttributes));
         }
     }
 }

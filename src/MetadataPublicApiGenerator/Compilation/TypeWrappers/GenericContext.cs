@@ -3,10 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
@@ -21,30 +20,26 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             _module = module;
         }
 
-        internal GenericContext(CompilationModule module, Handle context)
+        internal GenericContext(IHandleWrapper wrapper)
         {
-            _module = module;
-            if (module == null)
+            if (wrapper == null)
             {
-                throw new System.ArgumentNullException(nameof(module));
+                throw new System.ArgumentNullException(nameof(wrapper));
             }
 
-            switch (context.Kind)
-            {
-                case HandleKind.TypeDefinition:
-                    var typeDefinitionHandle = (TypeDefinitionHandle)context;
-                    var typeDefinition = typeDefinitionHandle.Resolve(module);
+            _module = wrapper.Module;
 
-                    ClassTypeParameters = TypeParameterWrapper.Create(module, context, typeDefinition.GetGenericParameters());
+            switch (wrapper)
+            {
+                case TypeWrapper typeWrapper:
+                    ClassTypeParameters = typeWrapper.GenericParameters;
                     MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
                     break;
-                case HandleKind.MethodDefinition:
-                    var methodDefinitionHandle = (MethodDefinitionHandle)context;
-                    var methodDefinition = methodDefinitionHandle.Resolve(module);
-                    var declaringTypeDefinition = methodDefinition.GetDeclaringType().Resolve(module);
+                case MethodWrapper methodWrapper:
+                    var declaringTypeDefinition = methodWrapper.DeclaringType;
 
-                    ClassTypeParameters = TypeParameterWrapper.Create(module, methodDefinition.GetDeclaringType(), declaringTypeDefinition.GetGenericParameters());
-                    MethodTypeParameters = TypeParameterWrapper.Create(module, methodDefinitionHandle, methodDefinition.GetGenericParameters());
+                    ClassTypeParameters = declaringTypeDefinition.GenericParameters;
+                    MethodTypeParameters = methodWrapper.GenericParameters;
                     break;
                 default:
                     ClassTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
@@ -54,22 +49,22 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
             if (ClassTypeParameters.Any(x => x == null))
             {
-                throw new ArgumentNullException(nameof(context));
+                throw new ArgumentNullException(nameof(wrapper));
             }
         }
 
-        public ImmutableArray<TypeParameterWrapper> ClassTypeParameters { get; }
+        public IReadOnlyList<TypeParameterWrapper> ClassTypeParameters { get; }
 
-        public ImmutableArray<TypeParameterWrapper> MethodTypeParameters { get; }
+        public IReadOnlyList<TypeParameterWrapper> MethodTypeParameters { get; }
 
-        public ITypeNamedWrapper GetClassTypeParameter(int index)
+        public IHandleTypeNamedWrapper GetClassTypeParameter(int index)
         {
-            return index < ClassTypeParameters.Length ? (ITypeNamedWrapper)ClassTypeParameters[index] : new DummyTypeParameterWrapper(index, "Class", _module);
+            return index < ClassTypeParameters.Count ? (IHandleTypeNamedWrapper)ClassTypeParameters[index] : new DummyTypeParameterWrapper(index, "Class", _module);
         }
 
-        public ITypeNamedWrapper GetMethodTypeParameter(int index)
+        public IHandleTypeNamedWrapper GetMethodTypeParameter(int index)
         {
-            return index < MethodTypeParameters.Length ? (ITypeNamedWrapper)MethodTypeParameters[index] : new DummyTypeParameterWrapper(index, "Method", _module);
+            return index < MethodTypeParameters.Count ? (IHandleTypeNamedWrapper)MethodTypeParameters[index] : new DummyTypeParameterWrapper(index, "Method", _module);
         }
     }
 }

@@ -20,19 +20,17 @@ namespace MetadataPublicApiGenerator.Generators
     /// </summary>
     internal static class AttributeGenerator
     {
-        public static SyntaxList<AttributeListSyntax> GenerateAttributes(CompilationModule compilation, IEnumerable<AttributeWrapper> attributes, ISet<string> excludeAttributes)
+        public static SyntaxList<AttributeListSyntax> GenerateAttributes(IEnumerable<AttributeWrapper> attributes, ISet<string> excludeAttributes)
         {
             var validAttributes = new List<AttributeWrapper>();
             foreach (var attribute in attributes)
             {
-                var attributeType = attribute.Constructor.DeclaringType;
-
-                if (!attributeType.IsPublic)
+                if (!attribute.IsPublic)
                 {
                     continue;
                 }
 
-                var attributeName = attributeType.FullName;
+                var attributeName = attribute.FullName;
                 if (excludeAttributes.Contains(attributeName))
                 {
                     continue;
@@ -46,7 +44,7 @@ namespace MetadataPublicApiGenerator.Generators
                 return SyntaxFactory.List<AttributeListSyntax>();
             }
 
-            return SyntaxFactory.List(validAttributes.Select(attribute => attribute.GenerateAttributeList(compilation)));
+            return SyntaxFactory.List(validAttributes.Select(attribute => attribute.GenerateAttributeList()));
         }
 
         public static SyntaxList<AttributeListSyntax> GenerateAssemblyCustomAttributes(CompilationModule compilation, ISet<string> excludeAttributes)
@@ -54,20 +52,12 @@ namespace MetadataPublicApiGenerator.Generators
             var validAttributes = new List<AttributeWrapper>();
             foreach (var attribute in compilation.MetadataReader.GetAssemblyDefinition().GetCustomAttributes().Select(x => AttributeWrapper.Create(x, compilation)))
             {
-                var attributeType = ((MethodDefinitionHandle)attribute.Constructor).Resolve(compilation).GetDeclaringType().Resolve(compilation);
-
-                if ((attributeType.Attributes & System.Reflection.TypeAttributes.Public) == 0)
+                if (!attribute.IsPublic)
                 {
                     continue;
                 }
 
-                MethodSignature<ITypeNamedWrapper>? methodSignature;
-
-                switch (attribute.Constructor.Kind)
-                {
-                }
-
-                if (excludeAttributes.Contains(methodSignature.Value.ReturnType.FullName))
+                if (excludeAttributes.Contains(attribute.FullName))
                 {
                     continue;
                 }
@@ -80,7 +70,7 @@ namespace MetadataPublicApiGenerator.Generators
                 return SyntaxFactory.List<AttributeListSyntax>();
             }
 
-            return SyntaxFactory.List(validAttributes.Select(attribute => attribute.GenerateAttributeList(compilation).WithTarget(SyntaxFactory.AttributeTargetSpecifier(SyntaxFactory.Token(SyntaxKind.AssemblyKeyword)))));
+            return SyntaxFactory.List(validAttributes.Select(attribute => attribute.GenerateAttributeList().WithTarget(SyntaxFactory.AttributeTargetSpecifier(SyntaxFactory.Token(SyntaxKind.AssemblyKeyword)))));
         }
     }
 }

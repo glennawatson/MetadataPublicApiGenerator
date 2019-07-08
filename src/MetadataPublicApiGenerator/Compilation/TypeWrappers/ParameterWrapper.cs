@@ -14,31 +14,30 @@ using MetadataPublicApiGenerator.Extensions;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal class ParameterWrapper : INamedWrapper
+    internal class ParameterWrapper : IHandleNameWrapper, IHasAttributes
     {
         private static readonly Dictionary<ParameterHandle, ParameterWrapper> _registeredTypes = new Dictionary<ParameterHandle, ParameterWrapper>();
-
-        private readonly CompilationModule _module;
 
         private readonly Lazy<string> _name;
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
 
-        private ParameterWrapper(ParameterHandle handle, CompilationModule module)
+        private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, CompilationModule module)
         {
-            _module = module;
-            Definition = Resolve(handle, module);
+            Module = module;
             ParameterHandle = handle;
+            Handle = handle;
+            Definition = Resolve(handle, module);
 
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+
+            ParameterType = typeWrapper;
 
             IsOut = (Definition.Attributes & ParameterAttributes.Out) != 0;
             IsIn = (Definition.Attributes & ParameterAttributes.In) != 0;
             Optional = (Definition.Attributes & ParameterAttributes.Optional) != 0;
             HasDefaultValue = (Definition.Attributes & ParameterAttributes.HasDefault) != 0;
-
-            _registeredTypes.TryAdd(handle, this);
         }
 
         public Parameter Definition { get; }
@@ -55,12 +54,23 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
         public bool HasDefaultValue { get; }
 
+        public IHandleTypeNamedWrapper ParameterType { get; }
+
         /// <inheritdoc />
         public string Name => _name.Value;
 
-        public static ParameterWrapper Create(ParameterHandle handle, CompilationModule module)
+        public CompilationModule Module { get; }
+
+        public Handle Handle { get; }
+
+        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, CompilationModule module)
         {
-            return _registeredTypes.GetOrAdd(handle, handleCreate => new ParameterWrapper(handleCreate, module));
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
+            return _registeredTypes.GetOrAdd(handle, handleCreate => new ParameterWrapper(handleCreate, typeWrapper, module));
         }
 
         private static Parameter Resolve(ParameterHandle handle, CompilationModule compilation)

@@ -16,27 +16,30 @@ using Microsoft.CodeAnalysis;
 
 namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 {
-    internal sealed class MethodWrapper : ITypeNamedWrapper
+    internal sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
         private static readonly Dictionary<MethodDefinitionHandle, MethodWrapper> _registerTypes = new Dictionary<MethodDefinitionHandle, MethodWrapper>();
 
         private readonly Lazy<string> _name;
-        private readonly Lazy<MethodSignature<ITypeNamedWrapper>> _signature;
-        private readonly Lazy<ITypeWrapper> _declaringType;
+        private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
+        private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>> _constraints;
         private readonly Lazy<IReadOnlyList<ParameterWrapper>> _parameters;
+        private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
+        private readonly Lazy<IReadOnlyList<TypeParameterWrapper>> _genericParameters;
 
         private readonly Lazy<(ITypeNamedWrapper owner, MethodKind symbolKind)> _semanticData;
 
         private MethodWrapper(MethodDefinitionHandle handle, CompilationModule module)
         {
-            Definition = Resolve(handle, module);
             MethodDefinitionHandle = handle;
             Module = module;
+            Handle = handle;
+            Definition = Resolve(handle, module);
 
-            _declaringType = new Lazy<ITypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
 
-            _signature = new Lazy<MethodSignature<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(module, MethodDefinitionHandle)), LazyThreadSafetyMode.PublicationOnly);
+            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(GetName, LazyThreadSafetyMode.PublicationOnly);
             _constraints = new Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>>(GetConstraints, LazyThreadSafetyMode.PublicationOnly);
 
@@ -49,9 +52,13 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             IsOverride = (Definition.Attributes & (MethodAttributes.NewSlot | MethodAttributes.Virtual)) == MethodAttributes.Virtual;
             IsVirtual = (Definition.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual | MethodAttributes.NewSlot | MethodAttributes.Final)) == (MethodAttributes.Virtual | MethodAttributes.NewSlot);
 
+            _genericParameters = new Lazy<IReadOnlyList<TypeParameterWrapper>>(() => TypeParameterWrapper.Create(Module, MethodDefinitionHandle, Definition.GetGenericParameters()), LazyThreadSafetyMode.PublicationOnly);
+
             _semanticData = new Lazy<(ITypeNamedWrapper owner, MethodKind symbolKind)>(GetMethodSymbolKind, LazyThreadSafetyMode.PublicationOnly);
 
-            _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(() => Definition.GetParameters().Select(x => ParameterWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(GetParameters, LazyThreadSafetyMode.PublicationOnly);
+
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
 
             _registerTypes.TryAdd(handle, this);
         }
@@ -72,7 +79,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <summary>
         /// Gets the type that declares this method.
         /// </summary>
-        public ITypeWrapper DeclaringType => _declaringType.Value;
+        public TypeWrapper DeclaringType => _declaringType.Value;
 
         public IReadOnlyDictionary<string, IReadOnlyList<string>> Constraints => _constraints.Value;
 
@@ -84,6 +91,8 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         public MethodKind MethodKind => _semanticData.Value.symbolKind;
 
         public ITypeNamedWrapper Owner => _semanticData.Value.owner;
+
+        public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
 
         /// <inheritdoc />
         public string FullName => DeclaringType.FullName + "." + Name;
@@ -122,10 +131,15 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// </summary>
         public int RequiredParameterCount => _signature.Value.RequiredParameterCount;
 
+        public IReadOnlyList<TypeParameterWrapper> GenericParameters => _genericParameters.Value;
+
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
         public CompilationModule Module { get; }
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -135,6 +149,11 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
         /// <returns>The wrapper.</returns>
         public static MethodWrapper Create(MethodDefinitionHandle handle, CompilationModule module)
         {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
             return _registerTypes.GetOrAdd(handle, handleCreate => new MethodWrapper(handleCreate, module));
         }
 
@@ -154,10 +173,10 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
 
             foreach (var typeParameterHandle in Definition.GetGenericParameters())
             {
-                var typeParameter = typeParameterHandle.Resolve(Module);
-                foreach (var constraint in typeParameter.GetConstraints().Select(x => x.Resolve(Module)))
+                var typeParameter = Module.MetadataReader.GetGenericParameter(typeParameterHandle);
+                foreach (var constraint in typeParameter.GetConstraints().Select(x => Module.MetadataReader.GetGenericParameterConstraint(x)))
                 {
-                    var parameter = constraint.Parameter.Resolve(Module);
+                    var parameter = Module.MetadataReader.GetGenericParameter(constraint.Parameter);
                     var parameterName = parameter.Name.GetName(Module);
 
                     if (constraint.Type.IsNil)
@@ -182,7 +201,7 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             return constraintDictionary.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.ToList());
         }
 
-        public (ITypeNamedWrapper owner, MethodKind symbolKind) GetMethodSymbolKind()
+        private (ITypeNamedWrapper owner, MethodKind symbolKind) GetMethodSymbolKind()
         {
             var (accessorOwnerHandle, semanticsAttribute) = Module.MethodSemanticsLookup.GetSemantics(MethodDefinitionHandle);
 
@@ -241,6 +260,30 @@ namespace MetadataPublicApiGenerator.Compilation.TypeWrappers
             }
 
             return (default, MethodKind.Ordinary);
+        }
+
+        private IReadOnlyList<ParameterWrapper> GetParameters()
+        {
+            var parameterList = new List<ParameterWrapper>();
+            var parameterHandles = Definition.GetParameters().ToList();
+            int i = 0;
+            foreach (var parameterHandle in parameterHandles)
+            {
+                var parameterInstance = Module.MetadataReader.GetParameter(parameterHandle);
+
+                if (parameterInstance.SequenceNumber > 0 && i < _signature.Value.RequiredParameterCount)
+                {
+                    var parameterType = _signature.Value.ParameterTypes[parameterInstance.SequenceNumber - 1];
+
+                    var parameter = ParameterWrapper.Create(parameterHandle, parameterType, Module);
+
+                    parameterList.Add(parameter);
+                }
+
+                i++;
+            }
+
+            return parameterList;
         }
     }
 }

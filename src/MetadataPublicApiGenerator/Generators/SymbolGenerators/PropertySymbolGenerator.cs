@@ -21,41 +21,37 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override PropertyDeclarationSyntax Generate(CompilationModule compilation, Handle handle)
+        public override PropertyDeclarationSyntax Generate(IHandleNameWrapper handle)
         {
-            var propertyHandle = (PropertyDefinitionHandle)handle;
-            var property = propertyHandle.Resolve(compilation);
-            var signature = propertyHandle.DecodeSignature(compilation);
+            if (!(handle is PropertyWrapper property))
+            {
+                return null;
+            }
+
             var accessorList = new List<AccessorDeclarationSyntax>();
 
-            if (signature == null)
+            var accessors = property.AnyAccessor;
+
+            if (property.Getter != null)
             {
-                throw new Exception("Unable to find a proper signature for the property");
+                accessorList.Add(Generate(property.Getter, SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)));
             }
 
-            var accessors = property.GetAccessors();
-
-            if (!accessors.Getter.IsNil)
+            if (property.Setter != null)
             {
-                accessorList.Add(Generate(accessors.Getter, SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration), compilation));
+                accessorList.Add(Generate(property.Setter, SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)));
             }
 
-            if (!accessors.Setter.IsNil)
-            {
-                accessorList.Add(Generate(accessors.Setter, SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration), compilation));
-            }
-
-            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(((ITypeNamedWrapper)signature.Value.ReturnType).FullName), property.GetName(compilation))
+            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(property.ReturnType.FullName), property.Name)
                 .WithAccessorList(SyntaxFactory.AccessorList(SyntaxFactory.List(accessorList)))
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, property.GetCustomAttributes(), ExcludeAttributes))
-                .WithModifiers(property.GetModifiers(compilation));
+                .WithAttributeLists(AttributeGenerator.GenerateAttributes(property.Attributes, ExcludeAttributes))
+                .WithModifiers(property.GetModifiers());
         }
 
-        private AccessorDeclarationSyntax Generate(MethodDefinitionHandle methodHandle, AccessorDeclarationSyntax syntax, CompilationModule compilation)
+        private AccessorDeclarationSyntax Generate(MethodWrapper method, AccessorDeclarationSyntax syntax)
         {
-                var method = methodHandle.Resolve(compilation);
                 return syntax
-                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(compilation, method.GetCustomAttributes(), ExcludeAttributes))
+                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(method.Attributes, ExcludeAttributes))
                     .WithModifiers(method.GetModifiers())
                     .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }

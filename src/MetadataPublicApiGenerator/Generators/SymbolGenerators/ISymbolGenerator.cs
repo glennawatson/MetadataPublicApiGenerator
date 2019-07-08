@@ -4,7 +4,7 @@
 
 using System.Reflection.Metadata;
 using MetadataPublicApiGenerator.Compilation;
-
+using MetadataPublicApiGenerator.Compilation.TypeWrappers;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
@@ -17,9 +17,8 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         /// <summary>
         /// Generates a member syntax from the specified member.
         /// </summary>
-        /// <param name="compilation">The compilation that contains the information for the assembly we are generating for.</param>
         /// <param name="member">The member we are generating for.</param>
         /// <returns>a member declaration syntax.</returns>
-        CSharpSyntaxNode Generate(CompilationModule compilation, Handle member);
+        CSharpSyntaxNode Generate(IHandleNameWrapper member);
     }
 }
