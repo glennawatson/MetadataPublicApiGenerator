@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators

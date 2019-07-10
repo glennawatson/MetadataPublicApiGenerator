@@ -4,11 +4,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -44,14 +41,14 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(property.ReturnType.FullName), property.Name)
                 .WithAccessorList(SyntaxFactory.AccessorList(SyntaxFactory.List(accessorList)))
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(property.Attributes, ExcludeAttributes))
+                .WithAttributeLists(Factory.Generate(property.Attributes))
                 .WithModifiers(property.GetModifiers());
         }
 
         private AccessorDeclarationSyntax Generate(MethodWrapper method, AccessorDeclarationSyntax syntax)
         {
                 return syntax
-                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(method.Attributes, ExcludeAttributes))
+                    .WithAttributeLists(Factory.Generate(method.Attributes))
                     .WithModifiers(method.GetModifiers())
                     .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }

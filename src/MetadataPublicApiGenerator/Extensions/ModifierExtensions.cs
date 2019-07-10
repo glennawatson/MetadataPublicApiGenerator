@@ -4,7 +4,9 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata;
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -25,17 +27,17 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.PublicKeyword);
             }
 
-            if (typeDefinition.IsAbstract)
+            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsAbstract && !typeDefinition.IsStatic)
             {
                 modifierList.Add(SyntaxKind.AbstractKeyword);
             }
 
-            if (typeDefinition.IsStatic)
+            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsStatic)
             {
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (typeDefinition.IsSealed)
+            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }
@@ -50,7 +52,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static SyntaxTokenList GetModifiers(this PropertyWrapper property)
         {
-            var modifierList = new HashSet<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>();
 
             bool isPublicSet = false;
 
@@ -78,9 +80,13 @@ namespace MetadataPublicApiGenerator.Extensions
                 return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
             }
 
-            var methodAttributes = GetModifiersList(anyGetter);
-
-            modifierList.UnionWith(methodAttributes);
+            foreach (var value in GetModifiersList(anyGetter))
+            {
+                if (!modifierList.Contains(value))
+                {
+                    modifierList.Add(value);
+                }
+            }
 
             return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
         }
@@ -122,7 +128,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.OutKeyword);
             }
 
-            if (parameter.Attributes.HasKnownAttribute(Compilation.KnownAttribute.ParamArray))
+            if (parameter.Attributes.HasKnownAttribute(KnownAttribute.ParamArray))
             {
                 modifierList.Add(SyntaxKind.ParamsKeyword);
             }
@@ -139,7 +145,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.PublicKeyword);
             }
 
-            if (method.IsAbstract)
+            if (method.IsAbstract && !method.IsStatic)
             {
                 modifierList.Add(SyntaxKind.AbstractKeyword);
             }
@@ -149,7 +155,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (method.IsSealed)
+            if (method.IsSealed && !method.IsStatic)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }

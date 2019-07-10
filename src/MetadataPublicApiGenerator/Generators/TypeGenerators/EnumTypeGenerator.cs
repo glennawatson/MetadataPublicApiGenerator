@@ -6,8 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata;
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis;
@@ -55,9 +56,9 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var enumDeclaration = SyntaxFactory.EnumDeclaration(type.Name)
                 .WithModifiers(type.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(type.Attributes, ExcludeAttributes));
+                .WithAttributeLists(Factory.Generate(type.Attributes));
 
-            var enumKnownType = enumType.IsKnownType();
+            var enumKnownType = enumType.ToKnownTypeCode();
 
             if (enumKnownType != KnownTypeCode.Int32)
             {
@@ -68,15 +69,15 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                                 SyntaxFactory.IdentifierName(enumType.FullName)))));
             }
 
-            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes)).Select(field =>
+            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.IsPublic).Select(field =>
             {
                 var memberName = field.Name;
-                var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(AttributeGenerator.GenerateAttributes(field.Attributes, ExcludeAttributes));
+                var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(Factory.Generate(field.Attributes));
 
                 if (field.DefaultValue != null)
                 {
                     var constant = field.DefaultValue;
-                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.LiteralParameterFromType(enumKnownType, constant)));
+                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
                 }
 
                 return enumMember;

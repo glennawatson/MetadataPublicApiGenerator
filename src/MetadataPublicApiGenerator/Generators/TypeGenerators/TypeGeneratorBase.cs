@@ -5,10 +5,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
+using MetadataPublicApiGenerator.Extensions.HandleNameWrapper;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -58,27 +57,28 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             item = item.WithGenericParameterList(type);
             return item.WithModifiers(type.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(type.Attributes, ExcludeAttributes))
+                .WithAttributeLists(Factory.Generate(type.Attributes))
                 .WithMembers(GenerateMemberDeclaration(type));
         }
 
         internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper)
         {
-            var validHandles = typeWrapper.Fields.Cast<IHasAttributes>()
+            return GenerateTypeList<MemberDeclarationSyntax>(typeWrapper.Fields.Cast<IHandleNameWrapper>()
                 .Concat(typeWrapper.Events)
                 .Concat(typeWrapper.Properties)
-                .Concat(typeWrapper.Methods)
-                .OrderByAndExclude(ExcludeMembersAttributes)
+                .Concat(typeWrapper.Methods));
+        }
+
+        private SyntaxList<T> GenerateTypeList<T>(IEnumerable<IHandleNameWrapper> items)
+            where T : CSharpSyntaxNode
+        {
+            var validHandles = items
+                .OrderByAndExclude(ExcludeMembersAttributes, ExcludeAttributes)
+                .Select(x => Factory.Generate<T>(x))
+                .Where(x => x != null)
                 .ToList();
 
-            if (validHandles.Count == 0)
-            {
-                return SyntaxFactory.List<MemberDeclarationSyntax>();
-            }
-
-            var members = validHandles.Select(x => Factory.Generate<MemberDeclarationSyntax>(x)).Where(x => x != null);
-
-            return SyntaxFactory.List(members);
+            return validHandles.Count == 0 ? SyntaxFactory.List<T>() : SyntaxFactory.List(validHandles);
         }
     }
 }

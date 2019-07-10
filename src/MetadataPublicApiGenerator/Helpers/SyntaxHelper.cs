@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-using MetadataPublicApiGenerator.Extensions;
+using System.Linq;
+using LightweightMetadata;
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -24,33 +24,27 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <param name="wrapper">The type to convert from.</param>
         /// <param name="value">The value to set.</param>
         /// <returns>The expression syntax.</returns>
-        public static ExpressionSyntax LiteralParameterFromType(ITypeNamedWrapper wrapper, object value)
+        public static ExpressionSyntax GetValueExpression(ITypeNamedWrapper wrapper, object value)
         {
             if (wrapper is ArrayTypeWrapper arrayTypeWrapper)
             {
-                return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))));
+                return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.ArrayType(SyntaxFactory.IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName))));
             }
 
             if (wrapper is TypeWrapper typeWrapper)
             {
-                KnownTypeCode knownType;
                 if (typeWrapper.IsEnumType)
                 {
-                    typeWrapper.TryGetEnumType(out var primitiveType);
-                    knownType = primitiveType.IsKnownType();
-                }
-                else
-                {
-                    knownType = typeWrapper.IsKnownType();
+                    return GetEnumNames(typeWrapper, value);
                 }
 
-                return LiteralParameterFromType(knownType, value);
+                return GetValueExpressionForKnownType(typeWrapper.ToKnownTypeCode(), value);
             }
 
             return null;
         }
 
-        public static ExpressionSyntax LiteralParameterFromType(KnownTypeCode underlyingType, object value)
+        public static ExpressionSyntax GetValueExpressionForKnownType(KnownTypeCode underlyingType, object value)
         {
             if (value == null)
             {
@@ -154,6 +148,38 @@ namespace MetadataPublicApiGenerator.Helpers
             }
 
             throw new Exception($"Unknown name for a operator: {operatorName}");
+        }
+
+        private static ExpressionSyntax GetEnumNames(TypeWrapper enumType, object enumValue)
+        {
+            if (enumType.TryGetEnumName(enumValue, out var enumNames))
+            {
+                var memberAccesses = enumNames.Select(x => SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(enumType.FullName), SyntaxFactory.IdentifierName(x))).ToList();
+                if (enumNames.Count == 1)
+                {
+                    return memberAccesses[0];
+                }
+
+                if (enumNames.Count > 1)
+                {
+                    var first = SyntaxFactory.BinaryExpression(SyntaxKind.BitwiseOrExpression, memberAccesses[0], memberAccesses[1]);
+                    for (int i = 2; i < enumNames.Count; ++i)
+                    {
+                        first = SyntaxFactory.BinaryExpression(SyntaxKind.BitwiseOrExpression, first, memberAccesses[i]);
+                    }
+
+                    return first;
+                }
+            }
+
+            if (!enumType.TryGetEnumType(out var underlyingType))
+            {
+                throw new ArgumentException("Invalid enum type.", nameof(enumType));
+            }
+
+            var knownType = underlyingType.ToKnownTypeCode();
+
+            return GetValueExpressionForKnownType(knownType, enumValue);
         }
     }
 }

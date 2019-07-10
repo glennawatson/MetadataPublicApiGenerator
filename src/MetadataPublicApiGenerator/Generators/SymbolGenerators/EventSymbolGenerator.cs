@@ -4,11 +4,8 @@
 
 using System.Collections.Generic;
 using System.Reflection.Metadata;
-
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -39,7 +36,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                     SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(memberName))
                         .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(member.Name)))))
                     .WithModifiers(eventWrapper.GetModifiers())
-                    .WithAttributeLists(AttributeGenerator.GenerateAttributes(eventWrapper.Attributes, ExcludeAttributes));
+                    .WithAttributeLists(Factory.Generate(eventWrapper.Attributes));
         }
     }
 }

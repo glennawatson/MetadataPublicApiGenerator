@@ -4,11 +4,9 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using Microsoft.CodeAnalysis.CSharp;
+using MetadataPublicApiGenerator.Extensions.HandleTypeNamedWrapper;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator.Generators
@@ -38,7 +36,7 @@ namespace MetadataPublicApiGenerator.Generators
         {
             // Get a list of valid types that don't have attributes matching our exclude list.
             return namespaceInfo.Members
-                .OrderByAndExclude(ExcludeMembersAttributes)
+                .OrderByAndExclude(ExcludeMembersAttributes, ExcludeAttributes)
                 .Select(x => Factory.Generate(x))
                 .ToList();
         }

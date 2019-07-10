@@ -1,0 +1,58 @@
+﻿// Copyright (c) 2019 Glenn Watson. All rights reserved.
+// This file is licensed to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Diagnostics;
+using System.Reflection.Metadata;
+
+namespace LightweightMetadata.TypeWrappers
+{
+    /// <summary>
+    /// If there is no type parameter at the index, this is a dummy value for the placement.
+    /// This class exists because sometimes the TypeProvider will ask for a entry beyond the bounds.
+    /// </summary>
+    [DebuggerDisplay("{" + nameof(FullName) + "}")]
+    public class DummyTypeParameterWrapper : IHandleTypeNamedWrapper
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DummyTypeParameterWrapper"/> class.
+        /// </summary>
+        /// <param name="index">The index of the parameter.</param>
+        /// <param name="type">The type name of the parameter.</param>
+        /// <param name="module">The module where the calling was requested through.</param>
+        public DummyTypeParameterWrapper(int index, string type, CompilationModule module)
+        {
+            Name = index + " " + type;
+            FullName = Name;
+            TypeNamespace = string.Empty;
+            IsPublic = false;
+            IsAbstract = false;
+            CompilationModule = module;
+            Handle = default;
+        }
+
+        /// <inheritdoc />
+        public string Name { get; }
+
+        /// <inheritdoc />
+        public string FullName { get; }
+
+        /// <inheritdoc />
+        public string ReflectionFullName => FullName;
+
+        /// <inheritdoc />
+        public string TypeNamespace { get; }
+
+        /// <inheritdoc />
+        public bool IsPublic { get; }
+
+        /// <inheritdoc />
+        public bool IsAbstract { get; }
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
+
+        /// <inheritdoc />
+        public CompilationModule CompilationModule { get; }
+    }
+}

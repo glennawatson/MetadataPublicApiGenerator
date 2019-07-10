@@ -2,11 +2,32 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <DebugType>Full</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ILMerge" Version="3.0.29" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.1.0" />
-    <PackageReference Include="System.Reflection.Metadata" Version="1.7.0-preview6.19303.8" />
+
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Compilation\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\LightweightMetadata\LightweightMetadata.csproj" />
+  </ItemGroup>
+
+  <Target Name="ILRepack" AfterTargets="Build" Condition="$(Configuration) == 'Release'">
+    <PropertyGroup>
+      <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)</WorkingDirectory>
+      <MergedFileName>$(WorkingDirectory)\$(AssemblyName).Merged.dll</MergedFileName>
+    </PropertyGroup>
+
+    <!-- the ILMergePath property points to the location of ILMerge.exe console application -->
+    <Exec Command="$(ILMergeConsolePath) /out:$(MergedFileName) $(WorkingDirectory)\$(AssemblyName).dll $(WorkingDirectory)\LightweightMetadata.dll" />
+    <Move SourceFiles="$(MergedFileName)" DestinationFiles="$(WorkingDirectory)\$(AssemblyName).dll" />
+  </Target>
 </Project>

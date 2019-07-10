@@ -5,9 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-
+using LightweightMetadata.TypeWrappers;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

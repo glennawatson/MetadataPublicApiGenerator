@@ -4,10 +4,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-using MetadataPublicApiGenerator.Extensions;
+using LightweightMetadata;
+using LightweightMetadata.TypeWrappers;
+using MetadataPublicApiGenerator.Extensions.HandleTypeNamedWrapper;
 using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 using MetadataPublicApiGenerator.Generators.TypeGenerators;
 using Microsoft.CodeAnalysis;
@@ -19,9 +20,9 @@ namespace MetadataPublicApiGenerator.Generators
     /// <summary>
     /// A factory which will produce generators that create CSharp syntax for Roslyn.
     /// </summary>
-    internal class GeneratorFactory : IGeneratorFactory
+    internal partial class GeneratorFactory : IGeneratorFactory
     {
-        private readonly Dictionary<TypeKind, ITypeGenerator> _typeKindGenerators;
+        private readonly Dictionary<SymbolTypeKind, ITypeGenerator> _typeKindGenerators;
         private readonly Dictionary<HandleKind, ISymbolGenerator> _symbolKindGenerators;
         private readonly NamespaceMembersGenerator _namespaceGenerator;
 
@@ -38,13 +39,13 @@ namespace MetadataPublicApiGenerator.Generators
             ExcludeFunc = excludeFunc ?? (_ => false);
 
             _namespaceGenerator = new NamespaceMembersGenerator(ExcludeAttributes, ExcludeMembersAttributes, this);
-            _typeKindGenerators = new Dictionary<TypeKind, ITypeGenerator>
+            _typeKindGenerators = new Dictionary<SymbolTypeKind, ITypeGenerator>
             {
-                [TypeKind.Class] = new ClassDefinitionGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
-                [TypeKind.Struct] = new StructTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
-                [TypeKind.Enum] = new EnumTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
-                [TypeKind.Interface] = new InterfaceTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
-                [TypeKind.Delegate] = new DelegateTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
+                [SymbolTypeKind.Class] = new ClassDefinitionGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
+                [SymbolTypeKind.Struct] = new StructTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
+                [SymbolTypeKind.Enum] = new EnumTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
+                [SymbolTypeKind.Interface] = new InterfaceTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
+                [SymbolTypeKind.Delegate] = new DelegateTypeGenerator(ExcludeAttributes, ExcludeMembersAttributes, ExcludeFunc, this),
             };
 
             _symbolKindGenerators = new Dictionary<HandleKind, ISymbolGenerator>
@@ -54,6 +55,7 @@ namespace MetadataPublicApiGenerator.Generators
                 [HandleKind.PropertyDefinition] = new PropertySymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
                 [HandleKind.EventDefinition] = new EventSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
                 [HandleKind.MethodDefinition] = new MethodSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
+                [HandleKind.CustomAttribute] = new AttributeSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
             };
         }
 
@@ -82,6 +84,28 @@ namespace MetadataPublicApiGenerator.Generators
         /// <inheritdoc />
         public TOutput Generate<TOutput>(IHandleNameWrapper wrapper)
             where TOutput : CSharpSyntaxNode => (TOutput)_symbolKindGenerators[wrapper.Handle.Kind].Generate(wrapper);
+
+        public SyntaxList<AttributeListSyntax> Generate(IEnumerable<AttributeWrapper> attributes, SyntaxKind? target = null)
+        {
+            var validHandles = attributes
+                .OrderByAndExclude(ExcludeMembersAttributes, ExcludeAttributes)
+                .Select(Generate<AttributeSyntax>)
+                .Where(x => x != null)
+                .Select(x =>
+                {
+                    var attributeList = SyntaxFactory.AttributeList(SyntaxFactory.SeparatedList(new[] { x }));
+
+                    if (target != null)
+                    {
+                        attributeList = attributeList.WithTarget(SyntaxFactory.AttributeTargetSpecifier(SyntaxFactory.Token(target.Value)));
+                    }
+
+                    return attributeList;
+                })
+                .ToList();
+
+            return validHandles.Count == 0 ? SyntaxFactory.List<AttributeListSyntax>() : SyntaxFactory.List(validHandles);
+        }
 
         /// <inheritdoc />
         public IReadOnlyCollection<MemberDeclarationSyntax> GenerateMembers(NamespaceWrapper namespaceInfo)

@@ -3,12 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -29,9 +25,9 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             }
 
             return SyntaxFactory.FieldDeclaration(SyntaxFactory
-                .VariableDeclaration(SyntaxFactory.IdentifierName(field.DeclaringType.FullGenericName))
+                .VariableDeclaration(SyntaxFactory.IdentifierName(field.FieldType.FullName))
                 .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(field.Name))))
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(field.Attributes, ExcludeAttributes))
+                .WithAttributeLists(Factory.Generate(field.Attributes))
                 .WithModifiers(field.GetModifiers());
         }
     }

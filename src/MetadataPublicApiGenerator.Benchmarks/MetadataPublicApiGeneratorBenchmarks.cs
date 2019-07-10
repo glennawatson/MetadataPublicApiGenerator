@@ -6,6 +6,7 @@ using System.Reflection;
 
 using BenchmarkDotNet.Attributes;
 using Newtonsoft.Json;
+using PublicApiGenerator;
 
 namespace MetadataPublicApiGenerator.Benchmarks
 {
@@ -21,12 +22,12 @@ namespace MetadataPublicApiGenerator.Benchmarks
         /// Benchmark for when adding a item to a ReactiveList.
         /// </summary>
         [Benchmark]
-        public void MetadataApiGenerator() => ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
+        public void MetadataApiGenerator() => MetadataApi.GeneratePublicApi(typeof(string).Assembly);
 
         /// <summary>
         /// Benchmark for when adding a item to a ReactiveList.
         /// </summary>
         [Benchmark]
-        public void PublicApiGenerator() => global::PublicApiGenerator.ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
+        public void PublicApiGenerator() => ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
     }
 }

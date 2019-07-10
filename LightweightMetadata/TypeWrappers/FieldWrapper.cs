@@ -1,0 +1,138 @@
+﻿// Copyright (c) 2019 Glenn Watson. All rights reserved.
+// This file is licensed to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Metadata;
+using System.Threading;
+using LightweightMetadata.Extensions;
+
+namespace LightweightMetadata.TypeWrappers
+{
+    /// <summary>
+    /// Wraps a FieldDefinition.
+    /// </summary>
+    [DebuggerDisplay("{" + nameof(FullName) + "}")]
+    public class FieldWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    {
+        private static readonly Dictionary<FieldDefinitionHandle, FieldWrapper> _registerTypes = new Dictionary<FieldDefinitionHandle, FieldWrapper>();
+
+        private readonly Lazy<string> _name;
+
+        private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
+        private readonly Lazy<TypeWrapper> _declaringType;
+        private readonly Lazy<object> _defaultValue;
+        private readonly Lazy<IHandleTypeNamedWrapper> _fieldType;
+        private readonly Lazy<ulong> _longEnumValue;
+
+        private FieldWrapper(FieldDefinitionHandle handle, CompilationModule module)
+        {
+            FieldDefinitionHandle = handle;
+            CompilationModule = module;
+            Handle = handle;
+            Definition = Resolve();
+
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+
+            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+
+            _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(module));
+            IsPublic = (Definition.Attributes & FieldAttributes.Public) != 0;
+            IsStatic = (Definition.Attributes & FieldAttributes.Static) != 0;
+
+            _longEnumValue = new Lazy<ulong>(() => Convert.ToUInt64(DefaultValue, CultureInfo.InvariantCulture), LazyThreadSafetyMode.PublicationOnly);
+
+            _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+        }
+
+        /// <summary>
+        /// Gets the resolved method definition.
+        /// </summary>
+        public FieldDefinition Definition { get; }
+
+        /// <summary>
+        /// Gets the method definition handle.
+        /// </summary>
+        public FieldDefinitionHandle FieldDefinitionHandle { get; }
+
+        /// <inheritdoc />
+        public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
+
+        /// <inheritdoc />
+        public string Name => _name.Value;
+
+        /// <inheritdoc />
+        public CompilationModule CompilationModule { get; }
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
+
+        /// <inheritdoc />
+        public string FullName => DeclaringType.FullName + "." + Name;
+
+        /// <inheritdoc />
+        public string ReflectionFullName => DeclaringType.ReflectionFullName + "." + Name;
+
+        /// <inheritdoc />
+        public string TypeNamespace => DeclaringType.TypeNamespace;
+
+        /// <inheritdoc />
+        public bool IsPublic { get; }
+
+        /// <inheritdoc />
+        public bool IsAbstract => false;
+
+        /// <summary>
+        /// Gets a value indicating whether the field is static.
+        /// </summary>
+        public bool IsStatic { get; }
+
+        /// <summary>
+        /// Gets the default value of the field.
+        /// </summary>
+        public object DefaultValue => _defaultValue.Value;
+
+        /// <summary>
+        /// Gets the type that is declaring this field.
+        /// </summary>
+        public TypeWrapper DeclaringType => _declaringType.Value;
+
+        /// <summary>
+        /// Gets the type of the field.
+        /// </summary>
+        public IHandleTypeNamedWrapper FieldType => _fieldType.Value;
+
+        /// <summary>
+        /// Gets an internal value for helping with numeric to enum conversion since we compare in uint64.
+        /// Note be careful to only call if a enum type.
+        /// </summary>
+        internal ulong LongDefaultValue => _longEnumValue.Value;
+
+        /// <summary>
+        /// Creates a instance of the method, if there is already not an instance.
+        /// </summary>
+        /// <param name="handle">The handle to the instance.</param>
+        /// <param name="module">The module that contains the instance.</param>
+        /// <returns>The wrapper.</returns>
+        public static FieldWrapper Create(FieldDefinitionHandle handle, CompilationModule module)
+        {
+            if (handle.IsNil)
+            {
+                return null;
+            }
+
+            return _registerTypes.GetOrAdd(handle, handleCreate => new FieldWrapper(handleCreate, module));
+        }
+
+        private FieldDefinition Resolve()
+        {
+            return CompilationModule.MetadataReader.GetFieldDefinition(FieldDefinitionHandle);
+        }
+    }
+}

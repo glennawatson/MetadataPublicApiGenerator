@@ -3,10 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
-
+using LightweightMetadata.TypeWrappers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -39,5 +37,13 @@ namespace MetadataPublicApiGenerator.Generators
         /// <param name="namespaceInfo">The namespace to generate for.</param>
         /// <returns>The generated members.</returns>
         IReadOnlyCollection<MemberDeclarationSyntax> GenerateMembers(NamespaceWrapper namespaceInfo);
+
+        /// <summary>
+        /// Generates for a attribute holder.
+        /// </summary>
+        /// <param name="attributes">A list of attributes.</param>
+        /// <param name="target">Optional target to add to the attribute lists.</param>
+        /// <returns>A list of attribute lists.</returns>
+        SyntaxList<AttributeListSyntax> Generate(IEnumerable<AttributeWrapper> attributes, SyntaxKind? target = null);
     }
 }

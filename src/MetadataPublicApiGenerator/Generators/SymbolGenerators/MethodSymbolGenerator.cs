@@ -6,8 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis;
@@ -36,24 +36,24 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             var methodDeclaringTypeName = method.DeclaringType.Name;
             switch (methodKind)
             {
-                case MethodKind.Constructor:
+                case SymbolMethodKind.Constructor:
                     return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConstructorDeclaration(methodDeclaringTypeName), method);
-                case MethodKind.Destructor:
+                case SymbolMethodKind.Destructor:
                     return GenerateFromMethodSyntax(Factory, SyntaxFactory.DestructorDeclaration(methodDeclaringTypeName), method);
-                case MethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.FullName), methodName)
-                        .WithAttributeLists(AttributeGenerator.GenerateAttributes(method.Attributes, ExcludeAttributes));
+                case SymbolMethodKind.Ordinary:
+                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), methodName)
+                        .WithAttributeLists(Factory.Generate(method.Attributes));
 
                     return GenerateFromMethodSyntax(Factory, methodDeclaration, method);
-                case MethodKind.BuiltinOperator:
-                case MethodKind.UserDefinedOperator:
+                case SymbolMethodKind.BuiltinOperator:
+                case SymbolMethodKind.UserDefinedOperator:
                     switch (methodName)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(method.ReturningType.FullName)), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName)), method);
                         default:
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.FullName), SyntaxHelper.OperatorNameToToken(methodName)), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), SyntaxHelper.OperatorNameToToken(methodName)), method);
                     }
 
                 default:

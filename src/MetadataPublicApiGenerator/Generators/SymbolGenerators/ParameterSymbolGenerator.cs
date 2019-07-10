@@ -3,10 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -32,8 +29,8 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             return SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.Name))
                 .WithModifiers(parameter.GetModifiers())
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(parameter.Attributes, ExcludeAttributes))
-                .WithType(SyntaxFactory.IdentifierName(parameter.ParameterType.FullName));
+                .WithAttributeLists(Factory.Generate(parameter.Attributes))
+                .WithType(SyntaxFactory.IdentifierName(parameter.ParameterType.ReflectionFullName));
         }
     }
 }

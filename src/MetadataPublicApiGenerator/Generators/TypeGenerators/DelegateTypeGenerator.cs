@@ -5,12 +5,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
-
-using MetadataPublicApiGenerator.Compilation;
-using MetadataPublicApiGenerator.Compilation.TypeWrappers;
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -47,7 +44,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var returnValue = SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), type.Name)
                 .WithGenericParameterList(invokeMember)
-                .WithAttributeLists(AttributeGenerator.GenerateAttributes(type.Attributes, ExcludeAttributes))
+                .WithAttributeLists(Factory.Generate(type.Attributes))
                 .WithModifiers(type.GetModifiers());
 
             if (parameters.Count > 0)
