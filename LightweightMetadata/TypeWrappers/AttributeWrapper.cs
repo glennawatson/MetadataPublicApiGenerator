@@ -22,7 +22,8 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _methodSignature;
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
 
-        private readonly Lazy<KnownAttribute> _knownType;
+        private readonly Lazy<KnownAttribute> _knownAttribute;
+        private readonly Lazy<KnownTypeCode> _knownTypeCode;
 
         private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
 
@@ -37,8 +38,8 @@ namespace LightweightMetadata.TypeWrappers
 
             _attributeType = new Lazy<ITypeNamedWrapper>(GetAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
-            _knownType = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
-
+            _knownAttribute = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
+            _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
             _registeredTypes.TryAdd(handle, this);
         }
 
@@ -74,7 +75,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the known attribute type for this attribute.
         /// </summary>
-        public KnownAttribute KnownAttribute => _knownType.Value;
+        public KnownAttribute KnownAttribute => _knownAttribute.Value;
 
         /// <inheritdoc />
         public string Name => _attributeType.Value.Name;
@@ -89,7 +90,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => _attributeType.Value.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => _attributeType.Value.IsPublic;
+        public EntityAccessibility Accessibility => _attributeType.Value.Accessibility;
 
         /// <inheritdoc />
         public bool IsAbstract => _attributeType.Value.IsAbstract;
@@ -97,12 +98,12 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the known type. This indicates if the attribute is a known type.
         /// </summary>
-        public KnownAttribute KnownType => _knownType.Value;
+        public KnownTypeCode KnownType => _knownTypeCode.Value;
 
         /// <summary>
         /// Gets a value indicating whether the attribute is a known type.
         /// </summary>
-        public bool IsKnownType => KnownType != KnownAttribute.None;
+        public bool IsKnownAttribute => KnownAttribute != KnownAttribute.None;
 
         /// <summary>
         /// Gets a list of the fixed arguments.

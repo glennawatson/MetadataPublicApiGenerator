@@ -58,7 +58,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 .WithModifiers(type.GetModifiers())
                 .WithAttributeLists(Factory.Generate(type.Attributes));
 
-            var enumKnownType = enumType.ToKnownTypeCode();
+            var enumKnownType = enumType.KnownType;
 
             if (enumKnownType != KnownTypeCode.Int32)
             {
@@ -69,7 +69,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                                 SyntaxFactory.IdentifierName(enumType.FullName)))));
             }
 
-            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.IsPublic).Select(field =>
+            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.Accessibility == EntityAccessibility.Public).Select(field =>
             {
                 var memberName = field.Name;
                 var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(Factory.Generate(field.Attributes));

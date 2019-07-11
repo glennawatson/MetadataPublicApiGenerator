@@ -31,6 +31,8 @@ namespace LightweightMetadata.TypeWrappers
 
         private readonly Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)> _semanticData;
 
+        private readonly Lazy<bool> _isDelegate;
+
         private MethodWrapper(MethodDefinitionHandle handle, CompilationModule module)
         {
             MethodDefinitionHandle = handle;
@@ -44,7 +46,6 @@ namespace LightweightMetadata.TypeWrappers
             _name = new Lazy<string>(GetName, LazyThreadSafetyMode.PublicationOnly);
             _constraints = new Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>>(GetConstraints, LazyThreadSafetyMode.PublicationOnly);
 
-            IsPublic = (Definition.Attributes & MethodAttributes.Public) != 0;
             IsAbstract = (Definition.Attributes & MethodAttributes.Abstract) != 0;
             IsStatic = (Definition.Attributes & MethodAttributes.Static) != 0;
 
@@ -62,6 +63,33 @@ namespace LightweightMetadata.TypeWrappers
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
 
             _registerTypes.TryAdd(handle, this);
+
+            _isDelegate = new Lazy<bool>(() => MethodKind == SymbolMethodKind.DelegateInvoke, LazyThreadSafetyMode.PublicationOnly);
+
+            switch (Definition.Attributes & MethodAttributes.MemberAccessMask)
+            {
+                case MethodAttributes.Public:
+                    Accessibility = EntityAccessibility.Public;
+                    break;
+                case MethodAttributes.Assembly:
+                    Accessibility = EntityAccessibility.Internal;
+                    break;
+                case MethodAttributes.Private:
+                    Accessibility = EntityAccessibility.Private;
+                    break;
+                case MethodAttributes.Family:
+                    Accessibility = EntityAccessibility.Protected;
+                    break;
+                case MethodAttributes.FamANDAssem:
+                    Accessibility = EntityAccessibility.PrivateProtected;
+                    break;
+                case MethodAttributes.FamORAssem:
+                    Accessibility = EntityAccessibility.ProtectedInternal;
+                    break;
+                default:
+                    Accessibility = EntityAccessibility.None;
+                    break;
+            }
         }
 
         /// <summary>
@@ -115,10 +143,15 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => DeclaringType.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic { get; }
+        public EntityAccessibility Accessibility { get; }
 
         /// <inheritdoc />
         public bool IsAbstract { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the method is a delegate type.
+        /// </summary>
+        public bool IsDelegate => _isDelegate.Value;
 
         /// <summary>
         /// Gets a value indicating whether the method is static.
@@ -164,6 +197,9 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets a list of the generic type parameters.
         /// </summary>
         public IReadOnlyList<TypeParameterWrapper> GenericParameters => _genericParameters.Value;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <summary>
         /// Gets the module that this method belongs to.

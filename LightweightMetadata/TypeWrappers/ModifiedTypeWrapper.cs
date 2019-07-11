@@ -57,10 +57,13 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => Unmodified.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => Unmodified.IsPublic;
+        public EntityAccessibility Accessibility => Unmodified.Accessibility;
 
         /// <inheritdoc />
         public bool IsAbstract => Unmodified.IsAbstract;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => Unmodified.KnownType;
 
         /// <inheritdoc />
         public Handle Handle => Unmodified.Handle;

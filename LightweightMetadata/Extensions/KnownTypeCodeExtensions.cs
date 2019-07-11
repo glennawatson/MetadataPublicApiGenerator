@@ -96,7 +96,7 @@ namespace LightweightMetadata.Extensions
         /// <param name="knownTypeCode">The known type code to convert.</param>
         /// <param name="compilation">The compilation of all known modules.</param>
         /// <returns>The type wrapper if its available, null otherwise.</returns>
-        public static TypeWrapper ToTypeDefinitionHandle(this KnownTypeCode knownTypeCode, ICompilation compilation)
+        public static TypeWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, ICompilation compilation)
         {
             if (compilation == null)
             {
@@ -122,7 +122,7 @@ namespace LightweightMetadata.Extensions
         /// </summary>
         /// <param name="typeDefinition">The type to check.</param>
         /// <returns>The known type code, None if it's not a known type code.</returns>
-        public static KnownTypeCode ToKnownTypeCode(this ITypeNamedWrapper typeDefinition)
+        internal static KnownTypeCode ToKnownTypeCode(this ITypeNamedWrapper typeDefinition)
         {
             if (typeDefinition == null)
             {
@@ -144,7 +144,7 @@ namespace LightweightMetadata.Extensions
         /// </summary>
         /// <param name="typeDefinitionName">The type to check.</param>
         /// <returns>The known type code, None if it's not a known type code.</returns>
-        public static KnownTypeCode ToKnownTypeCode(this string typeDefinitionName)
+        internal static KnownTypeCode ToKnownTypeCode(this string typeDefinitionName)
         {
             if (string.IsNullOrWhiteSpace(typeDefinitionName))
             {
@@ -164,7 +164,7 @@ namespace LightweightMetadata.Extensions
         /// </summary>
         /// <param name="typeCode">The primitive type code to convert.</param>
         /// <returns>The known type code.</returns>
-        public static KnownTypeCode ToKnownTypeCode(this PrimitiveTypeCode typeCode)
+        internal static KnownTypeCode ToKnownTypeCode(this PrimitiveTypeCode typeCode)
         {
             switch (typeCode)
             {

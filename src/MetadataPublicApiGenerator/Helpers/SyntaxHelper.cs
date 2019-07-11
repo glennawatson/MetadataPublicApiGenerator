@@ -38,7 +38,7 @@ namespace MetadataPublicApiGenerator.Helpers
                     return GetEnumNames(typeWrapper, value);
                 }
 
-                return GetValueExpressionForKnownType(typeWrapper.ToKnownTypeCode(), value);
+                return GetValueExpressionForKnownType(typeWrapper.KnownType, value);
             }
 
             return null;
@@ -177,7 +177,7 @@ namespace MetadataPublicApiGenerator.Helpers
                 throw new ArgumentException("Invalid enum type.", nameof(enumType));
             }
 
-            var knownType = underlyingType.ToKnownTypeCode();
+            var knownType = underlyingType.KnownType;
 
             return GetValueExpressionForKnownType(knownType, enumValue);
         }

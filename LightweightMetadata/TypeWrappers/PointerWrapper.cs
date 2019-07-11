@@ -31,6 +31,9 @@ namespace LightweightMetadata.TypeWrappers
         public bool IsAbstract => TypeDefinition.IsAbstract;
 
         /// <inheritdoc />
+        public KnownTypeCode KnownType => TypeDefinition.KnownType;
+
+        /// <inheritdoc />
         public virtual string Name => TypeDefinition.Name + "*";
 
         /// <inheritdoc />
@@ -40,7 +43,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => TypeDefinition.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => TypeDefinition.IsPublic;
+        public EntityAccessibility Accessibility => TypeDefinition.Accessibility;
 
         /// <inheritdoc />
         public string FullName => TypeDefinition.FullName + "*";

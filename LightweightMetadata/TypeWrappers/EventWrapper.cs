@@ -76,7 +76,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => AnyAccessor.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => AnyAccessor.DeclaringType?.IsPublic ?? false;
+        public EntityAccessibility Accessibility => AnyAccessor.DeclaringType?.Accessibility ?? EntityAccessibility.None;
 
         /// <inheritdoc />
         public bool IsAbstract => AnyAccessor.IsAbstract;
@@ -100,6 +100,9 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets any available accessor method.
         /// </summary>
         public MethodWrapper AnyAccessor => _anyAccessor.Value;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => AnyAccessor.DeclaringType?.KnownType ?? KnownTypeCode.None;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.

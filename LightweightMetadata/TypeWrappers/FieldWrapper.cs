@@ -43,12 +43,33 @@ namespace LightweightMetadata.TypeWrappers
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
 
             _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(module));
-            IsPublic = (Definition.Attributes & FieldAttributes.Public) != 0;
             IsStatic = (Definition.Attributes & FieldAttributes.Static) != 0;
 
             _longEnumValue = new Lazy<ulong>(() => Convert.ToUInt64(DefaultValue, CultureInfo.InvariantCulture), LazyThreadSafetyMode.PublicationOnly);
 
             _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+
+            switch (Definition.Attributes & FieldAttributes.FieldAccessMask)
+            {
+                case FieldAttributes.Public:
+                    Accessibility = EntityAccessibility.Public;
+                    break;
+                case FieldAttributes.FamANDAssem:
+                    Accessibility = EntityAccessibility.PrivateProtected;
+                    break;
+                case FieldAttributes.Assembly:
+                    Accessibility = EntityAccessibility.Internal;
+                    break;
+                case FieldAttributes.Family:
+                    Accessibility = EntityAccessibility.Protected;
+                    break;
+                case FieldAttributes.FamORAssem:
+                    Accessibility = EntityAccessibility.ProtectedInternal;
+                    break;
+                default:
+                    Accessibility = EntityAccessibility.Private;
+                    break;
+            }
         }
 
         /// <summary>
@@ -83,7 +104,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => DeclaringType.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic { get; }
+        public EntityAccessibility Accessibility { get; }
 
         /// <inheritdoc />
         public bool IsAbstract => false;
@@ -107,6 +128,9 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets the type of the field.
         /// </summary>
         public IHandleTypeNamedWrapper FieldType => _fieldType.Value;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <summary>
         /// Gets an internal value for helping with numeric to enum conversion since we compare in uint64.

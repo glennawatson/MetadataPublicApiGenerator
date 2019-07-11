@@ -78,10 +78,13 @@ namespace LightweightMetadata.TypeWrappers
         public string FullName => _fullName.Value;
 
         /// <inheritdoc />
-        public bool IsPublic => Parent?.IsPublic ?? false;
+        public EntityAccessibility Accessibility => Parent?.Accessibility ?? EntityAccessibility.None;
 
         /// <inheritdoc />
         public bool IsAbstract => Parent?.IsAbstract ?? false;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => Parent?.KnownType ?? KnownTypeCode.None;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.

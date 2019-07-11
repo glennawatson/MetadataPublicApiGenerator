@@ -25,7 +25,7 @@ namespace LightweightMetadata.TypeWrappers
             Name = index + " " + type;
             FullName = Name;
             TypeNamespace = string.Empty;
-            IsPublic = false;
+            Accessibility = EntityAccessibility.None;
             IsAbstract = false;
             CompilationModule = module;
             Handle = default;
@@ -44,7 +44,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace { get; }
 
         /// <inheritdoc />
-        public bool IsPublic { get; }
+        public EntityAccessibility Accessibility { get; }
 
         /// <inheritdoc />
         public bool IsAbstract { get; }
@@ -54,5 +54,8 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc />
         public CompilationModule CompilationModule { get; }
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
     }
 }

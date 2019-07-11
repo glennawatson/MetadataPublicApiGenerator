@@ -28,6 +28,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<MethodWrapper> _anyAccessor;
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
+        private readonly Lazy<EntityAccessibility> _accessibility;
 
         private PropertyWrapper(PropertyDefinitionHandle handle, CompilationModule module)
         {
@@ -45,6 +46,8 @@ namespace LightweightMetadata.TypeWrappers
             _anyAccessor = new Lazy<MethodWrapper>(GetAnyAccessor, LazyThreadSafetyMode.PublicationOnly);
 
             _declaringType = new Lazy<TypeWrapper>(() => _anyAccessor.Value.DeclaringType, LazyThreadSafetyMode.PublicationOnly);
+
+            _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
 
             _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
         }
@@ -81,10 +84,13 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => DeclaringType.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => AnyAccessor.IsPublic;
+        public EntityAccessibility Accessibility => _accessibility.Value;
 
         /// <inheritdoc />
         public bool IsAbstract => Getter.IsAbstract || Setter.IsAbstract;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <summary>
         /// Gets the getter method for the property.
@@ -140,6 +146,54 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return Setter;
+        }
+
+        private EntityAccessibility GetAccessibility()
+        {
+            EntityAccessibility MergePropertyAccessibility(EntityAccessibility left, EntityAccessibility right)
+            {
+                if (left == EntityAccessibility.Public || right == EntityAccessibility.Public)
+                {
+                    return EntityAccessibility.Public;
+                }
+
+                if (left == EntityAccessibility.ProtectedInternal || right == EntityAccessibility.ProtectedInternal)
+                {
+                    return EntityAccessibility.ProtectedInternal;
+                }
+
+                if ((left == EntityAccessibility.Protected && right == EntityAccessibility.Internal) ||
+                    (left == EntityAccessibility.Internal && right == EntityAccessibility.Protected))
+                {
+                    return EntityAccessibility.ProtectedInternal;
+                }
+
+                if (left == EntityAccessibility.Protected || right == EntityAccessibility.Protected)
+                {
+                    return EntityAccessibility.Protected;
+                }
+
+                if (left == EntityAccessibility.Internal || right == EntityAccessibility.Internal)
+                {
+                    return EntityAccessibility.Internal;
+                }
+
+                if (left == EntityAccessibility.PrivateProtected || right == EntityAccessibility.PrivateProtected)
+                {
+                    return EntityAccessibility.PrivateProtected;
+                }
+
+                if (left == EntityAccessibility.Private || right == EntityAccessibility.Private)
+                {
+                    return EntityAccessibility.Private;
+                }
+
+                return left;
+            }
+
+            return MergePropertyAccessibility(
+                Getter?.Accessibility ?? EntityAccessibility.None,
+                Setter?.Accessibility ?? EntityAccessibility.None);
         }
     }
 }

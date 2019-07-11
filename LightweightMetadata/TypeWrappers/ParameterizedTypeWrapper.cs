@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
+using LightweightMetadata.Extensions;
 
 namespace LightweightMetadata.TypeWrappers
 {
@@ -26,8 +27,8 @@ namespace LightweightMetadata.TypeWrappers
     public class ParameterizedTypeWrapper : IHandleTypeNamedWrapper
     {
         private readonly Lazy<string> _name;
-        private readonly Lazy<string> _reflectionFullName;
         private readonly Lazy<string> _fullName;
+        private readonly Lazy<string> _reflectionName;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ParameterizedTypeWrapper"/> class.
@@ -50,11 +51,11 @@ namespace LightweightMetadata.TypeWrappers
             TypeArguments = typeArguments.ToImmutableArray();
             CompilationModule = genericType.CompilationModule;
 
-            _name = new Lazy<string>(() => GetName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
-            _reflectionFullName = new Lazy<string>(() => TypeNamespace + "." + GetName(x => x.ReflectionFullName), LazyThreadSafetyMode.PublicationOnly);
-            _fullName = new Lazy<string>(() => TypeNamespace + "." + GetName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => GenericType.Name, LazyThreadSafetyMode.PublicationOnly);
+            _fullName = new Lazy<string>(() => GetFullName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
+            _reflectionName = new Lazy<string>(() => GetFullName(x => x.ReflectionFullName), LazyThreadSafetyMode.PublicationOnly);
 
-            IsPublic = genericType.IsPublic;
+            Accessibility = genericType.Accessibility;
             IsAbstract = genericType.IsAbstract;
         }
 
@@ -72,16 +73,19 @@ namespace LightweightMetadata.TypeWrappers
         public string FullName => _fullName.Value;
 
         /// <inheritdoc />
-        public string ReflectionFullName => _reflectionFullName.Value;
+        public string ReflectionFullName => _reflectionName.Value;
 
         /// <inheritdoc />
         public string TypeNamespace => GenericType.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic { get; }
+        public EntityAccessibility Accessibility { get; }
 
         /// <inheritdoc />
         public bool IsAbstract { get; }
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <inheritdoc />
         public CompilationModule CompilationModule { get; }
@@ -92,9 +96,11 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public Handle Handle => GenericType.Handle;
 
-        private string GetName(Func<IHandleTypeNamedWrapper, string> nameGetter)
+        private string GetFullName(Func<IHandleTypeNamedWrapper, string> nameGetter)
         {
-            var sb = new StringBuilder(GenericType.Name);
+            string strippedName = nameGetter(GenericType);
+
+            var sb = new StringBuilder(strippedName);
 
             if (TypeArguments.Count > 0)
             {

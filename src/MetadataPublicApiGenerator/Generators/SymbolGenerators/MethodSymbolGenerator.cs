@@ -5,12 +5,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -59,11 +57,6 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 default:
                     return null;
             }
-        }
-
-        private static string GetReturnTypeName(in MethodSignature<ITypeNamedWrapper> signature)
-        {
-            return signature.ReturnType?.FullName ?? "System.Void";
         }
 
         private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, BaseMethodDeclarationSyntax item, in MethodWrapper member)

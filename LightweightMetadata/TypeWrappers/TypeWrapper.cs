@@ -38,7 +38,9 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<IReadOnlyList<FieldWrapper>> _fields;
         private readonly Lazy<IReadOnlyList<EventWrapper>> _events;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _nestedTypes;
+        private readonly Lazy<IReadOnlyList<InterfaceImplementationWrapper>> _interfaceImplementations;
         private readonly Lazy<TypeWrapper> _declaringType;
+        private readonly Lazy<KnownTypeCode> _knownTypeCode;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeWrapper"/> class.
@@ -67,6 +69,8 @@ namespace LightweightMetadata.TypeWrappers
             _fields = new Lazy<IReadOnlyList<FieldWrapper>>(() => TypeDefinition.GetFields().Select(x => FieldWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _events = new Lazy<IReadOnlyList<EventWrapper>>(() => TypeDefinition.GetEvents().Select(x => EventWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeDefinition.GetNestedTypes().Select(x => TypeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => TypeDefinition.GetInterfaceImplementations().Select(x => InterfaceImplementationWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
 
             _base = new Lazy<IHandleTypeNamedWrapper>(
                 () =>
@@ -81,7 +85,33 @@ namespace LightweightMetadata.TypeWrappers
                         return WrapperFactory.Create(baseType, CompilationModule);
                     }, LazyThreadSafetyMode.PublicationOnly);
 
-            IsPublic = (TypeDefinition.Attributes & TypeAttributes.Public) != 0;
+            switch (TypeDefinition.Attributes & TypeAttributes.VisibilityMask)
+            {
+                case TypeAttributes.NotPublic:
+                case TypeAttributes.NestedAssembly:
+                    Accessibility = EntityAccessibility.Internal;
+                    break;
+                case TypeAttributes.Public:
+                case TypeAttributes.NestedPublic:
+                    Accessibility = EntityAccessibility.Public;
+                    break;
+                case TypeAttributes.NestedPrivate:
+                    Accessibility = EntityAccessibility.Private;
+                    break;
+                case TypeAttributes.NestedFamily:
+                    Accessibility = EntityAccessibility.Protected;
+                    break;
+                case TypeAttributes.NestedFamANDAssem:
+                    Accessibility = EntityAccessibility.PrivateProtected;
+                    break;
+                case TypeAttributes.NestedFamORAssem:
+                    Accessibility = EntityAccessibility.ProtectedInternal;
+                    break;
+                default:
+                    Accessibility = EntityAccessibility.None;
+                    break;
+            }
+
             IsAbstract = (TypeDefinition.Attributes & TypeAttributes.Abstract) != 0;
 
             IsStatic = (TypeDefinition.Attributes & (TypeAttributes.Abstract | TypeAttributes.Sealed)) == (TypeAttributes.Abstract | TypeAttributes.Sealed);
@@ -141,7 +171,10 @@ namespace LightweightMetadata.TypeWrappers
         public bool IsAbstract { get; }
 
         /// <inheritdoc />
-        public bool IsPublic { get; }
+        public KnownTypeCode KnownType => _knownTypeCode.Value;
+
+        /// <inheritdoc />
+        public EntityAccessibility Accessibility { get; }
 
         /// <summary>
         /// Gets a value indicating whether the type is static.
@@ -173,6 +206,11 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc />
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
+
+        /// <summary>
+        /// Gets the interface implementations.
+        /// </summary>
+        public IReadOnlyList<InterfaceImplementationWrapper> InterfaceImplementations => _interfaceImplementations.Value;
 
         /// <summary>
         /// Gets a list of generic parameters.
@@ -406,13 +444,6 @@ namespace LightweightMetadata.TypeWrappers
                     .Append(Name);
             }
 
-            if (GenericParameters.Count > 0)
-            {
-                stringBuilder.Append("<")
-                    .Append(string.Join(", ", GenericParameters.Select(x => x.Name)))
-                    .Append(">");
-            }
-
             return stringBuilder.ToString();
         }
 
@@ -421,6 +452,10 @@ namespace LightweightMetadata.TypeWrappers
             var declaringType = DeclaringType;
 
             var stringBuilder = new StringBuilder();
+
+            int index = Name.IndexOf("`", StringComparison.InvariantCulture);
+            string strippedName = index >= 0 ? Name.AsSpan().Slice(0, index).ToString() : Name;
+
             if (declaringType == null)
             {
                 if (!string.IsNullOrWhiteSpace(TypeNamespace))
@@ -428,20 +463,13 @@ namespace LightweightMetadata.TypeWrappers
                     stringBuilder.Append(TypeNamespace).Append('.');
                 }
 
-                stringBuilder.Append(Name);
+                stringBuilder.Append(strippedName);
             }
             else
             {
                 stringBuilder.Append(DeclaringType.ReflectionFullName)
                     .Append('.')
-                    .Append(Name);
-            }
-
-            if (GenericParameters.Count > 0)
-            {
-                stringBuilder.Append("<")
-                    .Append(string.Join(", ", GenericParameters.Select(x => x.Name)))
-                    .Append(">");
+                    .Append(strippedName);
             }
 
             return stringBuilder.ToString().GetRealTypeName();

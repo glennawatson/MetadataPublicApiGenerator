@@ -32,13 +32,18 @@ namespace LightweightMetadata.TypeWrappers
         string TypeNamespace { get; }
 
         /// <summary>
-        /// Gets a value indicating whether if this is a public type.
+        /// Gets the accessibility of the member.
         /// </summary>
-        bool IsPublic { get; }
+        EntityAccessibility Accessibility { get; }
 
         /// <summary>
         /// Gets a value indicating whether if this type if abstract.
         /// </summary>
         bool IsAbstract { get; }
+
+        /// <summary>
+        /// Gets the known type code of this entity. If it is not known then it will be set to None.
+        /// </summary>
+        KnownTypeCode KnownType { get; }
     }
 }

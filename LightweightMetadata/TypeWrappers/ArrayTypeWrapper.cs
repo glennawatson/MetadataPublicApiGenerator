@@ -47,19 +47,22 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => ElementType.Name + "[" + new string(',', Dimensions - 1) + "]";
 
         /// <inheritdoc />
-        public string FullName => _parentWrapper.FullName + "[" + new string(',', Dimensions - 1) + "]";
+        public string FullName => ElementType.FullName + "[" + new string(',', Dimensions - 1) + "]";
 
         /// <inheritdoc />
-        public string ReflectionFullName => _parentWrapper.ReflectionFullName + "[" + new string(',', Dimensions - 1) + "]";
+        public string ReflectionFullName => ElementType.ReflectionFullName + "[" + new string(',', Dimensions - 1) + "]";
 
         /// <inheritdoc />
         public string TypeNamespace => _parentWrapper.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => _parentWrapper.IsPublic;
+        public EntityAccessibility Accessibility => _parentWrapper.Accessibility;
 
         /// <inheritdoc />
         public bool IsAbstract => _parentWrapper.IsAbstract;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => _parentWrapper.KnownType;
 
         /// <inheritdoc />
         public CompilationModule CompilationModule => _parentWrapper?.CompilationModule;

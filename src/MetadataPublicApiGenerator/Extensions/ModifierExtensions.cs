@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using LightweightMetadata;
@@ -22,10 +23,7 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var modifierList = new List<SyntaxKind>();
 
-            if (typeDefinition.IsPublic)
-            {
-                modifierList.Add(SyntaxKind.PublicKeyword);
-            }
+            modifierList.AddRange(AccessibilityToSyntaxKind(typeDefinition.Accessibility));
 
             if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsAbstract && !typeDefinition.IsStatic)
             {
@@ -54,24 +52,7 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var modifierList = new List<SyntaxKind>();
 
-            bool isPublicSet = false;
-
-            if (property.Getter != null)
-            {
-                if (property.Getter.IsPublic)
-                {
-                    modifierList.Add(SyntaxKind.PublicKeyword);
-                    isPublicSet = true;
-                }
-            }
-
-            if (!isPublicSet && property.Setter != null)
-            {
-                if (property.Setter.IsPublic)
-                {
-                    modifierList.Add(SyntaxKind.PublicKeyword);
-                }
-            }
+            modifierList.AddRange(AccessibilityToSyntaxKind(property.Accessibility));
 
             var anyGetter = property.AnyAccessor;
 
@@ -91,14 +72,23 @@ namespace MetadataPublicApiGenerator.Extensions
             return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
         }
 
+        public static SyntaxTokenList GetModifiers(this MethodWrapper accessor, PropertyWrapper property)
+        {
+            var modifierList = new List<SyntaxKind>();
+
+            if (property.Accessibility != accessor.Accessibility)
+            {
+                modifierList.AddRange(AccessibilityToSyntaxKind(accessor.Accessibility));
+            }
+
+            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+        }
+
         public static SyntaxTokenList GetModifiers(this FieldWrapper field)
         {
             var modifierList = new List<SyntaxKind>();
 
-            if (field.IsPublic)
-            {
-                modifierList.Add(SyntaxKind.PublicKeyword);
-            }
+            modifierList.AddRange(AccessibilityToSyntaxKind(field.Accessibility));
 
             if (field.IsStatic)
             {
@@ -140,10 +130,7 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var modifierList = new List<SyntaxKind>();
 
-            if (method.IsPublic)
-            {
-                modifierList.Add(SyntaxKind.PublicKeyword);
-            }
+            modifierList.AddRange(AccessibilityToSyntaxKind(method.Accessibility));
 
             if (method.IsAbstract && !method.IsStatic)
             {
@@ -155,7 +142,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (method.IsSealed && !method.IsStatic)
+            if (method.IsSealed && !method.IsStatic && !method.IsDelegate)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }
@@ -171,6 +158,27 @@ namespace MetadataPublicApiGenerator.Extensions
             }
 
             return modifierList;
+        }
+
+        private static IEnumerable<SyntaxKind> AccessibilityToSyntaxKind(EntityAccessibility accessibility)
+        {
+            switch (accessibility)
+            {
+                case EntityAccessibility.Internal:
+                    return new[] { SyntaxKind.InternalKeyword };
+                case EntityAccessibility.Private:
+                    return new[] { SyntaxKind.PrivateKeyword };
+                case EntityAccessibility.PrivateProtected:
+                    return new[] { SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword };
+                case EntityAccessibility.Protected:
+                    return new[] { SyntaxKind.ProtectedKeyword };
+                case EntityAccessibility.ProtectedInternal:
+                    return new[] { SyntaxKind.ProtectedKeyword, SyntaxKind.InternalKeyword };
+                case EntityAccessibility.Public:
+                    return new[] { SyntaxKind.PublicKeyword };
+                default:
+                    return Array.Empty<SyntaxKind>();
+            }
         }
     }
 }

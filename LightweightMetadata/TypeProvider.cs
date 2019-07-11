@@ -29,7 +29,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
         {
-            var element = typeCode.ToKnownTypeCode().ToTypeDefinitionHandle(Compilation);
+            var element = typeCode.ToKnownTypeCode().ToTypeWrapper(Compilation);
 
             if (element == null)
             {
@@ -97,7 +97,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetFunctionPointerType(MethodSignature<IHandleTypeNamedWrapper> signature)
         {
-            var element = KnownTypeCode.IntPtr.ToTypeDefinitionHandle(Compilation);
+            var element = KnownTypeCode.IntPtr.ToTypeWrapper(Compilation);
             return element;
         }
 

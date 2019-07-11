@@ -4,49 +4,47 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Threading;
 using LightweightMetadata.Extensions;
 
 namespace LightweightMetadata.TypeWrappers
 {
     /// <summary>
-    /// A wrapper around the <see cref="TypeSpecification"/>.
+    /// A wrapper around the <see cref="InterfaceImplementation" />.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
-    public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    public class InterfaceImplementationWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<TypeSpecificationHandle, TypeSpecificationWrapper> _registerTypes = new Dictionary<TypeSpecificationHandle, TypeSpecificationWrapper>();
+        private static readonly Dictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper> _registerTypes = new Dictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-        private readonly Lazy<IHandleTypeNamedWrapper> _type;
+        private readonly Lazy<IHandleTypeNamedWrapper> _interface;
 
-        private TypeSpecificationWrapper(TypeSpecificationHandle handle, CompilationModule module)
+        private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, CompilationModule module)
         {
-            TypeSpecificationHandle = handle;
+            InterfaceImplementationHandle = handle;
             CompilationModule = module;
             Handle = handle;
             Definition = Resolve();
 
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-
-            _type = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _interface = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Interface, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
         /// Gets the resolved method definition.
         /// </summary>
-        public TypeSpecification Definition { get; }
+        public InterfaceImplementation Definition { get; }
 
         /// <summary>
         /// Gets the method definition handle.
         /// </summary>
-        public TypeSpecificationHandle TypeSpecificationHandle { get; }
+        public InterfaceImplementationHandle InterfaceImplementationHandle { get; }
 
         /// <inheritdoc />
-        public string Name => Type.Name;
+        public string Name => Interface.Name;
 
         /// <inheritdoc />
         public CompilationModule CompilationModule { get; }
@@ -60,25 +58,25 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the type that this specification represents.
         /// </summary>
-        public IHandleTypeNamedWrapper Type => _type.Value;
+        public IHandleTypeNamedWrapper Interface => _interface.Value;
 
         /// <inheritdoc />
-        public string FullName => Type.FullName;
+        public string FullName => Interface.FullName;
 
         /// <inheritdoc />
-        public string ReflectionFullName => Type.ReflectionFullName;
+        public string ReflectionFullName => Interface.ReflectionFullName;
 
         /// <inheritdoc />
-        public string TypeNamespace => Type.TypeNamespace;
+        public string TypeNamespace => Interface.TypeNamespace;
 
         /// <inheritdoc />
-        public EntityAccessibility Accessibility => Type.Accessibility;
+        public EntityAccessibility Accessibility => Interface.Accessibility;
 
         /// <inheritdoc />
-        public bool IsAbstract => Type.IsAbstract;
+        public bool IsAbstract => Interface.IsAbstract;
 
         /// <inheritdoc />
-        public KnownTypeCode KnownType => Type.KnownType;
+        public KnownTypeCode KnownType => Interface.KnownType;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -86,19 +84,19 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, CompilationModule module)
+        public static InterfaceImplementationWrapper Create(InterfaceImplementationHandle handle, CompilationModule module)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new TypeSpecificationWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd(handle, handleCreate => new InterfaceImplementationWrapper(handleCreate, module));
         }
 
-        private TypeSpecification Resolve()
+        private InterfaceImplementation Resolve()
         {
-            return CompilationModule.MetadataReader.GetTypeSpecification(TypeSpecificationHandle);
+            return CompilationModule.MetadataReader.GetInterfaceImplementation(InterfaceImplementationHandle);
         }
     }
 }

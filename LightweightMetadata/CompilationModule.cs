@@ -39,7 +39,7 @@ namespace LightweightMetadata
 
             _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
-            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => (IReadOnlyList<TypeWrapper>)MetadataReader.TypeDefinitions.Select(x => TypeWrapper.Create(x, this)).Where(x => x.IsPublic).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => (IReadOnlyList<TypeWrapper>)MetadataReader.TypeDefinitions.Select(x => TypeWrapper.Create(x, this)).Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _publicTypesFromName = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => PublicTypes.ToDictionary(x => x.FullName, x => x), LazyThreadSafetyMode.PublicationOnly);
             _typeReferenceHandles = new Lazy<IReadOnlyList<TypeReferenceHandle>>(() => MetadataReader.TypeReferences.ToList(), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));

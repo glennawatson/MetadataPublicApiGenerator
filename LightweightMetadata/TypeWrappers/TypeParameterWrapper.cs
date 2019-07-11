@@ -88,10 +88,13 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => OwnerInstance.TypeNamespace;
 
         /// <inheritdoc />
-        public bool IsPublic => true;
+        public EntityAccessibility Accessibility => EntityAccessibility.Public;
 
         /// <inheritdoc />
         public bool IsAbstract => false;
+
+        /// <inheritdoc />
+        public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <summary>
         /// Creates the instances of the <see cref="TypeParameterWrapper"/> from the specified handles.

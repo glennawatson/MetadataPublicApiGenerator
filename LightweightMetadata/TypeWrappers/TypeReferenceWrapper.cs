@@ -25,6 +25,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<string> _namespace;
         private readonly Lazy<string> _fullName;
         private readonly Lazy<string> _reflectionFullName;
+        private readonly Lazy<KnownTypeCode> _knownType;
 
         private TypeReferenceWrapper(TypeReferenceHandle handle, CompilationModule module)
         {
@@ -38,6 +39,7 @@ namespace LightweightMetadata.TypeWrappers
             _namespace = new Lazy<string>(() => CompilationModule.MetadataReader.GetString(Definition.Namespace));
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             _reflectionFullName = new Lazy<string>(GetReflectionFullName, LazyThreadSafetyMode.PublicationOnly);
+            _knownType = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -74,7 +76,10 @@ namespace LightweightMetadata.TypeWrappers
         public string FullName => _fullName.Value;
 
         /// <inheritdoc />
-        public bool IsPublic => ResolutionScope.Handle.Kind == HandleKind.TypeReference || ResolutionScope.IsPublic;
+        public KnownTypeCode KnownType => _knownType.Value;
+
+        /// <inheritdoc />
+        public EntityAccessibility Accessibility => ResolutionScope.Handle.Kind == HandleKind.TypeReference ? ResolutionScope.Accessibility : EntityAccessibility.None;
 
         /// <inheritdoc />
         public bool IsAbstract => ResolutionScope.Handle.Kind != HandleKind.TypeReference && ResolutionScope.IsAbstract;

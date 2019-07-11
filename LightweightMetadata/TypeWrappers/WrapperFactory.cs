@@ -42,6 +42,8 @@ namespace LightweightMetadata.TypeWrappers
                     return MemberReferenceWrapper.Create((MemberReferenceHandle)entity, module);
                 case HandleKind.TypeSpecification:
                     return TypeSpecificationWrapper.Create((TypeSpecificationHandle)entity, module);
+                case HandleKind.InterfaceImplementation:
+                    return InterfaceImplementationWrapper.Create((InterfaceImplementationHandle)entity, module);
             }
 
             return null;

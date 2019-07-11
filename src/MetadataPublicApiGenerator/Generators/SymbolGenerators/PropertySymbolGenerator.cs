@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis.CSharp;
@@ -29,27 +30,27 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             var accessors = property.AnyAccessor;
 
-            if (property.Getter != null)
+            if (property.Getter != null && property.Getter.Accessibility == EntityAccessibility.Public)
             {
-                accessorList.Add(Generate(property.Getter, SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)));
+                accessorList.Add(Generate(property.Getter, property, SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)));
             }
 
-            if (property.Setter != null)
+            if (property.Setter != null && property.Setter.Accessibility == EntityAccessibility.Public)
             {
-                accessorList.Add(Generate(property.Setter, SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)));
+                accessorList.Add(Generate(property.Setter, property, SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)));
             }
 
-            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(property.ReturnType.FullName), property.Name)
+            return SyntaxFactory.PropertyDeclaration(SyntaxFactory.IdentifierName(property.ReturnType.ReflectionFullName), property.Name)
                 .WithAccessorList(SyntaxFactory.AccessorList(SyntaxFactory.List(accessorList)))
                 .WithAttributeLists(Factory.Generate(property.Attributes))
                 .WithModifiers(property.GetModifiers());
         }
 
-        private AccessorDeclarationSyntax Generate(MethodWrapper method, AccessorDeclarationSyntax syntax)
+        private AccessorDeclarationSyntax Generate(MethodWrapper method, PropertyWrapper property, AccessorDeclarationSyntax syntax)
         {
                 return syntax
                     .WithAttributeLists(Factory.Generate(method.Attributes))
-                    .WithModifiers(method.GetModifiers())
+                    .WithModifiers(method.GetModifiers(property))
                     .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
     }

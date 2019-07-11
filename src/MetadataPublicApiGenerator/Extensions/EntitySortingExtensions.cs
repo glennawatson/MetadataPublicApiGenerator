@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
+using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis.CSharp;
@@ -57,7 +58,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         internal static bool ShouldIncludeEntity(this IHandleNameWrapper entity, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
-            if (entity is IHandleTypeNamedWrapper typeNameWrapper && !typeNameWrapper.IsPublic)
+            if (entity is IHandleTypeNamedWrapper typeNameWrapper && typeNameWrapper.Accessibility != EntityAccessibility.Public)
             {
                 return false;
             }
