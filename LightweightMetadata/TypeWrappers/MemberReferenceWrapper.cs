@@ -16,10 +16,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Represents a wrapper around the MemberReference.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class MemberReferenceWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<MemberReferenceHandle, MemberReferenceWrapper> _registerTypes = new Dictionary<MemberReferenceHandle, MemberReferenceWrapper>();
+        private static readonly Dictionary<(MemberReferenceHandle handle, CompilationModule module), MemberReferenceWrapper> _registerTypes = new Dictionary<(MemberReferenceHandle handle, CompilationModule module), MemberReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<IHandleTypeNamedWrapper> _parent;
@@ -99,7 +98,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new MemberReferenceWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new MemberReferenceWrapper(data.handle, data.module));
         }
 
         /// <summary>

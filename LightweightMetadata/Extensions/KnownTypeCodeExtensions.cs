@@ -96,7 +96,7 @@ namespace LightweightMetadata.Extensions
         /// <param name="knownTypeCode">The known type code to convert.</param>
         /// <param name="compilation">The compilation of all known modules.</param>
         /// <returns>The type wrapper if its available, null otherwise.</returns>
-        public static TypeWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, ICompilation compilation)
+        public static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, ICompilation compilation)
         {
             if (compilation == null)
             {

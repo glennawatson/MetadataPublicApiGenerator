@@ -25,5 +25,30 @@ namespace LightweightMetadata.Extensions
 
             return map.GetOrAdd(handle, stringHandle => compilation.MetadataReader.GetString(stringHandle));
         }
+
+        /// <summary>
+        /// Removes the ` with type parameter count from the reflection name.
+        /// </summary>
+        /// <param name="reflectionName">The reflection name.</param>
+        /// <param name="typeParameterCount">Output variable which optionally has the number of type parameters.</param>
+        /// <returns>The name of the type without the type parameter count.</returns>
+        /// <remarks>Do not use this method with the full name of inner classes.</remarks>
+        public static string SplitTypeParameterCountFromReflectionName(this string reflectionName, out int typeParameterCount)
+        {
+            int pos = reflectionName.LastIndexOf('`');
+            if (pos < 0)
+            {
+                typeParameterCount = 0;
+                return reflectionName;
+            }
+
+            string typeCount = reflectionName.Substring(pos + 1);
+            if (int.TryParse(typeCount, out typeParameterCount))
+            {
+                return reflectionName.Substring(0, pos);
+            }
+
+            return reflectionName;
+        }
     }
 }

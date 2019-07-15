@@ -15,7 +15,6 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Wraps a <see cref="AssemblyDefinition"/>.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(AssemblyName) + "}")]
     public class AssemblyWrapper : INamedWrapper, IHasAttributes
     {
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;

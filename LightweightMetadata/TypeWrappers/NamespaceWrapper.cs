@@ -15,10 +15,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the NamespaceDefinition.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class NamespaceWrapper : IHandleNameWrapper
     {
-        private static readonly Dictionary<NamespaceDefinitionHandle, NamespaceWrapper> _registeredNamespaces = new Dictionary<NamespaceDefinitionHandle, NamespaceWrapper>();
+        private static readonly Dictionary<(NamespaceDefinitionHandle handle, CompilationModule module), NamespaceWrapper> _registeredNamespaces = new Dictionary<(NamespaceDefinitionHandle handle, CompilationModule module), NamespaceWrapper>();
 
         private readonly Lazy<string> _fullName;
 
@@ -50,7 +49,7 @@ namespace LightweightMetadata.TypeWrappers
             Handle = handle;
             Definition = Resolve(handle, module);
 
-            _parent = new Lazy<NamespaceWrapper>(() => GetParent(Definition.Parent, module), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<NamespaceWrapper>(() => Create(Definition.Parent, module), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => GetName(Definition, module), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
@@ -109,7 +108,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registeredNamespaces.GetOrAdd(handle, handleCreate => new NamespaceWrapper(handleCreate, module));
+            return _registeredNamespaces.GetOrAdd((handle, module), data => new NamespaceWrapper(data.handle, data.module));
         }
 
         private static NamespaceDefinition Resolve(NamespaceDefinitionHandle handle, CompilationModule compilation)
@@ -120,16 +119,6 @@ namespace LightweightMetadata.TypeWrappers
         private static string GetName(NamespaceDefinition handle, CompilationModule compilation)
         {
             return handle.Name.GetName(compilation);
-        }
-
-        private static NamespaceWrapper GetParent(NamespaceDefinitionHandle handle, CompilationModule module)
-        {
-            if (handle.IsNil)
-            {
-                return null;
-            }
-
-            return _registeredNamespaces.GetOrAdd(handle, handleToGenerate => new NamespaceWrapper(handleToGenerate, module));
         }
 
         private string GetFullName()

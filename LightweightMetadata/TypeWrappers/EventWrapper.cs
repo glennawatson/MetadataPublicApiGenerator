@@ -15,10 +15,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Wraps a event definition.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class EventWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<EventDefinitionHandle, EventWrapper> _registerTypes = new Dictionary<EventDefinitionHandle, EventWrapper>();
+        private static readonly Dictionary<(EventDefinitionHandle handle, CompilationModule module), EventWrapper> _registerTypes = new Dictionary<(EventDefinitionHandle handle, CompilationModule module), EventWrapper>();
 
         private readonly Lazy<string> _name;
 
@@ -117,7 +116,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new EventWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new EventWrapper(data.handle, data.module));
         }
 
         /// <summary>

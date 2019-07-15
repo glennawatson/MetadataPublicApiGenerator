@@ -16,10 +16,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Wraps a Parameter class.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(Name) + "}")]
     public class ParameterWrapper : IHandleNameWrapper, IHasAttributes
     {
-        private static readonly Dictionary<ParameterHandle, ParameterWrapper> _registeredTypes = new Dictionary<ParameterHandle, ParameterWrapper>();
+        private static readonly Dictionary<(ParameterHandle handle, CompilationModule module), ParameterWrapper> _registeredTypes = new Dictionary<(ParameterHandle handle, CompilationModule module), ParameterWrapper>();
 
         private readonly Lazy<string> _name;
 
@@ -104,7 +103,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registeredTypes.GetOrAdd(handle, handleCreate => new ParameterWrapper(handleCreate, typeWrapper, module));
+            return _registeredTypes.GetOrAdd((handle, module), data => new ParameterWrapper(data.handle, typeWrapper, data.module));
         }
 
         private static Parameter Resolve(ParameterHandle handle, CompilationModule compilation)

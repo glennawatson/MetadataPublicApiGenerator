@@ -16,7 +16,7 @@ namespace LightweightMetadata.TypeWrappers
     /// </summary>
     public class GenericParameterConstraintWrapper : IHandleWrapper
     {
-        private static readonly Dictionary<GenericParameterConstraintHandle, GenericParameterConstraintWrapper> _registerTypes = new Dictionary<GenericParameterConstraintHandle, GenericParameterConstraintWrapper>();
+        private static readonly Dictionary<(GenericParameterConstraintHandle handle, CompilationModule module), GenericParameterConstraintWrapper> _registerTypes = new Dictionary<(GenericParameterConstraintHandle handle, CompilationModule module), GenericParameterConstraintWrapper>();
 
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
@@ -71,7 +71,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new GenericParameterConstraintWrapper(handleCreate, parent, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new GenericParameterConstraintWrapper(data.handle, parent, data.module));
         }
 
         /// <summary>

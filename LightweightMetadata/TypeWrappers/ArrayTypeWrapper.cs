@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection.Metadata;
@@ -11,10 +12,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Represents an array.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class ArrayTypeWrapper : IHandleTypeNamedWrapper, IHasGenericParameters
     {
-        private readonly TypeWrapper _parentWrapper;
+        private readonly IHandleTypeNamedWrapper _parentWrapper;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ArrayTypeWrapper"/> class.
@@ -26,11 +26,11 @@ namespace LightweightMetadata.TypeWrappers
         {
             if (module == null)
             {
-                throw new System.ArgumentNullException(nameof(module));
+                throw new ArgumentNullException(nameof(module));
             }
 
             _parentWrapper = module.GetTypeByName("System.Array");
-            ElementType = elementType ?? throw new System.ArgumentNullException(nameof(elementType));
+            ElementType = elementType ?? throw new ArgumentNullException(nameof(elementType));
             ArrayShapeData = arrayShapeData;
         }
 
@@ -72,6 +72,6 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle => _parentWrapper.Handle;
 
         /// <inheritdoc />
-        public IReadOnlyList<GenericParameterWrapper> GenericParameters => _parentWrapper?.GenericParameters;
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => _parentWrapper is IHasGenericParameters ? ((IHasGenericParameters)_parentWrapper).GenericParameters : Array.Empty<GenericParameterWrapper>();
     }
 }

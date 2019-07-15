@@ -44,14 +44,8 @@ namespace LightweightMetadata.TypeWrappers
                     return InterfaceImplementationWrapper.Create((InterfaceImplementationHandle)entity, module);
                 case HandleKind.TypeReference:
                 {
-                    var current = TypeReferenceWrapper.Create((TypeReferenceHandle)entity, module).ResolutionScope;
-
-                    while (current is TypeReferenceWrapper child)
-                    {
-                        current = child.ResolutionScope;
-                    }
-
-                    return current;
+                    var typeWrapper = TypeReferenceWrapper.Create((TypeReferenceHandle)entity, module);
+                    return typeWrapper.Type;
                 }
             }
 

@@ -11,7 +11,6 @@ namespace LightweightMetadata.TypeWrappers
     /// If there is no type parameter at the index, this is a dummy value for the placement.
     /// This class exists because sometimes the TypeProvider will ask for a entry beyond the bounds.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class DummyTypeParameterWrapper : IHandleTypeNamedWrapper
     {
         /// <summary>

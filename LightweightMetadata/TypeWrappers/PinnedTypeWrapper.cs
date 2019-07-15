@@ -10,7 +10,6 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A type that has been pinned.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class PinnedTypeWrapper : IHandleTypeNamedWrapper
     {
         /// <summary>

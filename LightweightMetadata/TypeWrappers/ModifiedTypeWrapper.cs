@@ -11,7 +11,6 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Represents a modified type.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class ModifiedTypeWrapper : IHandleTypeNamedWrapper
     {
         /// <summary>

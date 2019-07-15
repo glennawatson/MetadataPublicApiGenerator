@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection.Metadata;
-using System.Text;
 using System.Threading;
 using LightweightMetadata.Extensions;
 
@@ -17,11 +16,13 @@ namespace LightweightMetadata.TypeWrappers
     /// </summary>
     public class TypeReferenceWrapper : IHandleNameWrapper
     {
-        private static readonly Dictionary<TypeReferenceHandle, TypeReferenceWrapper> _registerTypes = new Dictionary<TypeReferenceHandle, TypeReferenceWrapper>();
+        private static readonly Dictionary<(TypeReferenceHandle handle, CompilationModule module), TypeReferenceWrapper> _registerTypes = new Dictionary<(TypeReferenceHandle handle, CompilationModule module), TypeReferenceWrapper>();
 
         private readonly Lazy<string> _name;
-        private readonly Lazy<IHandleTypeNamedWrapper> _resolutionScope;
-        private readonly Lazy<AssemblyReferenceWrapper> _declaringModule;
+        private readonly Lazy<string> _fullName;
+        private readonly Lazy<string> _namespace;
+        private readonly Lazy<CompilationModule> _declaringModule;
+        private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
         private TypeReferenceWrapper(TypeReferenceHandle handle, CompilationModule module)
         {
@@ -29,10 +30,11 @@ namespace LightweightMetadata.TypeWrappers
             CompilationModule = module;
             Handle = handle;
             Definition = Resolve();
-
+            _type = new Lazy<IHandleTypeNamedWrapper>(GetDeclaringType, LazyThreadSafetyMode.PublicationOnly);
+            _namespace = new Lazy<string>(() => Definition.Namespace.GetName(module), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _resolutionScope = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.ResolutionScope, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _declaringModule = new Lazy<AssemblyReferenceWrapper>(() => GetDeclaringModule(this), LazyThreadSafetyMode.PublicationOnly);
+            _declaringModule = new Lazy<CompilationModule>(GetDeclaringModule, LazyThreadSafetyMode.PublicationOnly);
+            _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -55,14 +57,24 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle { get; }
 
         /// <summary>
-        /// Gets the resolution scope of the type reference.
+        /// Gets the full name of the type.
         /// </summary>
-        public IHandleTypeNamedWrapper ResolutionScope => _resolutionScope.Value;
+        public string FullName => _fullName.Value;
+
+        /// <summary>
+        /// Gets the types namespace.
+        /// </summary>
+        public string TypeNamespace => _namespace.Value;
+
+        /// <summary>
+        /// Gets the type if available of this reference.
+        /// </summary>
+        public IHandleTypeNamedWrapper Type => _type.Value;
 
         /// <summary>
         /// Gets the declaring module.
         /// </summary>
-        public AssemblyReferenceWrapper DeclaringModule => _declaringModule.Value;
+        public CompilationModule DeclaringModule => _declaringModule.Value;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -77,7 +89,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new TypeReferenceWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new TypeReferenceWrapper(data.handle, data.module));
         }
 
         /// <summary>
@@ -100,24 +112,51 @@ namespace LightweightMetadata.TypeWrappers
             return output;
         }
 
-        private static AssemblyReferenceWrapper GetDeclaringModule(TypeReferenceWrapper typeReference)
+        private CompilationModule GetDeclaringModule()
         {
-            switch (typeReference.Definition.ResolutionScope.Kind)
+            var current = this;
+
+            while (current != null)
             {
-                case HandleKind.TypeReference:
-                    var typeReferenceScope = TypeReferenceWrapper.Create((TypeReferenceHandle)typeReference.Definition.ResolutionScope, typeReference.CompilationModule);
-                    return GetDeclaringModule(typeReferenceScope);
-                case HandleKind.AssemblyReference:
-                    var asmRef = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)typeReference.Definition.ResolutionScope, typeReference.CompilationModule);
-                    return asmRef;
-                default:
-                    return default;
+                switch (current.Definition.ResolutionScope.Kind)
+                {
+                    case HandleKind.TypeReference:
+                        current = Create((TypeReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
+                        break;
+                    case HandleKind.AssemblyReference:
+                        var assemblyReference = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
+                        return current.CompilationModule.Compilation.GetCompilationModuleForAssemblyReference(assemblyReference);
+                    case HandleKind.ModuleReference:
+                        var assemblyModuleReference = ModuleReferenceWrapper.Create((ModuleReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
+                        return assemblyModuleReference.CompilationModule;
+                    default:
+                        return default;
+                }
             }
+
+            return null;
+        }
+
+        private IHandleTypeNamedWrapper GetDeclaringType()
+        {
+            return CompilationModule.GetTypeByName(FullName);
         }
 
         private TypeReference Resolve()
         {
             return CompilationModule.MetadataReader.GetTypeReference(TypeReferenceHandle);
+        }
+
+        private string GetFullName()
+        {
+            if (Definition.ResolutionScope.IsNil || Definition.ResolutionScope.Kind != HandleKind.TypeReference)
+            {
+                return TypeNamespace + "." + Name;
+            }
+
+            var typeReference = Create((TypeReferenceHandle)Definition.ResolutionScope, CompilationModule);
+
+            return typeReference.FullName + "." + Name;
         }
     }
 }

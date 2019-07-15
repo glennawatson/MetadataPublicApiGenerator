@@ -15,7 +15,6 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Type parameter of a generic class/method.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class GenericParameterWrapper : IHandleTypeNamedWrapper
     {
         private readonly Lazy<IReadOnlyList<GenericParameterConstraintWrapper>> _constraints;

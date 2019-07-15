@@ -4,8 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 using LightweightMetadata.Extensions;
@@ -15,10 +13,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the <see cref="TypeSpecification"/>.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<TypeSpecificationHandle, TypeSpecificationWrapper> _registerTypes = new Dictionary<TypeSpecificationHandle, TypeSpecificationWrapper>();
+        private static readonly Dictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper> _registerTypes = new Dictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
@@ -93,7 +90,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new TypeSpecificationWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new TypeSpecificationWrapper(data.handle, data.module));
         }
 
         private TypeSpecification Resolve()

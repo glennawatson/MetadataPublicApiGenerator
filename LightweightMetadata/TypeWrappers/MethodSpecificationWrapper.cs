@@ -15,7 +15,7 @@ namespace LightweightMetadata.TypeWrappers
     /// </summary>
     public class MethodSpecificationWrapper : IHandleWrapper, IHasGenericParameters
     {
-        private static readonly Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper> _registerTypes = new Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper>();
+        private static readonly Dictionary<(MethodSpecificationHandle handle, CompilationModule module), MethodSpecificationWrapper> _registerTypes = new Dictionary<(MethodSpecificationHandle handle, CompilationModule module), MethodSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _signature;
         private readonly Lazy<MethodWrapper> _method;
@@ -29,8 +29,6 @@ namespace LightweightMetadata.TypeWrappers
 
             _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)).ToList());
             _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, module), LazyThreadSafetyMode.PublicationOnly);
-
-            _registerTypes.TryAdd(handle, this);
         }
 
         /// <summary>
@@ -77,7 +75,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new MethodSpecificationWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new MethodSpecificationWrapper(data.handle, data.module));
         }
 
         private static MethodSpecification Resolve(MethodSpecificationHandle handle, CompilationModule compilation)

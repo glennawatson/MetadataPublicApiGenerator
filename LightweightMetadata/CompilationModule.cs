@@ -16,9 +16,9 @@ namespace LightweightMetadata
     /// <summary>
     /// Represents a assembly or module.
     /// </summary>
-    public sealed class CompilationModule : IDisposable
+    public sealed class CompilationModule : IDisposable, IEquatable<CompilationModule>
     {
-        private readonly Lazy<IReadOnlyDictionary<string, TypeWrapper>> _publicTypesFromName;
+        private readonly Lazy<IReadOnlyList<TypeWrapper>> _types;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _publicTypes;
         private readonly Lazy<IReadOnlyList<TypeReferenceWrapper>> _typeReferences;
         private readonly Lazy<IReadOnlyList<AssemblyReferenceWrapper>> _assemblyReferences;
@@ -40,8 +40,9 @@ namespace LightweightMetadata
 
             _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
-            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this).Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _publicTypesFromName = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => PublicTypes.ToDictionary(x => x.FullName, x => x), LazyThreadSafetyMode.PublicationOnly);
+
+            _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
+            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Types.Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
             _assemblyReferences = new Lazy<IReadOnlyList<AssemblyReferenceWrapper>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
@@ -64,14 +65,14 @@ namespace LightweightMetadata
         public IReadOnlyList<TypeWrapper> PublicTypes => _publicTypes.Value;
 
         /// <summary>
+        /// Gets all the types.
+        /// </summary>
+        public IReadOnlyList<TypeWrapper> Types => _types.Value;
+
+        /// <summary>
         /// Gets all the public type reference handles for this module.
         /// </summary>
         public IReadOnlyList<TypeReferenceWrapper> TypeReferences => _typeReferences.Value;
-
-        /// <summary>
-        /// Gets a dictionary that maps types full names to their type wrapper.
-        /// </summary>
-        public IReadOnlyDictionary<string, TypeWrapper> PublicTypesByFullName => _publicTypesFromName.Value;
 
         /// <summary>
         /// Gets a list of assembly references.
@@ -98,6 +99,38 @@ namespace LightweightMetadata
         /// </summary>
         internal TypeProvider TypeProvider { get; }
 
+        /// <summary>
+        /// Compares the equality of the left side and the right side.
+        /// </summary>
+        /// <param name="left">The left element to compare.</param>
+        /// <param name="right">The right element to compare.</param>
+        /// <returns>If the two sides are equal.</returns>
+        public static bool operator ==(CompilationModule left, CompilationModule right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <summary>
+        /// Compares the inequality of the left side and the right side.
+        /// </summary>
+        /// <param name="left">The left element to compare.</param>
+        /// <param name="right">The right element to compare.</param>
+        /// <returns>If the two sides are not equal.</returns>
+        public static bool operator !=(CompilationModule left, CompilationModule right)
+        {
+            return !Equals(left, right);
+        }
+
+        /// <summary>
+        /// Gets the type by a name if available.
+        /// </summary>
+        /// <param name="name">The name to check.</param>
+        /// <returns>The wrapper if available, null otherwise.</returns>
+        public IHandleTypeNamedWrapper GetTypeByName(string name)
+        {
+            return Compilation.GetTypeByName(name);
+        }
+
         /// <inheritdoc />
         public void Dispose()
         {
@@ -108,6 +141,34 @@ namespace LightweightMetadata
         public override string ToString()
         {
             return FileName;
+        }
+
+        /// <inheritdoc />
+        public bool Equals(CompilationModule other)
+        {
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return string.Equals(FileName, other.FileName, StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return ReferenceEquals(this, obj) || (obj is CompilationModule other && Equals(other));
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            return FileName != null ? StringComparer.InvariantCultureIgnoreCase.GetHashCode(FileName) : 0;
         }
     }
 }

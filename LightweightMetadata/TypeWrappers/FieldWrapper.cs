@@ -17,10 +17,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Wraps a FieldDefinition.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class FieldWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<FieldDefinitionHandle, FieldWrapper> _registerTypes = new Dictionary<FieldDefinitionHandle, FieldWrapper>();
+        private static readonly Dictionary<(FieldDefinitionHandle handle, CompilationModule module), FieldWrapper> _registerTypes = new Dictionary<(FieldDefinitionHandle handle, CompilationModule module), FieldWrapper>();
 
         private readonly Lazy<string> _name;
 
@@ -151,7 +150,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new FieldWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new FieldWrapper(data.handle, data.module));
         }
 
         /// <summary>

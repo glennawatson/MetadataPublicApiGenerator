@@ -23,7 +23,6 @@ namespace LightweightMetadata.TypeWrappers
     /// type parameters in the signatures of the members are replaced with
     /// the type arguments.
     /// </remarks>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class ParameterizedTypeWrapper : IHandleTypeNamedWrapper
     {
         private readonly Lazy<string> _name;

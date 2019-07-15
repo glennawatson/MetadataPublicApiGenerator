@@ -15,18 +15,17 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// Wraps a AttributeDefinition and represents a .NET attribute.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class AttributeWrapper : IHandleTypeNamedWrapper
     {
-        private static readonly Dictionary<CustomAttributeHandle, AttributeWrapper> _registeredTypes = new Dictionary<CustomAttributeHandle, AttributeWrapper>();
+        private static readonly Dictionary<(CustomAttributeHandle handle, CompilationModule module), AttributeWrapper> _registeredTypes = new Dictionary<(CustomAttributeHandle handle, CompilationModule module), AttributeWrapper>();
 
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _methodSignature;
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
 
         private readonly Lazy<KnownAttribute> _knownAttribute;
         private readonly Lazy<KnownTypeCode> _knownTypeCode;
-
         private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
+        private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _parameterTypes;
 
         private AttributeWrapper(CustomAttributeHandle handle, CompilationModule module)
         {
@@ -41,6 +40,7 @@ namespace LightweightMetadata.TypeWrappers
             _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
             _knownAttribute = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
+            _parameterTypes = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => _methodSignature.Value.ParameterTypes.ToArray(), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <summary>Gets the method&amp;#39;s parameter types.</summary>
         /// <returns>An immutable collection of parameter types.</returns>
-        public IReadOnlyList<ITypeNamedWrapper> ParameterTypes => _methodSignature.Value.ParameterTypes;
+        public IReadOnlyList<ITypeNamedWrapper> ParameterTypes => _parameterTypes.Value;
 
         /// <summary>
         /// Gets the known attribute type for this attribute.
@@ -78,22 +78,22 @@ namespace LightweightMetadata.TypeWrappers
         public KnownAttribute KnownAttribute => _knownAttribute.Value;
 
         /// <inheritdoc />
-        public string Name => _attributeType.Value.Name;
+        public string Name => AttributeType?.Name;
 
         /// <inheritdoc />
-        public string FullName => _attributeType.Value.FullName;
+        public string FullName => AttributeType?.FullName;
 
         /// <inheritdoc />
-        public string ReflectionFullName => _attributeType.Value.ReflectionFullName;
+        public string ReflectionFullName => AttributeType?.ReflectionFullName;
 
         /// <inheritdoc />
-        public string TypeNamespace => _attributeType.Value.TypeNamespace;
+        public string TypeNamespace => AttributeType?.TypeNamespace;
 
         /// <inheritdoc />
-        public EntityAccessibility Accessibility => _attributeType.Value.Accessibility;
+        public EntityAccessibility Accessibility => AttributeType?.Accessibility ?? EntityAccessibility.None;
 
         /// <inheritdoc />
-        public bool IsAbstract => _attributeType.Value.IsAbstract;
+        public bool IsAbstract => AttributeType?.IsAbstract ?? false;
 
         /// <summary>
         /// Gets the known type. This indicates if the attribute is a known type.
@@ -119,6 +119,11 @@ namespace LightweightMetadata.TypeWrappers
         public CompilationModule CompilationModule { get; }
 
         /// <summary>
+        /// Gets the attribute type.
+        /// </summary>
+        public ITypeNamedWrapper AttributeType => _attributeType.Value;
+
+        /// <summary>
         /// Creates a new instance of the AttributeWrapper class.
         /// </summary>
         /// <param name="handle">The handle to the attribute.</param>
@@ -131,7 +136,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registeredTypes.GetOrAdd(handle, handleCreate => new AttributeWrapper(handleCreate, module));
+            return _registeredTypes.GetOrAdd((handle, module), data => new AttributeWrapper(data.handle, data.module));
         }
 
         /// <summary>
@@ -185,16 +190,19 @@ namespace LightweightMetadata.TypeWrappers
 
         private ITypeNamedWrapper GetAttributeType()
         {
-            switch (Definition.Constructor.Kind)
+            var type = WrapperFactory.Create(Definition.Constructor, CompilationModule);
+
+            if (type is MemberReferenceWrapper memberReference)
             {
-                case HandleKind.MethodDefinition:
-                    return MethodWrapper.Create((MethodDefinitionHandle)Definition.Constructor, CompilationModule).DeclaringType;
-                case HandleKind.MemberReference:
-                    var memberReference = CompilationModule.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
-                    return WrapperFactory.Create(memberReference.Parent, CompilationModule);
-                default:
-                    throw new BadImageFormatException("Unexpected token kind for attribute constructor: " + Definition.Constructor.Kind);
+                return memberReference.Parent;
             }
+
+            if (type is MethodWrapper methodWrapper)
+            {
+                return methodWrapper.DeclaringType;
+            }
+
+            return type;
         }
 
         private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()

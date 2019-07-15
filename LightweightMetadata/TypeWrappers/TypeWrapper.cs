@@ -19,10 +19,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around a type.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class TypeWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly IDictionary<TypeDefinitionHandle, TypeWrapper> _types = new Dictionary<TypeDefinitionHandle, TypeWrapper>();
+        private static readonly IDictionary<(TypeDefinitionHandle handle, CompilationModule module), TypeWrapper> _types = new Dictionary<(TypeDefinitionHandle handle, CompilationModule module), TypeWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _namespace;
@@ -237,7 +236,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _types.GetOrAdd(handle, createHandle => new TypeWrapper(module, createHandle));
+            return _types.GetOrAdd((handle, module), data => new TypeWrapper(data.module, data.handle));
         }
 
         /// <summary>
@@ -389,12 +388,7 @@ namespace LightweightMetadata.TypeWrappers
                 return true;
             }
 
-            if (baseType.ToKnownTypeCode() != KnownTypeCode.ValueType)
-            {
-                return false;
-            }
-
-            return true;
+            return baseType.ToKnownTypeCode() == KnownTypeCode.ValueType;
         }
 
         private bool IsDelegate()
@@ -489,8 +483,7 @@ namespace LightweightMetadata.TypeWrappers
 
             var stringBuilder = new StringBuilder();
 
-            int index = Name.IndexOf("`", StringComparison.InvariantCulture);
-            string strippedName = index >= 0 ? Name.Substring(0, index) : Name;
+            var strippedName = Name.SplitTypeParameterCountFromReflectionName(out _);
 
             if (declaringType == null)
             {

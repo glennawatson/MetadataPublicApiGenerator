@@ -15,10 +15,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the PropertyDefinition class.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public class PropertyWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly Dictionary<PropertyDefinitionHandle, PropertyWrapper> _registerTypes = new Dictionary<PropertyDefinitionHandle, PropertyWrapper>();
+        private static readonly Dictionary<(PropertyDefinitionHandle handle, CompilationModule module), PropertyWrapper> _registerTypes = new Dictionary<(PropertyDefinitionHandle handle, CompilationModule module), PropertyWrapper>();
 
         private readonly Lazy<string> _name;
 
@@ -130,7 +129,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new PropertyWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new PropertyWrapper(data.handle, data.module));
         }
 
         /// <summary>

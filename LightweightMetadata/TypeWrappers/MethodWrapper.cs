@@ -16,10 +16,9 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the MethodDefinition.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
     public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly Dictionary<MethodDefinitionHandle, MethodWrapper> _registerTypes = new Dictionary<MethodDefinitionHandle, MethodWrapper>();
+        private static readonly Dictionary<(MethodDefinitionHandle handle, CompilationModule module), MethodWrapper> _registerTypes = new Dictionary<(MethodDefinitionHandle handle, CompilationModule module), MethodWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
@@ -61,8 +60,6 @@ namespace LightweightMetadata.TypeWrappers
             _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(GetParameters, LazyThreadSafetyMode.PublicationOnly);
 
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-
-            _registerTypes.TryAdd(handle, this);
 
             _isDelegate = new Lazy<bool>(() => MethodKind == SymbolMethodKind.DelegateInvoke, LazyThreadSafetyMode.PublicationOnly);
 
@@ -222,7 +219,7 @@ namespace LightweightMetadata.TypeWrappers
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new MethodWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new MethodWrapper(data.handle, data.module));
         }
 
         /// <summary>

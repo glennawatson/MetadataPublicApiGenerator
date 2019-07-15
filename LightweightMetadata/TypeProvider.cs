@@ -51,9 +51,7 @@ namespace LightweightMetadata
         {
             var module = Compilation.GetCompilationModuleForReader(reader);
 
-            var reference = TypeReferenceWrapper.Create(handle, module);
-
-            return reference.ResolutionScope;
+            return WrapperFactory.Create(handle, module);
         }
 
         /// <inheritdoc />

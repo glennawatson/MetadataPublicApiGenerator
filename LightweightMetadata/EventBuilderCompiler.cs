@@ -4,11 +4,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
+using LightweightMetadata.Helpers;
 using LightweightMetadata.TypeWrappers;
 
 namespace LightweightMetadata
@@ -23,9 +22,7 @@ namespace LightweightMetadata
     public sealed class EventBuilderCompiler : ICompilation, IDisposable
     {
         private readonly Lazy<TypeProvider> _typeProvider;
-        private List<CompilationModule> _referencedAssemblies;
-        private CompilationModule _mainModule;
-        private bool _initialized;
+        private readonly IReadOnlyDictionary<string, IHandleTypeNamedWrapper> _namesToTypes;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventBuilderCompiler"/> class.
@@ -39,38 +36,25 @@ namespace LightweightMetadata
                 throw new ArgumentNullException(nameof(searchDirectories));
             }
 
-            SearchDirectories = searchDirectories.ToList();
+            if (mainModulePath == null)
+            {
+                throw new ArgumentNullException(nameof(mainModulePath));
+            }
+
             _typeProvider = new Lazy<TypeProvider>(() => new TypeProvider(this), LazyThreadSafetyMode.PublicationOnly);
-            Init(mainModulePath);
+            MainModule = new CompilationModule(mainModulePath, this, TypeProvider);
+            SearchDirectories = searchDirectories.ToList();
+            ReferencedModules = GetCompilationModules();
+            _namesToTypes = GetTypes();
         }
 
         /// <inheritdoc />
-        public CompilationModule MainModule
-        {
-            get
-            {
-                if (!_initialized)
-                {
-                    throw new InvalidOperationException("Compilation isn't initialized yet");
-                }
+        public CompilationModule MainModule { get; }
 
-                return _mainModule;
-            }
-        }
-
-        /// <inheritdoc />
-        public IReadOnlyList<CompilationModule> ReferencedModules
-        {
-            get
-            {
-                if (!_initialized)
-                {
-                    throw new InvalidOperationException("Compilation isn't initialized yet");
-                }
-
-                return _referencedAssemblies;
-            }
-        }
+        /// <summary>
+        /// Gets a list of the referenced modules.
+        /// </summary>
+        public IReadOnlyList<CompilationModule> ReferencedModules { get; }
 
         /// <inheritdoc />
         public NamespaceWrapper RootNamespace => new NamespaceWrapper(MainModule.MetadataReader.GetNamespaceDefinitionRoot(), MainModule);
@@ -80,33 +64,50 @@ namespace LightweightMetadata
         /// </summary>
         public IReadOnlyList<string> SearchDirectories { get; }
 
+        /// <summary>
+        /// Gets the type provider which is used by the reflection metadata classes.
+        /// </summary>
         internal TypeProvider TypeProvider => _typeProvider.Value;
 
         /// <inheritdoc />
         public CompilationModule GetCompilationModuleForReader(MetadataReader reader)
         {
-            if (_mainModule.MetadataReader == reader)
+            if (MainModule.MetadataReader == reader)
             {
-                return _mainModule;
+                return MainModule;
             }
 
-            return _referencedAssemblies.First(x => x.MetadataReader == reader);
+            return null;
         }
 
         /// <inheritdoc />
-        public TypeWrapper GetTypeByName(string fullName)
+        public CompilationModule GetCompilationModuleForName(string name, CompilationModule parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
-            if (MainModule.PublicTypesByFullName.TryGetValue(fullName, out var typeWrapper))
+            if (parent == null)
             {
-                return typeWrapper;
+                throw new ArgumentNullException(nameof(parent));
             }
 
-            foreach (var referenceModule in ReferencedModules)
+            return AssemblyLoadingHelper.ResolveCompilationModule(name, parent, version, isWindowsRuntime, isRetargetable, publicKey);
+        }
+
+        /// <inheritdoc />
+        public CompilationModule GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper)
+        {
+            if (wrapper == null)
             {
-                if (referenceModule.PublicTypesByFullName.TryGetValue(fullName, out typeWrapper))
-                {
-                    return typeWrapper;
-                }
+                throw new ArgumentNullException(nameof(wrapper));
+            }
+
+            return GetCompilationModuleForName(wrapper.Name, wrapper.ParentCompilationModule, wrapper.Version, wrapper.IsWindowsRuntime, wrapper.IsRetargetable, wrapper.PublicKey);
+        }
+
+        /// <inheritdoc />
+        public IHandleTypeNamedWrapper GetTypeByName(string fullName)
+        {
+            if (_namesToTypes.TryGetValue(fullName, out var type))
+            {
+                return type;
             }
 
             return null;
@@ -115,84 +116,55 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public void Dispose()
         {
-            _mainModule?.Dispose();
-            _referencedAssemblies?.ForEach(x => x?.Dispose());
-        }
-
-        private static AssemblyReferenceHandle GetDeclaringModule(TypeReferenceHandle handle, MetadataReader reader)
-        {
-            var tr = reader.GetTypeReference(handle);
-            switch (tr.ResolutionScope.Kind)
+            MainModule?.Dispose();
+            foreach (var referencedModule in ReferencedModules)
             {
-                case HandleKind.TypeReference:
-                    var typeReferenceHandle = (TypeReferenceHandle)tr.ResolutionScope;
-                    return GetDeclaringModule(typeReferenceHandle, reader);
-                case HandleKind.AssemblyReference:
-                    var asmRef = (AssemblyReferenceHandle)tr.ResolutionScope;
-                    return asmRef;
-                default:
-                    return default;
+                referencedModule?.Dispose();
             }
         }
 
-        /// <summary>
-        /// Initializes the main project.
-        /// </summary>
-        /// <param name="mainAssembliesFilePath">The path to the main module.</param>
-        [SuppressMessage("Design", "CA2000: Dispose variable", Justification = "Disposed in the Dispose method.")]
-        private void Init(string mainAssembliesFilePath)
+        private IReadOnlyList<CompilationModule> GetCompilationModules()
         {
-            if (mainAssembliesFilePath == null)
+            var list = new List<CompilationModule>();
+
+            var processed = new HashSet<string>();
+
+            var toProcess = new Stack<AssemblyReferenceWrapper>(MainModule.AssemblyReferences);
+
+            while (toProcess.Count != 0)
             {
-                throw new ArgumentNullException(nameof(mainAssembliesFilePath));
-            }
+                var current = toProcess.Pop();
 
-            _mainModule = new CompilationModule(mainAssembliesFilePath, this, TypeProvider);
-
-            var referencedAssemblies = new List<CompilationModule>();
-
-            var referenceModulesToProcess = new Stack<(CompilationModule parent, AssemblyReferenceWrapper current)>(_mainModule.AssemblyReferences.Select(x => (_mainModule, x)));
-
-            foreach (var reference in _mainModule.TypeReferences.Select(typeHandle => typeHandle.DeclaringModule).Where(x => x != null))
-            {
-                referenceModulesToProcess.Push((_mainModule, reference));
-            }
-
-            var assemblyReferencesVisited = new HashSet<string>();
-
-            while (referenceModulesToProcess.Count > 0)
-            {
-                var (parent, currentAssemblyReference) = referenceModulesToProcess.Pop();
-
-                var name = currentAssemblyReference.Name;
-
-                if (assemblyReferencesVisited.Contains(name))
+                var compilation = GetCompilationModuleForAssemblyReference(current);
+                if (!processed.Contains(compilation.FileName))
                 {
-                    continue;
-                }
-
-                assemblyReferencesVisited.Add(name);
-
-                var currentModule = currentAssemblyReference.CompilationModule;
-
-                if (currentModule != null)
-                {
-                    referencedAssemblies.Add(currentModule);
-
-                    foreach (var moduleReferenceHandle in currentModule.AssemblyReferences)
+                    processed.Add(compilation.FileName);
+                    list.Add(compilation);
+                    foreach (var subReference in compilation.AssemblyReferences)
                     {
-                        referenceModulesToProcess.Push((currentModule, moduleReferenceHandle));
-                    }
-
-                    foreach (var typeReference in currentModule.TypeReferences.Select(x => x.DeclaringModule).Where(x => x != null))
-                    {
-                        referenceModulesToProcess.Push((currentModule, typeReference));
+                        toProcess.Push(subReference);
                     }
                 }
             }
 
-            _referencedAssemblies = referencedAssemblies;
-            _initialized = true;
+            System.IO.File.WriteAllLines("files.txt", list.Select(x => x.FileName).OrderBy(x => x).ToList());
+            return list.ToList();
+        }
+
+        private IReadOnlyDictionary<string, IHandleTypeNamedWrapper> GetTypes()
+        {
+            var output = new Dictionary<string, IHandleTypeNamedWrapper>();
+
+            foreach (var subReference in ReferencedModules)
+            {
+                foreach (var type in subReference.Types)
+                {
+                    output[type.FullName] = type;
+                }
+            }
+
+            System.IO.File.WriteAllLines("types.txt", output.Keys.OrderBy(x => x).ToList());
+            return output;
         }
     }
 }
