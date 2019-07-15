@@ -20,7 +20,8 @@ namespace LightweightMetadata
     {
         private readonly Lazy<IReadOnlyDictionary<string, TypeWrapper>> _publicTypesFromName;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _publicTypes;
-        private readonly Lazy<IReadOnlyList<TypeReferenceHandle>> _typeReferenceHandles;
+        private readonly Lazy<IReadOnlyList<TypeReferenceWrapper>> _typeReferences;
+        private readonly Lazy<IReadOnlyList<AssemblyReferenceWrapper>> _assemblyReferences;
         private readonly Lazy<AssemblyWrapper> _mainAssembly;
         private readonly Lazy<MethodSemanticsLookup> _methodSemanticsLookup;
         private readonly PEReader _reader;
@@ -39,9 +40,10 @@ namespace LightweightMetadata
 
             _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
-            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => (IReadOnlyList<TypeWrapper>)MetadataReader.TypeDefinitions.Select(x => TypeWrapper.Create(x, this)).Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this).Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _publicTypesFromName = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => PublicTypes.ToDictionary(x => x.FullName, x => x), LazyThreadSafetyMode.PublicationOnly);
-            _typeReferenceHandles = new Lazy<IReadOnlyList<TypeReferenceHandle>>(() => MetadataReader.TypeReferences.ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
+            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyReferenceWrapper>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
             _mainAssembly = new Lazy<AssemblyWrapper>(() => new AssemblyWrapper(this), LazyThreadSafetyMode.PublicationOnly);
         }
@@ -64,12 +66,17 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets all the public type reference handles for this module.
         /// </summary>
-        public IReadOnlyList<TypeReferenceHandle> TypeReferenceHandles => _typeReferenceHandles.Value;
+        public IReadOnlyList<TypeReferenceWrapper> TypeReferences => _typeReferences.Value;
 
         /// <summary>
         /// Gets a dictionary that maps types full names to their type wrapper.
         /// </summary>
         public IReadOnlyDictionary<string, TypeWrapper> PublicTypesByFullName => _publicTypesFromName.Value;
+
+        /// <summary>
+        /// Gets a list of assembly references.
+        /// </summary>
+        public IReadOnlyList<AssemblyReferenceWrapper> AssemblyReferences => _assemblyReferences.Value;
 
         /// <summary>
         /// Gets the main assembly reference inside this module.

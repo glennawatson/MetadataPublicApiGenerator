@@ -5,13 +5,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using LightweightMetadata.Extensions;
 
@@ -35,10 +30,13 @@ namespace LightweightMetadata.TypeWrappers
         /// </summary>
         /// <param name="module">The module containing the definition.</param>
         internal AssemblyWrapper(CompilationModule module)
+            : this(module.MetadataReader.GetAssemblyDefinition(), module)
         {
-            CompilationModule = module;
-            Definition = module.MetadataReader.GetAssemblyDefinition();
+        }
 
+        internal AssemblyWrapper(AssemblyDefinition reference, CompilationModule module)
+        {
+            Definition = reference;
             _name = new Lazy<string>(() => module.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
             _culture = new Lazy<string>(GetCulture, LazyThreadSafetyMode.PublicationOnly);
             Version = Definition.Version;
@@ -46,12 +44,17 @@ namespace LightweightMetadata.TypeWrappers
 
             HashAlgorithm = Definition.HashAlgorithm;
 
-            _publicKey = new Lazy<string>(CalculatePublicKeyToken, LazyThreadSafetyMode.PublicationOnly);
+            _publicKey = new Lazy<string>(() => Definition.PublicKey.CalculatePublicKeyToken(module, HashAlgorithm), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
         }
+
+        /// <summary>
+        /// Gets the full name of the assembly.
+        /// </summary>
+        public string FullName => _fullName.Value;
 
         /// <summary>
         /// Gets the resolved method definition.
@@ -99,30 +102,6 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc/>
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
 
-        [SuppressMessage("Design", "CA5350: Compromised hash algorithm", Justification = "Deliberate usage")]
-        [SuppressMessage("Design", "CA5351: Compromised hash algorithm", Justification = "Deliberate usage")]
-        private HashAlgorithm GetHashAlgorithm()
-        {
-            switch (HashAlgorithm)
-            {
-                case AssemblyHashAlgorithm.None:
-                    // only for multi-module assemblies?
-                    return SHA1.Create();
-                case AssemblyHashAlgorithm.MD5:
-                    return MD5.Create();
-                case AssemblyHashAlgorithm.Sha1:
-                    return SHA1.Create();
-                case AssemblyHashAlgorithm.Sha256:
-                    return SHA256.Create();
-                case AssemblyHashAlgorithm.Sha384:
-                    return SHA384.Create();
-                case AssemblyHashAlgorithm.Sha512:
-                    return SHA512.Create();
-                default:
-                    return SHA1.Create(); // default?
-            }
-        }
-
         private string GetCulture()
         {
             if (Definition.Culture.IsNil)
@@ -131,35 +110,6 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return CompilationModule.MetadataReader.GetString(Definition.Culture);
-        }
-
-        private string CalculatePublicKeyToken()
-        {
-            if (Definition.PublicKey.IsNil)
-            {
-                return "null";
-            }
-
-            var reader = CompilationModule.MetadataReader;
-            var blob = Definition.PublicKey;
-            using (var hashAlgorithm = GetHashAlgorithm())
-            {
-                // Calculate public key token:
-                // 1. hash the public key using the appropriate algorithm.
-                byte[] publicKeyTokenBytes = hashAlgorithm.ComputeHash(reader.GetBlobBytes(blob));
-
-                // 2. take the last 8 bytes
-                // 3. according to Cecil we need to reverse them, other sources did not mention this.
-                var bytes = publicKeyTokenBytes.Skip(publicKeyTokenBytes.Length - 8).Reverse().ToArray();
-
-                var sb = new StringBuilder(bytes.Length * 2);
-                foreach (var b in bytes)
-                {
-                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0:x2}", b);
-                }
-
-                return sb.ToString();
-            }
         }
 
         private string GetFullName()

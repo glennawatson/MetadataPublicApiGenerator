@@ -34,8 +34,14 @@ namespace LightweightMetadata
         /// <param name="searchDirectories">The directories to search for additional dependencies.</param>
         public EventBuilderCompiler(string mainModulePath, IEnumerable<string> searchDirectories)
         {
+            if (searchDirectories == null)
+            {
+                throw new ArgumentNullException(nameof(searchDirectories));
+            }
+
+            SearchDirectories = searchDirectories.ToList();
             _typeProvider = new Lazy<TypeProvider>(() => new TypeProvider(this), LazyThreadSafetyMode.PublicationOnly);
-            Init(mainModulePath, searchDirectories.ToList());
+            Init(mainModulePath);
         }
 
         /// <inheritdoc />
@@ -68,6 +74,11 @@ namespace LightweightMetadata
 
         /// <inheritdoc />
         public NamespaceWrapper RootNamespace => new NamespaceWrapper(MainModule.MetadataReader.GetNamespaceDefinitionRoot(), MainModule);
+
+        /// <summary>
+        /// Gets the search directories.
+        /// </summary>
+        public IReadOnlyList<string> SearchDirectories { get; }
 
         internal TypeProvider TypeProvider => _typeProvider.Value;
 
@@ -128,27 +139,21 @@ namespace LightweightMetadata
         /// Initializes the main project.
         /// </summary>
         /// <param name="mainAssembliesFilePath">The path to the main module.</param>
-        /// <param name="searchDirectories">A directory where to search for other types if we can't find it.</param>
         [SuppressMessage("Design", "CA2000: Dispose variable", Justification = "Disposed in the Dispose method.")]
-        private void Init(string mainAssembliesFilePath, IReadOnlyCollection<string> searchDirectories)
+        private void Init(string mainAssembliesFilePath)
         {
             if (mainAssembliesFilePath == null)
             {
                 throw new ArgumentNullException(nameof(mainAssembliesFilePath));
             }
 
-            if (searchDirectories == null)
-            {
-                throw new ArgumentNullException(nameof(searchDirectories));
-            }
-
             _mainModule = new CompilationModule(mainAssembliesFilePath, this, TypeProvider);
 
             var referencedAssemblies = new List<CompilationModule>();
 
-            var referenceModulesToProcess = new Stack<(CompilationModule parent, AssemblyReferenceHandle current)>(_mainModule.MetadataReader.AssemblyReferences.Select(x => (_mainModule, x)));
+            var referenceModulesToProcess = new Stack<(CompilationModule parent, AssemblyReferenceWrapper current)>(_mainModule.AssemblyReferences.Select(x => (_mainModule, x)));
 
-            foreach (var reference in _mainModule.TypeReferenceHandles.Select(typeHandle => GetDeclaringModule(typeHandle, _mainModule.MetadataReader)).Where(x => !x.IsNil))
+            foreach (var reference in _mainModule.TypeReferences.Select(typeHandle => typeHandle.DeclaringModule).Where(x => x != null))
             {
                 referenceModulesToProcess.Push((_mainModule, reference));
             }
@@ -157,11 +162,9 @@ namespace LightweightMetadata
 
             while (referenceModulesToProcess.Count > 0)
             {
-                var (parent, currentAssemblyReferenceHandle) = referenceModulesToProcess.Pop();
+                var (parent, currentAssemblyReference) = referenceModulesToProcess.Pop();
 
-                var currentAssemblyReference = currentAssemblyReferenceHandle.Resolve(parent);
-
-                var name = currentAssemblyReference.Name.GetName(parent);
+                var name = currentAssemblyReference.Name;
 
                 if (assemblyReferencesVisited.Contains(name))
                 {
@@ -170,18 +173,18 @@ namespace LightweightMetadata
 
                 assemblyReferencesVisited.Add(name);
 
-                var currentModule = currentAssemblyReference.Resolve(this, parent, TypeProvider, searchDirectories);
+                var currentModule = currentAssemblyReference.CompilationModule;
 
                 if (currentModule != null)
                 {
                     referencedAssemblies.Add(currentModule);
 
-                    foreach (var moduleReferenceHandle in currentModule.MetadataReader.AssemblyReferences)
+                    foreach (var moduleReferenceHandle in currentModule.AssemblyReferences)
                     {
                         referenceModulesToProcess.Push((currentModule, moduleReferenceHandle));
                     }
 
-                    foreach (var typeReference in currentModule.TypeReferenceHandles.Select(x => GetDeclaringModule(x, currentModule.MetadataReader)).Where(x => !x.IsNil))
+                    foreach (var typeReference in currentModule.TypeReferences.Select(x => x.DeclaringModule).Where(x => x != null))
                     {
                         referenceModulesToProcess.Push((currentModule, typeReference));
                     }

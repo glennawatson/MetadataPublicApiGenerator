@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Glenn Watson. All rights reserved.
+﻿// Copyright (c) 2019 Glenn Watson. All rights reserved.
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
@@ -13,34 +13,145 @@ using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata.TypeWrappers
 {
-    internal static class PathSearchExtensions
+    /// <summary>
+    /// Wraps the <see cref="AssemblyReference" /> class.
+    /// </summary>
+    public class AssemblyReferenceWrapper : IHandleNameWrapper
     {
+        private static readonly Dictionary<AssemblyReferenceHandle, AssemblyReferenceWrapper> _registerTypes = new Dictionary<AssemblyReferenceHandle, AssemblyReferenceWrapper>();
+
         [SuppressMessage("Design", "CA5350: Sha1 uses a weak cryptographic algorithm SHA1", Justification = "Deliberate usage.")]
         private static readonly SHA1 Sha1 = SHA1.Create();
 
-        public static AssemblyReference Resolve(this AssemblyReferenceHandle reference, CompilationModule baseReader)
+        private readonly Lazy<string> _name;
+        private readonly Lazy<string> _culture;
+        private readonly Lazy<AssemblyName> _assemblyName;
+        private readonly Lazy<string> _publicKey;
+        private readonly Lazy<string> _fullName;
+        private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
+        private readonly Lazy<CompilationModule> _compilationModule;
+
+        private AssemblyReferenceWrapper(AssemblyReferenceHandle handle, CompilationModule module)
         {
-            return baseReader.MetadataReader.GetAssemblyReference(reference);
+            AssemblyReferenceHandle = handle;
+            ParentCompilationModule = module;
+            Handle = handle;
+            Definition = module.MetadataReader.GetAssemblyReference(handle);
+
+            _name = new Lazy<string>(() => module.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _culture = new Lazy<string>(GetCulture, LazyThreadSafetyMode.PublicationOnly);
+            Version = Definition.Version;
+            _assemblyName = new Lazy<AssemblyName>(() => Definition.GetAssemblyName(), LazyThreadSafetyMode.PublicationOnly);
+
+            _publicKey = new Lazy<string>(() => Definition.PublicKeyOrToken.CalculatePublicKeyToken(module, HashAlgorithm), LazyThreadSafetyMode.PublicationOnly);
+            _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
+            IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
+            _compilationModule = new Lazy<CompilationModule>(Resolve, LazyThreadSafetyMode.PublicationOnly);
+
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        public static CompilationModule Resolve(this AssemblyReference reference, ICompilation compilation, CompilationModule baseReader, TypeProvider typeProvider, IReadOnlyCollection<string> targetAssemblyDirectories)
+        /// <summary>
+        /// Gets the full name of the assembly.
+        /// </summary>
+        public string FullName => _fullName.Value;
+
+        /// <summary>
+        /// Gets the resolved method definition.
+        /// </summary>
+        public AssemblyReference Definition { get; }
+
+        /// <inheritdoc />
+        public string Name => _name.Value;
+
+        /// <summary>
+        /// Gets the handle to the assembly reference.
+        /// </summary>
+        public AssemblyReferenceHandle AssemblyReferenceHandle { get; }
+
+        /// <summary>
+        /// Gets the parent's compilation module.
+        /// </summary>
+        public CompilationModule ParentCompilationModule { get; }
+
+        /// <summary>
+        /// Gets the version of the assembly.
+        /// </summary>
+        public Version Version { get; }
+
+        /// <summary>
+        /// Gets the culture of the assembly.
+        /// </summary>
+        public string Culture => _culture.Value;
+
+        /// <summary>
+        /// Gets a value indicating whether this assembly is a windows runtime.
+        /// </summary>
+        public bool IsWindowsRuntime { get; }
+
+        /// <summary>
+        /// Gets the assembly name of the assembly.
+        /// </summary>
+        public AssemblyName AssemblyName => _assemblyName.Value;
+
+        /// <summary>
+        /// Gets the hash algorithm used to sign the assembly.
+        /// </summary>
+        public AssemblyHashAlgorithm HashAlgorithm { get; }
+
+        /// <inheritdoc />
+        public CompilationModule CompilationModule => _compilationModule.Value;
+
+        /// <summary>
+        /// Gets a string representation of the public token.
+        /// </summary>
+        public string PublicKey => _publicKey.Value;
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
+
+        /// <summary>
+        /// Creates a instance of the method, if there is already not an instance.
+        /// </summary>
+        /// <param name="handle">The handle to the instance.</param>
+        /// <param name="module">The module that contains the instance.</param>
+        /// <returns>The wrapper.</returns>
+        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, CompilationModule module)
         {
-            var name = baseReader.MetadataReader.GetString(reference.Name);
-
-            var fileName = GetFileName(reference, baseReader, targetAssemblyDirectories);
-
-            if (string.IsNullOrWhiteSpace(fileName))
+            if (handle.IsNil)
             {
                 return null;
             }
 
-            return new CompilationModule(fileName, compilation, typeProvider);
+            return _registerTypes.GetOrAdd(handle, handleCreate => new AssemblyReferenceWrapper(handleCreate, module));
         }
 
-        public static string GetFileName(this AssemblyReference reference, CompilationModule baseReader, IEnumerable<string> searchDirectories)
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, CompilationModule module)
+        {
+            var output = new AssemblyReferenceWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
+        }
+
+        private static string GetFileName(AssemblyReference reference, CompilationModule baseReader, IEnumerable<string> searchDirectories)
         {
             var extensions = new[] { ".winmd", ".dll", ".exe" };
 
@@ -133,7 +244,7 @@ namespace LightweightMetadata.Extensions
             return null;
         }
 
-        private static byte[] GetPublicKey(this AssemblyReference reference, CompilationModule compilation)
+        private static byte[] GetPublicKey(AssemblyReference reference, CompilationModule compilation)
         {
             if (reference.PublicKeyOrToken.IsNil)
             {
@@ -163,7 +274,7 @@ namespace LightweightMetadata.Extensions
             string path;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                path = GetMscorlibBasePath(version, reference.GetPublicKey(compilation).ToHexString(8));
+                path = GetMscorlibBasePath(version, ToHexString(GetPublicKey(reference, compilation), 8));
             }
             else
             {
@@ -176,12 +287,7 @@ namespace LightweightMetadata.Extensions
             }
 
             var file = Path.Combine(path, "mscorlib.dll");
-            if (File.Exists(file))
-            {
-                return file;
-            }
-
-            return null;
+            return File.Exists(file) ? file : null;
         }
 
         private static bool IsSpecialVersionOrRetargetable(AssemblyReference reference)
@@ -213,9 +319,7 @@ namespace LightweightMetadata.Extensions
 
             if (publicKeyToken == "969db8053d3322ac")
             {
-                string programFiles = Environment.Is64BitOperatingSystem ?
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) :
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                string programFiles = Environment.Is64BitOperatingSystem ? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) : Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                 string windowsCeDirectoryPath = $@"Microsoft.NET\SDK\CompactFramework\v{version.Major}.{version.Minor}\WindowsCE\";
                 string fullDirectoryPath = Path.Combine(programFiles, windowsCeDirectoryPath);
                 if (Directory.Exists(fullDirectoryPath))
@@ -279,12 +383,7 @@ namespace LightweightMetadata.Extensions
                 path = Path.Combine(path, "4.0");
             }
 
-            if (Directory.Exists(path))
-            {
-                return path;
-            }
-
-            return null;
+            return Directory.Exists(path) ? path : null;
         }
 
         private static bool IsZeroOrAllOnes(Version version)
@@ -355,7 +454,7 @@ namespace LightweightMetadata.Extensions
             return path ?? version.ToString();
         }
 
-        private static string ToHexString(this IEnumerable<byte> bytes, int estimatedLength)
+        private static string ToHexString(IEnumerable<byte> bytes, int estimatedLength)
         {
             StringBuilder sb = new StringBuilder(estimatedLength * 2);
             foreach (var b in bytes)
@@ -389,6 +488,35 @@ namespace LightweightMetadata.Extensions
             {
                 return (null, null);
             }
+        }
+
+        private string GetCulture()
+        {
+            if (Definition.Culture.IsNil)
+            {
+                return "neutral";
+            }
+
+            return CompilationModule.MetadataReader.GetString(Definition.Culture);
+        }
+
+        private string GetFullName()
+        {
+            return $"{Name}, Version={Version}, Culture={Culture}, PublicKeyToken={PublicKey}";
+        }
+
+        private CompilationModule Resolve()
+        {
+            var compilation = ParentCompilationModule.Compilation;
+
+            var fileName = GetFileName(Definition, ParentCompilationModule, compilation.SearchDirectories);
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return null;
+            }
+
+            return new CompilationModule(fileName, compilation, ParentCompilationModule.TypeProvider);
         }
     }
 }

@@ -8,6 +8,8 @@ using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     /// <summary>
@@ -20,17 +22,17 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override ParameterSyntax Generate(IHandleNameWrapper nameWrapper)
+        public override ParameterSyntax Generate(IHandleWrapper nameWrapper)
         {
-            if (!(nameWrapper is ParameterWrapper parameter))
+            if (!(nameWrapper is ParameterWrapper parameterWrapper))
             {
                 return null;
             }
 
-            return SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.Name))
-                .WithModifiers(parameter.GetModifiers())
-                .WithAttributeLists(Factory.Generate(parameter.Attributes))
-                .WithType(SyntaxFactory.IdentifierName(parameter.ParameterType.ReflectionFullName));
+            return Parameter(Identifier(parameterWrapper.Name))
+                .WithModifiers(parameterWrapper.GetModifiers())
+                .WithAttributeLists(Factory.Generate(parameterWrapper.Attributes))
+                .WithType(IdentifierName(parameterWrapper.ParameterType.ReflectionFullName));
         }
     }
 }

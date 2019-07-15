@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 using LightweightMetadata.Extensions;
@@ -40,7 +41,6 @@ namespace LightweightMetadata.TypeWrappers
             _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
             _knownAttribute = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
-            _registeredTypes.TryAdd(handle, this);
         }
 
         /// <summary>
@@ -134,6 +134,26 @@ namespace LightweightMetadata.TypeWrappers
             return _registeredTypes.GetOrAdd(handle, handleCreate => new AttributeWrapper(handleCreate, module));
         }
 
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<AttributeWrapper> Create(in CustomAttributeHandleCollection collection, CompilationModule module)
+        {
+            var output = new AttributeWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output.ToArray();
+        }
+
         private static CustomAttribute Resolve(CustomAttributeHandle handle, CompilationModule compilation)
         {
             return compilation.MetadataReader.GetCustomAttribute(handle);
@@ -180,7 +200,12 @@ namespace LightweightMetadata.TypeWrappers
         private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()
         {
             var wrapper = Definition.DecodeValue(new TypeProvider(CompilationModule.Compilation));
-            return (wrapper.FixedArguments, wrapper.NamedArguments);
+
+            var fixedArgumentsList = wrapper.FixedArguments.ToArray();
+
+            var namedArgumentsList = wrapper.NamedArguments.ToArray();
+
+            return (fixedArgumentsList, namedArgumentsList);
         }
 
         private KnownAttribute IsKnownAttributeType()

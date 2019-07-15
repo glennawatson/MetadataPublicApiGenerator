@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection.Metadata;
 
@@ -11,7 +12,7 @@ namespace LightweightMetadata.TypeWrappers
     /// Represents an array.
     /// </summary>
     [DebuggerDisplay("{" + nameof(FullName) + "}")]
-    public class ArrayTypeWrapper : IHandleTypeNamedWrapper
+    public class ArrayTypeWrapper : IHandleTypeNamedWrapper, IHasGenericParameters
     {
         private readonly TypeWrapper _parentWrapper;
 
@@ -20,8 +21,8 @@ namespace LightweightMetadata.TypeWrappers
         /// </summary>
         /// <param name="module">The module that owns the array.</param>
         /// <param name="elementType">The wrapper to the element type.</param>
-        /// <param name="dimensions">The dimension of the array.</param>
-        public ArrayTypeWrapper(ICompilation module, IHandleTypeNamedWrapper elementType, int dimensions)
+        /// <param name="arrayShapeData">The dimension of the array.</param>
+        public ArrayTypeWrapper(ICompilation module, IHandleTypeNamedWrapper elementType, ArrayShapeData arrayShapeData)
         {
             if (module == null)
             {
@@ -30,7 +31,7 @@ namespace LightweightMetadata.TypeWrappers
 
             _parentWrapper = module.GetTypeByName("System.Array");
             ElementType = elementType ?? throw new System.ArgumentNullException(nameof(elementType));
-            Dimensions = dimensions;
+            ArrayShapeData = arrayShapeData;
         }
 
         /// <summary>
@@ -39,18 +40,18 @@ namespace LightweightMetadata.TypeWrappers
         public IHandleTypeNamedWrapper ElementType { get; }
 
         /// <summary>
-        /// Gets the number of dimensions ot the array.
+        /// Gets the array shape data.
         /// </summary>
-        public int Dimensions { get; }
+        public ArrayShapeData ArrayShapeData { get; }
 
         /// <inheritdoc />
-        public string Name => ElementType.Name + "[" + new string(',', Dimensions - 1) + "]";
+        public string Name => ElementType.Name;
 
         /// <inheritdoc />
-        public string FullName => ElementType.FullName + "[" + new string(',', Dimensions - 1) + "]";
+        public string FullName => ElementType.FullName;
 
         /// <inheritdoc />
-        public string ReflectionFullName => ElementType.ReflectionFullName + "[" + new string(',', Dimensions - 1) + "]";
+        public string ReflectionFullName => ElementType.ReflectionFullName;
 
         /// <inheritdoc />
         public string TypeNamespace => _parentWrapper.TypeNamespace;
@@ -69,5 +70,8 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc />
         public Handle Handle => _parentWrapper.Handle;
+
+        /// <inheritdoc />
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => _parentWrapper?.GenericParameters;
     }
 }

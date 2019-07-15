@@ -40,7 +40,7 @@ namespace LightweightMetadata.TypeWrappers
             _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
 
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
 
             _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(module));
             IsStatic = (Definition.Attributes & FieldAttributes.Static) != 0;
@@ -152,6 +152,26 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return _registerTypes.GetOrAdd(handle, handleCreate => new FieldWrapper(handleCreate, module));
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, CompilationModule module)
+        {
+            var output = new FieldWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
         }
 
         private FieldDefinition Resolve()

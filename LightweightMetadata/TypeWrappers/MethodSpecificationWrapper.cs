@@ -13,7 +13,7 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the MethodSpecification.
     /// </summary>
-    public class MethodSpecificationWrapper : IHandleWrapper
+    public class MethodSpecificationWrapper : IHandleWrapper, IHasGenericParameters
     {
         private static readonly Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper> _registerTypes = new Dictionary<MethodSpecificationHandle, MethodSpecificationWrapper>();
 
@@ -27,7 +27,7 @@ namespace LightweightMetadata.TypeWrappers
             Handle = handle;
             Definition = Resolve(handle, module);
 
-            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)));
+            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)).ToList());
             _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, module), LazyThreadSafetyMode.PublicationOnly);
 
             _registerTypes.TryAdd(handle, this);
@@ -60,6 +60,9 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets the module that this method belongs to.
         /// </summary>
         public CompilationModule CompilationModule { get; }
+
+        /// <inheritdoc />
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => Method.GenericParameters;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.

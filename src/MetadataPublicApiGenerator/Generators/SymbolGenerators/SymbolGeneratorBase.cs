@@ -21,9 +21,9 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         /// </summary>
         /// <param name="member">The member we are generating for.</param>
         /// <returns>a member declaration syntax.</returns>
-        public abstract TOutput Generate(IHandleNameWrapper member);
+        public abstract TOutput Generate(IHandleWrapper member);
 
-        CSharpSyntaxNode ISymbolGenerator.Generate(IHandleNameWrapper member)
+        CSharpSyntaxNode ISymbolGenerator.Generate(IHandleWrapper member)
         {
             return Generate(member);
         }

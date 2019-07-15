@@ -52,22 +52,14 @@ namespace LightweightMetadata
             var module = Compilation.GetCompilationModuleForReader(reader);
 
             var reference = TypeReferenceWrapper.Create(handle, module);
-            var name = reference.FullName;
 
-            var resolve = Compilation.GetTypeByName(name);
-
-            if (resolve != null)
-            {
-                return resolve;
-            }
-
-            return reference;
+            return reference.ResolutionScope;
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetSZArrayType(IHandleTypeNamedWrapper elementType)
         {
-            return new ArrayTypeWrapper(Compilation, elementType, 1);
+            return new ArrayTypeWrapper(Compilation, elementType, null);
         }
 
         /// <inheritdoc />
@@ -79,7 +71,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetArrayType(IHandleTypeNamedWrapper elementType, ArrayShape shape)
         {
-            return new ArrayTypeWrapper(Compilation, elementType, shape.Rank);
+            return new ArrayTypeWrapper(Compilation, elementType, new ArrayShapeData(shape.Rank, shape.Sizes, shape.LowerBounds));
         }
 
         /// <inheritdoc />

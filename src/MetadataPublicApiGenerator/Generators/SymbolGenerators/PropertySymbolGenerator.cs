@@ -19,7 +19,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override PropertyDeclarationSyntax Generate(IHandleNameWrapper handle)
+        public override PropertyDeclarationSyntax Generate(IHandleWrapper handle)
         {
             if (!(handle is PropertyWrapper property))
             {

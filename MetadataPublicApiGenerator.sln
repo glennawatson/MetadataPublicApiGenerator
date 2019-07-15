@@ -15,11 +15,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Items", "Items", "{B7B5039D
 		LICENSE = LICENSE
 		README.md = README.md
 		stylecop.json = stylecop.json
+		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetadataPublicApiGenerator.Benchmarks", "src\MetadataPublicApiGenerator.Benchmarks\MetadataPublicApiGenerator.Benchmarks.csproj", "{D0528AEA-0618-491F-949C-BCB448D830F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightweightMetadata", "LightweightMetadata\LightweightMetadata.csproj", "{BAEFFDBB-1748-4FEC-B6DA-82D3DF1DE6E7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightweightMetadata", "LightweightMetadata\LightweightMetadata.csproj", "{BAEFFDBB-1748-4FEC-B6DA-82D3DF1DE6E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataPublicApiGenerator.IntegrationTestData", "MetadataPublicApiGenerator.IntegrationTestData\MetadataPublicApiGenerator.IntegrationTestData.csproj", "{1608D3F1-EA57-4B8E-902D-22BBEE213331}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,6 +46,10 @@ Global
 		{BAEFFDBB-1748-4FEC-B6DA-82D3DF1DE6E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BAEFFDBB-1748-4FEC-B6DA-82D3DF1DE6E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAEFFDBB-1748-4FEC-B6DA-82D3DF1DE6E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1608D3F1-EA57-4B8E-902D-22BBEE213331}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1608D3F1-EA57-4B8E-902D-22BBEE213331}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1608D3F1-EA57-4B8E-902D-22BBEE213331}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1608D3F1-EA57-4B8E-902D-22BBEE213331}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

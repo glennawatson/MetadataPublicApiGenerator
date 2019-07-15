@@ -18,7 +18,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override EventFieldDeclarationSyntax Generate(IHandleNameWrapper member)
+        public override EventFieldDeclarationSyntax Generate(IHandleWrapper member)
         {
             if (!(member is EventWrapper eventWrapper))
             {
@@ -34,7 +34,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             return SyntaxFactory.EventFieldDeclaration(
                     SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(memberName))
-                        .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(member.Name)))))
+                        .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(eventWrapper.Name)))))
                     .WithModifiers(eventWrapper.GetModifiers())
                     .WithAttributeLists(Factory.Generate(eventWrapper.Attributes));
         }

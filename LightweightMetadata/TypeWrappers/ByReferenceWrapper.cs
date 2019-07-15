@@ -35,10 +35,10 @@ namespace LightweightMetadata.TypeWrappers
         public KnownTypeCode KnownType => TypeDefinition.KnownType;
 
         /// <inheritdoc />
-        public virtual string Name => TypeDefinition.Name + "&";
+        public virtual string Name => TypeDefinition.Name;
 
         /// <inheritdoc />
-        public string ReflectionFullName => TypeDefinition.ReflectionFullName + "&";
+        public string ReflectionFullName => TypeDefinition.ReflectionFullName;
 
         /// <inheritdoc />
         public string TypeNamespace => TypeDefinition.TypeNamespace;
@@ -47,7 +47,7 @@ namespace LightweightMetadata.TypeWrappers
         public EntityAccessibility Accessibility => TypeDefinition.Accessibility;
 
         /// <inheritdoc />
-        public string FullName => TypeDefinition.FullName + "&";
+        public string FullName => TypeDefinition.FullName;
 
         /// <inheritdoc />
         public Handle Handle => TypeDefinition.Handle;

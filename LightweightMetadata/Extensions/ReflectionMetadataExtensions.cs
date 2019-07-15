@@ -4,8 +4,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Metadata;
+using System.Security.Cryptography;
+using System.Text;
 using LightweightMetadata.TypeWrappers;
 
 namespace LightweightMetadata.Extensions
@@ -70,6 +75,58 @@ namespace LightweightMetadata.Extensions
             }
 
             return handle;
+        }
+
+        [SuppressMessage("Design", "CA5350: Compromised hash algorithm", Justification = "Deliberate usage")]
+        [SuppressMessage("Design", "CA5351: Compromised hash algorithm", Justification = "Deliberate usage")]
+        internal static HashAlgorithm GetHashAlgorithm(this AssemblyHashAlgorithm hashAlgorithm)
+        {
+            switch (hashAlgorithm)
+            {
+                case AssemblyHashAlgorithm.None:
+                    // only for multi-module assemblies?
+                    return SHA1.Create();
+                case AssemblyHashAlgorithm.MD5:
+                    return MD5.Create();
+                case AssemblyHashAlgorithm.Sha1:
+                    return SHA1.Create();
+                case AssemblyHashAlgorithm.Sha256:
+                    return SHA256.Create();
+                case AssemblyHashAlgorithm.Sha384:
+                    return SHA384.Create();
+                case AssemblyHashAlgorithm.Sha512:
+                    return SHA512.Create();
+                default:
+                    return SHA1.Create(); // default?
+            }
+        }
+
+        internal static string CalculatePublicKeyToken(this BlobHandle publicKeyBlob, CompilationModule module, AssemblyHashAlgorithm assemblyHashAlgorithm)
+        {
+            if (publicKeyBlob.IsNil)
+            {
+                return "null";
+            }
+
+            var reader = module.MetadataReader;
+            using (var hashAlgorithm = assemblyHashAlgorithm.GetHashAlgorithm())
+            {
+                // Calculate public key token:
+                // 1. hash the public key using the appropriate algorithm.
+                byte[] publicKeyTokenBytes = hashAlgorithm.ComputeHash(reader.GetBlobBytes(publicKeyBlob));
+
+                // 2. take the last 8 bytes
+                // 3. according to Cecil we need to reverse them, other sources did not mention this.
+                var bytes = publicKeyTokenBytes.Skip(publicKeyTokenBytes.Length - 8).Reverse().ToArray();
+
+                var sb = new StringBuilder(bytes.Length * 2);
+                foreach (var b in bytes)
+                {
+                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0:x2}", b);
+                }
+
+                return sb.ToString();
+            }
         }
 
         internal static object ReadConstant(this ConstantHandle constantHandle, CompilationModule module)

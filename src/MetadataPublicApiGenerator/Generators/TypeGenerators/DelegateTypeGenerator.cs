@@ -43,9 +43,9 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
             var parameters = invokeMember.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x)).Where(x => x != null).ToList();
 
             var returnValue = SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), type.Name)
-                .WithGenericParameterList(invokeMember)
                 .WithAttributeLists(Factory.Generate(type.Attributes))
-                .WithModifiers(type.GetModifiers());
+                .WithModifiers(type.GetModifiers())
+                .AddTypeParameters(type, Factory);
 
             if (parameters.Count > 0)
             {

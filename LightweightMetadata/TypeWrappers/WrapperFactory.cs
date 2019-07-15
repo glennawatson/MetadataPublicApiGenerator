@@ -36,14 +36,23 @@ namespace LightweightMetadata.TypeWrappers
                     return PropertyWrapper.Create((PropertyDefinitionHandle)entity, module);
                 case HandleKind.TypeDefinition:
                     return TypeWrapper.Create((TypeDefinitionHandle)entity, module);
-                case HandleKind.TypeReference:
-                    return TypeReferenceWrapper.Create((TypeReferenceHandle)entity, module);
                 case HandleKind.MemberReference:
                     return MemberReferenceWrapper.Create((MemberReferenceHandle)entity, module);
                 case HandleKind.TypeSpecification:
                     return TypeSpecificationWrapper.Create((TypeSpecificationHandle)entity, module);
                 case HandleKind.InterfaceImplementation:
                     return InterfaceImplementationWrapper.Create((InterfaceImplementationHandle)entity, module);
+                case HandleKind.TypeReference:
+                {
+                    var current = TypeReferenceWrapper.Create((TypeReferenceHandle)entity, module).ResolutionScope;
+
+                    while (current is TypeReferenceWrapper child)
+                    {
+                        current = child.ResolutionScope;
+                    }
+
+                    return current;
+                }
             }
 
             return null;

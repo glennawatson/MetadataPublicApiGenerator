@@ -17,7 +17,7 @@ namespace LightweightMetadata.TypeWrappers
     /// A wrapper around the MethodDefinition.
     /// </summary>
     [DebuggerDisplay("{" + nameof(FullName) + "}")]
-    public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
         private static readonly Dictionary<MethodDefinitionHandle, MethodWrapper> _registerTypes = new Dictionary<MethodDefinitionHandle, MethodWrapper>();
 
@@ -27,7 +27,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>> _constraints;
         private readonly Lazy<IReadOnlyList<ParameterWrapper>> _parameters;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-        private readonly Lazy<IReadOnlyList<TypeParameterWrapper>> _genericParameters;
+        private readonly Lazy<IReadOnlyList<GenericParameterWrapper>> _genericParameters;
 
         private readonly Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)> _semanticData;
 
@@ -54,13 +54,13 @@ namespace LightweightMetadata.TypeWrappers
             IsOverride = (Definition.Attributes & (MethodAttributes.NewSlot | MethodAttributes.Virtual)) == MethodAttributes.Virtual;
             IsVirtual = (Definition.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual | MethodAttributes.NewSlot | MethodAttributes.Final)) == (MethodAttributes.Virtual | MethodAttributes.NewSlot);
 
-            _genericParameters = new Lazy<IReadOnlyList<TypeParameterWrapper>>(() => TypeParameterWrapper.Create(CompilationModule, MethodDefinitionHandle, Definition.GetGenericParameters()), LazyThreadSafetyMode.PublicationOnly);
+            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(Definition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
 
             _semanticData = new Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)>(GetMethodSymbolKind, LazyThreadSafetyMode.PublicationOnly);
 
             _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(GetParameters, LazyThreadSafetyMode.PublicationOnly);
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
 
             _registerTypes.TryAdd(handle, this);
 
@@ -181,7 +181,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the parameter types for generic orientated methods.
         /// </summary>
-        public IReadOnlyCollection<ITypeNamedWrapper> ParameterTypes => _signature.Value.ParameterTypes;
+        public IReadOnlyList<ITypeNamedWrapper> ParameterTypes => _signature.Value.ParameterTypes.ToArray();
 
         /// <summary>
         /// Gets the number of generic parameters for the method.
@@ -196,7 +196,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets a list of the generic type parameters.
         /// </summary>
-        public IReadOnlyList<TypeParameterWrapper> GenericParameters => _genericParameters.Value;
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => _genericParameters.Value;
 
         /// <inheritdoc />
         public KnownTypeCode KnownType => KnownTypeCode.None;
@@ -223,6 +223,26 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return _registerTypes.GetOrAdd(handle, handleCreate => new MethodWrapper(handleCreate, module));
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<MethodWrapper> Create(in MethodDefinitionHandleCollection collection, CompilationModule module)
+        {
+            var output = new MethodWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
         }
 
         private static MethodDefinition Resolve(MethodDefinitionHandle handle, CompilationModule compilation)

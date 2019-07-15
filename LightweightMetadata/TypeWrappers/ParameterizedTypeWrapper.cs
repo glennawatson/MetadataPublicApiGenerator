@@ -48,7 +48,7 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             GenericType = genericType ?? throw new ArgumentNullException(nameof(genericType));
-            TypeArguments = typeArguments.ToImmutableArray();
+            TypeArguments = typeArguments.ToList();
             CompilationModule = genericType.CompilationModule;
 
             _name = new Lazy<string>(() => GenericType.Name, LazyThreadSafetyMode.PublicationOnly);

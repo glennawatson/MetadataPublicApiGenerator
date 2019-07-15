@@ -94,6 +94,26 @@ namespace LightweightMetadata.TypeWrappers
             return _registerTypes.GetOrAdd(handle, handleCreate => new InterfaceImplementationWrapper(handleCreate, module));
         }
 
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<InterfaceImplementationWrapper> Create(in InterfaceImplementationHandleCollection collection, CompilationModule module)
+        {
+            var output = new InterfaceImplementationWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
+        }
+
         private InterfaceImplementation Resolve()
         {
             return CompilationModule.MetadataReader.GetInterfaceImplementation(InterfaceImplementationHandle);

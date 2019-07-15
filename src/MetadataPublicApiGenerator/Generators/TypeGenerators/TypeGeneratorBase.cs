@@ -5,8 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LightweightMetadata;
-using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Extensions.HandleNameWrapper;
@@ -57,11 +55,11 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var item = GenerateSyntax(type);
 
-            item = item.WithGenericParameterList(type);
             return item.WithModifiers(type.GetModifiers())
                 .WithAttributeLists(Factory.Generate(type.Attributes))
                 .WithMembers(GenerateMemberDeclaration(type))
-                .AddBaseList(type.Base, type.InterfaceImplementations);
+                .AddBaseList(type.Base, type.InterfaceImplementations)
+                .AddTypeParameters(type, Factory);
         }
 
         internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper)

@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace LightweightMetadata.TypeWrappers
     /// A wrapper around a type.
     /// </summary>
     [DebuggerDisplay("{" + nameof(FullName) + "}")]
-    public class TypeWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    public class TypeWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
         private static readonly IDictionary<TypeDefinitionHandle, TypeWrapper> _types = new Dictionary<TypeDefinitionHandle, TypeWrapper>();
 
@@ -32,7 +33,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<IHandleTypeNamedWrapper> _base;
         private readonly Lazy<SymbolTypeKind> _typeKind;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-        private readonly Lazy<IReadOnlyList<TypeParameterWrapper>> _genericParameters;
+        private readonly Lazy<IReadOnlyList<GenericParameterWrapper>> _genericParameters;
         private readonly Lazy<IReadOnlyList<MethodWrapper>> _methods;
         private readonly Lazy<IReadOnlyList<PropertyWrapper>> _properties;
         private readonly Lazy<IReadOnlyList<FieldWrapper>> _fields;
@@ -42,11 +43,6 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<KnownTypeCode> _knownTypeCode;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TypeWrapper"/> class.
-        /// </summary>
-        /// <param name="module">The main compilation module.</param>
-        /// <param name="typeDefinition">The type definition we are wrapping.</param>
         private TypeWrapper(CompilationModule module, TypeDefinitionHandle typeDefinition)
         {
             CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
@@ -61,15 +57,15 @@ namespace LightweightMetadata.TypeWrappers
             _isKnownType = new Lazy<bool>(() => this.ToKnownTypeCode() != KnownTypeCode.None, LazyThreadSafetyMode.PublicationOnly);
             _isEnumType = new Lazy<bool>(IsEnum, LazyThreadSafetyMode.PublicationOnly);
             _typeKind = new Lazy<SymbolTypeKind>(GetTypeKind, LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => TypeDefinition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _genericParameters = new Lazy<IReadOnlyList<TypeParameterWrapper>>(() => TypeParameterWrapper.Create(CompilationModule, TypeDefinitionHandle, TypeDefinition.GetGenericParameters()), LazyThreadSafetyMode.PublicationOnly);
-            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(TypeDefinition.GetDeclaringType(), CompilationModule));
-            _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => TypeDefinition.GetMethods().Select(x => MethodWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => TypeDefinition.GetProperties().Select(x => PropertyWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _fields = new Lazy<IReadOnlyList<FieldWrapper>>(() => TypeDefinition.GetFields().Select(x => FieldWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _events = new Lazy<IReadOnlyList<EventWrapper>>(() => TypeDefinition.GetEvents().Select(x => EventWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeDefinition.GetNestedTypes().Select(x => TypeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => TypeDefinition.GetInterfaceImplementations().Select(x => InterfaceImplementationWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(TypeDefinition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(TypeDefinition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), CompilationModule));
+            _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => MethodWrapper.Create(TypeDefinition.GetMethods(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => PropertyWrapper.Create(TypeDefinition.GetProperties(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _fields = new Lazy<IReadOnlyList<FieldWrapper>>(() => FieldWrapper.Create(TypeDefinition.GetFields(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _events = new Lazy<IReadOnlyList<EventWrapper>>(() => EventWrapper.Create(TypeDefinition.GetEvents(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Create(TypeDefinition.GetNestedTypes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => InterfaceImplementationWrapper.Create(TypeDefinition.GetInterfaceImplementations(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
 
             _base = new Lazy<IHandleTypeNamedWrapper>(
@@ -215,7 +211,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets a list of generic parameters.
         /// </summary>
-        public IReadOnlyList<TypeParameterWrapper> GenericParameters => _genericParameters.Value;
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => _genericParameters.Value;
 
         /// <inheritdoc />
         public CompilationModule CompilationModule { get; }
@@ -242,6 +238,46 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return _types.GetOrAdd(handle, createHandle => new TypeWrapper(module, createHandle));
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<TypeWrapper> Create(in TypeDefinitionHandleCollection collection, CompilationModule module)
+        {
+            var output = new TypeWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<TypeWrapper> Create(in ImmutableArray<TypeDefinitionHandle> collection, CompilationModule module)
+        {
+            var output = new TypeWrapper[collection.Length];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
         }
 
         /// <inheritdoc />
@@ -454,7 +490,7 @@ namespace LightweightMetadata.TypeWrappers
             var stringBuilder = new StringBuilder();
 
             int index = Name.IndexOf("`", StringComparison.InvariantCulture);
-            string strippedName = index >= 0 ? Name.AsSpan().Slice(0, index).ToString() : Name;
+            string strippedName = index >= 0 ? Name.Substring(0, index) : Name;
 
             if (declaringType == null)
             {

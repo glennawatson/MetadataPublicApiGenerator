@@ -29,6 +29,11 @@ namespace LightweightMetadata
         IReadOnlyList<CompilationModule> ReferencedModules { get; }
 
         /// <summary>
+        /// Gets the search directories.
+        /// </summary>
+        IReadOnlyList<string> SearchDirectories { get; }
+
+        /// <summary>
         /// Gets the compilation module for a reader.
         /// </summary>
         /// <param name="reader">The reader to use.</param>

@@ -17,7 +17,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override FieldDeclarationSyntax Generate(IHandleNameWrapper member)
+        public override FieldDeclarationSyntax Generate(IHandleWrapper member)
         {
             if (!(member is FieldWrapper field))
             {

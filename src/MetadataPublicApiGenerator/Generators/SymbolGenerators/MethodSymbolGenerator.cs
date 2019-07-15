@@ -21,37 +21,34 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override BaseMethodDeclarationSyntax Generate(IHandleNameWrapper handle)
+        public override BaseMethodDeclarationSyntax Generate(IHandleWrapper handle)
         {
             if (!(handle is MethodWrapper method))
             {
                 return null;
             }
 
-            var methodKind = method.MethodKind;
-
-            var methodName = method.Name;
-            var methodDeclaringTypeName = method.DeclaringType.Name;
-            switch (methodKind)
+            switch (method.MethodKind)
             {
                 case SymbolMethodKind.Constructor:
-                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConstructorDeclaration(methodDeclaringTypeName), method);
+                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConstructorDeclaration(method.DeclaringType.Name), method);
                 case SymbolMethodKind.Destructor:
-                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.DestructorDeclaration(methodDeclaringTypeName), method);
+                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.DestructorDeclaration(method.DeclaringType.Name), method);
                 case SymbolMethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), methodName)
-                        .WithAttributeLists(Factory.Generate(method.Attributes));
+                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), method.Name)
+                        .WithAttributeLists(Factory.Generate(method.Attributes))
+                        .AddTypeParameters(method, Factory);
 
                     return GenerateFromMethodSyntax(Factory, methodDeclaration, method);
                 case SymbolMethodKind.BuiltinOperator:
                 case SymbolMethodKind.UserDefinedOperator:
-                    switch (methodName)
+                    switch (method.Name)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(methodName), SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName)), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(method.Name), SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName)), method);
                         default:
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), SyntaxHelper.OperatorNameToToken(methodName)), method);
+                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), SyntaxHelper.OperatorNameToToken(method.Name)), method);
                     }
 
                 default:

@@ -8,8 +8,8 @@
     <Description>This library simply returns your public API as a string. You can use this in approval style tests or for documentation.</Description>
     <PackageReleaseNotes>https://github.com/glennawatson/MetadataPublicApiGenerator/releases</PackageReleaseNotes>
     <NoWarn>$(NoWarn);IDE0003</NoWarn>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsTestProject>$(MSBuildProjectName.Contains('Tests'))</IsTestProject>
+    <IsIntegration>$(MSBuildProjectName.Contains('Integration'))</IsIntegration>
 
     <!-- Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -26,6 +26,10 @@
 
   <PropertyGroup Condition="$(IsTestProject)">
     <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="!$(IsTestProject) and !$(IsIntegration)">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup Condition="$(IsTestProject)">
@@ -52,7 +56,7 @@
     <PackageReference Include="Nerdbank.GitVersioning" Version="2.3.183" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="!$(IsIntegration)">
     <PackageReference Include="stylecop.analyzers" Version="1.1.118" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.3" PrivateAssets="all" />
     <PackageReference Include="Roslynator.Analyzers" Version="2.1.0" PrivateAssets="All" />

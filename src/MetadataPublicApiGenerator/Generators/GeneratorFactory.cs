@@ -56,6 +56,7 @@ namespace MetadataPublicApiGenerator.Generators
                 [HandleKind.EventDefinition] = new EventSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
                 [HandleKind.MethodDefinition] = new MethodSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
                 [HandleKind.CustomAttribute] = new AttributeSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
+                [HandleKind.GenericParameter] = new TypeParameterSymbolGenerator(ExcludeAttributes, ExcludeMembersAttributes, this),
             };
         }
 
@@ -82,7 +83,7 @@ namespace MetadataPublicApiGenerator.Generators
         }
 
         /// <inheritdoc />
-        public TOutput Generate<TOutput>(IHandleNameWrapper wrapper)
+        public TOutput Generate<TOutput>(IHandleWrapper wrapper)
             where TOutput : CSharpSyntaxNode => (TOutput)_symbolKindGenerators[wrapper.Handle.Kind].Generate(wrapper);
 
         public SyntaxList<AttributeListSyntax> Generate(IEnumerable<AttributeWrapper> attributes, SyntaxKind? target = null)

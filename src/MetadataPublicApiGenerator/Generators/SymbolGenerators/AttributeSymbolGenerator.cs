@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         }
 
         /// <inheritdoc />
-        public override AttributeSyntax Generate(IHandleNameWrapper member)
+        public override AttributeSyntax Generate(IHandleWrapper member)
         {
             if (!(member is AttributeWrapper customAttribute))
             {

@@ -15,17 +15,13 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the TypeReference class.
     /// </summary>
-    [DebuggerDisplay("{" + nameof(FullName) + "}")]
-    public class TypeReferenceWrapper : IHandleTypeNamedWrapper
+    public class TypeReferenceWrapper : IHandleNameWrapper
     {
         private static readonly Dictionary<TypeReferenceHandle, TypeReferenceWrapper> _registerTypes = new Dictionary<TypeReferenceHandle, TypeReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<IHandleTypeNamedWrapper> _resolutionScope;
-        private readonly Lazy<string> _namespace;
-        private readonly Lazy<string> _fullName;
-        private readonly Lazy<string> _reflectionFullName;
-        private readonly Lazy<KnownTypeCode> _knownType;
+        private readonly Lazy<AssemblyReferenceWrapper> _declaringModule;
 
         private TypeReferenceWrapper(TypeReferenceHandle handle, CompilationModule module)
         {
@@ -36,10 +32,7 @@ namespace LightweightMetadata.TypeWrappers
 
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
             _resolutionScope = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.ResolutionScope, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _namespace = new Lazy<string>(() => CompilationModule.MetadataReader.GetString(Definition.Namespace));
-            _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
-            _reflectionFullName = new Lazy<string>(GetReflectionFullName, LazyThreadSafetyMode.PublicationOnly);
-            _knownType = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
+            _declaringModule = new Lazy<AssemblyReferenceWrapper>(() => GetDeclaringModule(this), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -66,23 +59,10 @@ namespace LightweightMetadata.TypeWrappers
         /// </summary>
         public IHandleTypeNamedWrapper ResolutionScope => _resolutionScope.Value;
 
-        /// <inheritdoc />
-        public string ReflectionFullName => _reflectionFullName.Value;
-
-        /// <inheritdoc />
-        public string TypeNamespace => _namespace.Value;
-
-        /// <inheritdoc />
-        public string FullName => _fullName.Value;
-
-        /// <inheritdoc />
-        public KnownTypeCode KnownType => _knownType.Value;
-
-        /// <inheritdoc />
-        public EntityAccessibility Accessibility => ResolutionScope.Handle.Kind == HandleKind.TypeReference ? ResolutionScope.Accessibility : EntityAccessibility.None;
-
-        /// <inheritdoc />
-        public bool IsAbstract => ResolutionScope.Handle.Kind != HandleKind.TypeReference && ResolutionScope.IsAbstract;
+        /// <summary>
+        /// Gets the declaring module.
+        /// </summary>
+        public AssemblyReferenceWrapper DeclaringModule => _declaringModule.Value;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -100,55 +80,44 @@ namespace LightweightMetadata.TypeWrappers
             return _registerTypes.GetOrAdd(handle, handleCreate => new TypeReferenceWrapper(handleCreate, module));
         }
 
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="module">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<TypeReferenceWrapper> Create(in TypeReferenceHandleCollection collection, CompilationModule module)
+        {
+            var output = new TypeReferenceWrapper[collection.Count];
+
+            int i = 0;
+            foreach (var element in collection)
+            {
+                output[i] = Create(element, module);
+                i++;
+            }
+
+            return output;
+        }
+
+        private static AssemblyReferenceWrapper GetDeclaringModule(TypeReferenceWrapper typeReference)
+        {
+            switch (typeReference.Definition.ResolutionScope.Kind)
+            {
+                case HandleKind.TypeReference:
+                    var typeReferenceScope = TypeReferenceWrapper.Create((TypeReferenceHandle)typeReference.Definition.ResolutionScope, typeReference.CompilationModule);
+                    return GetDeclaringModule(typeReferenceScope);
+                case HandleKind.AssemblyReference:
+                    var asmRef = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)typeReference.Definition.ResolutionScope, typeReference.CompilationModule);
+                    return asmRef;
+                default:
+                    return default;
+            }
+        }
+
         private TypeReference Resolve()
         {
             return CompilationModule.MetadataReader.GetTypeReference(TypeReferenceHandle);
-        }
-
-        private string GetFullName()
-        {
-            return GetName(x => x.FullName);
-        }
-
-        private string GetReflectionFullName()
-        {
-            return GetName(x => x.ReflectionFullName);
-        }
-
-        private string GetName(Func<IHandleTypeNamedWrapper, string> nameGetter)
-        {
-            var stringBuilder = new StringBuilder();
-            var namespaceName = TypeNamespace;
-
-            if (!string.IsNullOrEmpty(namespaceName))
-            {
-                stringBuilder.Append(namespaceName).Append('.');
-            }
-
-            var list = new List<string>();
-            var current = ResolutionScope;
-            while (current != null)
-            {
-                var name = nameGetter(current);
-
-                if (!string.IsNullOrWhiteSpace(name))
-                {
-                    list.Insert(0, name);
-                }
-
-                current = current.Handle.Kind == HandleKind.TypeReference ?
-                    ((TypeReferenceWrapper)current).ResolutionScope :
-                    default;
-            }
-
-            if (list.Count > 0)
-            {
-                stringBuilder.Append(string.Join(".", list)).Append('.');
-            }
-
-            stringBuilder.Append(Name);
-
-            return stringBuilder.ToString();
         }
     }
 }

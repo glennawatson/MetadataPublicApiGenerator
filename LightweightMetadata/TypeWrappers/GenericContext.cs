@@ -15,8 +15,8 @@ namespace LightweightMetadata.TypeWrappers
 
         internal GenericContext(CompilationModule module)
         {
-            ClassTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
-            MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
+            ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
+            MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
             _module = module;
         }
 
@@ -33,7 +33,7 @@ namespace LightweightMetadata.TypeWrappers
             {
                 case TypeWrapper typeWrapper:
                     ClassTypeParameters = typeWrapper.GenericParameters;
-                    MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
+                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
                     break;
                 case MethodWrapper methodWrapper:
                     var declaringTypeDefinition = methodWrapper.DeclaringType;
@@ -42,8 +42,8 @@ namespace LightweightMetadata.TypeWrappers
                     MethodTypeParameters = methodWrapper.GenericParameters;
                     break;
                 default:
-                    ClassTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
-                    MethodTypeParameters = ImmutableArray<TypeParameterWrapper>.Empty;
+                    ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
+                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
                     break;
             }
 
@@ -53,9 +53,9 @@ namespace LightweightMetadata.TypeWrappers
             }
         }
 
-        public IReadOnlyList<TypeParameterWrapper> ClassTypeParameters { get; }
+        public IReadOnlyList<GenericParameterWrapper> ClassTypeParameters { get; }
 
-        public IReadOnlyList<TypeParameterWrapper> MethodTypeParameters { get; }
+        public IReadOnlyList<GenericParameterWrapper> MethodTypeParameters { get; }
 
         public IHandleTypeNamedWrapper GetClassTypeParameter(int index)
         {

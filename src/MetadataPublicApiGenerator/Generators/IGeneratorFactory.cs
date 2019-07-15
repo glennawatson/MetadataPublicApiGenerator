@@ -28,7 +28,7 @@ namespace MetadataPublicApiGenerator.Generators
         /// <param name="symbol">The symbol to generate.</param>
         /// <typeparam name="TOutput">The output syntax node.</typeparam>
         /// <returns>The generated syntax node.</returns>
-        TOutput Generate<TOutput>(IHandleNameWrapper symbol)
+        TOutput Generate<TOutput>(IHandleWrapper symbol)
             where TOutput : CSharpSyntaxNode;
 
         /// <summary>

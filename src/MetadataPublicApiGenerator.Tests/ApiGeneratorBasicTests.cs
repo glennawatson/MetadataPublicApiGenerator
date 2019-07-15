@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Reflection;
+using MetadataPublicApiGenerator.IntegrationTestData;
 using PublicApiGenerator;
 using Xunit;
 
@@ -19,7 +20,7 @@ namespace MetadataPublicApiGenerator.Tests
         [Fact]
         public void GeneratesContent()
         {
-            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
+            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(ArrayTypes)));
 
             Assert.NotNull(value);
         }
