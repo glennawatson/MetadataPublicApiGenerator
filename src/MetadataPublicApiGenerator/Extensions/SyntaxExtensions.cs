@@ -12,37 +12,53 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Extensions
 {
     internal static class SyntaxExtensions
     {
-        public static TypeDeclarationSyntax AddBaseList(this TypeDeclarationSyntax typeSyntax, IHandleTypeNamedWrapper baseEntity, IReadOnlyList<InterfaceImplementationWrapper> interfaces)
+        public static IReadOnlyCollection<BaseTypeSyntax> GetBaseTypes(this TypeWrapper type)
         {
+            var baseEntity = type.Base;
+            var interfaces = type.InterfaceImplementations;
+
             var bases = new List<BaseTypeSyntax>(1 + interfaces.Count);
 
             if (baseEntity != null && baseEntity.KnownType != KnownTypeCode.Object)
             {
-                bases.Add(SimpleBaseType(IdentifierName(baseEntity.ReflectionFullName)));
+                bases.Add(SimpleBaseType(baseEntity.ReflectionFullName));
             }
 
-            bases.AddRange(interfaces.Select(x => SimpleBaseType(IdentifierName(x.ReflectionFullName))));
+            bases.AddRange(interfaces.Select(x => SimpleBaseType(x.ReflectionFullName)));
 
-            if (bases.Count != 0)
-            {
-                return typeSyntax.WithBaseList(BaseList(SeparatedList(bases)));
-            }
-
-            return typeSyntax;
+            return bases;
         }
 
-        public static TypeSyntax GetTypeSyntax(this IHandleTypeNamedWrapper wrapper)
+        public static TypeSyntax GetTypeSyntax(this ITypeNamedWrapper wrapper)
         {
+            if (wrapper is ArrayTypeWrapper arrayType)
+            {
+                if (arrayType.ArrayShapeData != null)
+                {
+                    var shapeExpressions = new List<int?>();
+                    for (int i = 0; i < arrayType.ArrayShapeData.Rank; ++i)
+                    {
+                        int? size = arrayType.ArrayShapeData.Sizes.Count > 0 ? new int?(arrayType.ArrayShapeData.Sizes[i]) : 0;
+
+                        shapeExpressions.Add(size);
+                    }
+
+                    return ArrayType(IdentifierName(arrayType.ElementType.ReflectionFullName), new[] { ArrayRankSpecifier(shapeExpressions) });
+                }
+
+                return ArrayType(IdentifierName(arrayType.ElementType.ReflectionFullName), null);
+            }
+
             var type = IdentifierName(wrapper.ReflectionFullName);
             if (wrapper is ByReferenceWrapper)
             {
-                return RefType(type);
+                return RefType(type, false);
             }
 
             if (wrapper is PointerWrapper)
@@ -50,89 +66,16 @@ namespace MetadataPublicApiGenerator.Extensions
                 return PointerType(type);
             }
 
-            if (wrapper is ArrayTypeWrapper arrayType)
-            {
-                if (arrayType.ArrayShapeData != null)
-                {
-                    var shapeExpressions = new List<ExpressionSyntax>();
-                    for (int i = 0; i < arrayType.ArrayShapeData.Rank; ++i)
-                    {
-                        int? size = arrayType.ArrayShapeData.Sizes.Count > 0 ? new int?(arrayType.ArrayShapeData.Sizes[i]) : null;
-
-                        shapeExpressions.Add(size == null ? LiteralExpression(SyntaxKind.None) : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)size)));
-                    }
-
-                    return ArrayType(IdentifierName(arrayType.ElementType.ReflectionFullName), SingletonList(ArrayRankSpecifier(SeparatedList(shapeExpressions))));
-                }
-
-                return ArrayType(IdentifierName(arrayType.ElementType.ReflectionFullName));
-            }
-
             return type;
         }
 
-        public static TypeDeclarationSyntax AddTypeParameters(this TypeDeclarationSyntax typeSyntax, IHasGenericParameters attributeContainer, IGeneratorFactory factory)
+        public static (IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters) GetTypeParameters(this IHasGenericParameters genericParameterContainer, IGeneratorFactory factory)
         {
-            if (attributeContainer.GenericParameters.Count == 0)
+            if (genericParameterContainer.GenericParameters.Count == 0)
             {
-                return typeSyntax;
+                return default;
             }
 
-            var (constraints, parameters) = attributeContainer.GetConstraints(factory);
-
-            typeSyntax = typeSyntax
-                .WithTypeParameterList(TypeParameterList(SeparatedList(parameters)));
-
-            if (constraints.Count > 0)
-            {
-                typeSyntax = typeSyntax.WithConstraintClauses(List(constraints));
-            }
-
-            return typeSyntax;
-        }
-
-        public static MethodDeclarationSyntax AddTypeParameters(this MethodDeclarationSyntax typeSyntax, IHasGenericParameters attributeContainer, IGeneratorFactory factory)
-        {
-            if (attributeContainer.GenericParameters.Count == 0)
-            {
-                return typeSyntax;
-            }
-
-            var (constraints, parameters) = attributeContainer.GetConstraints(factory);
-
-            typeSyntax = typeSyntax
-                .WithTypeParameterList(TypeParameterList(SeparatedList(parameters)));
-
-            if (constraints.Count > 0)
-            {
-                typeSyntax = typeSyntax.WithConstraintClauses(List(constraints));
-            }
-
-            return typeSyntax;
-        }
-
-        public static DelegateDeclarationSyntax AddTypeParameters(this DelegateDeclarationSyntax typeSyntax, IHasGenericParameters attributeContainer, IGeneratorFactory factory)
-        {
-            if (attributeContainer.GenericParameters.Count == 0)
-            {
-                return typeSyntax;
-            }
-
-            var (constraints, parameters) = attributeContainer.GetConstraints(factory);
-
-            typeSyntax = typeSyntax
-                .WithTypeParameterList(TypeParameterList(SeparatedList(parameters)));
-
-            if (constraints.Count > 0)
-            {
-                typeSyntax = typeSyntax.WithConstraintClauses(List(constraints));
-            }
-
-            return typeSyntax;
-        }
-
-        private static (IReadOnlyList<TypeParameterConstraintClauseSyntax> constraintClauses, IEnumerable<TypeParameterSyntax> parameters) GetConstraints(this IHasGenericParameters genericParameterContainer, IGeneratorFactory factory)
-        {
             var constraintClauses = new List<TypeParameterConstraintClauseSyntax>();
 
             foreach (var genericParameter in genericParameterContainer.GenericParameters)
@@ -153,17 +96,136 @@ namespace MetadataPublicApiGenerator.Extensions
                     constraints.Add(ClassOrStructConstraint(SyntaxKind.StructConstraint));
                 }
 
-                constraints.AddRange(genericParameter.Constraints.Select(x => TypeConstraint(IdentifierName(x.Type.ReflectionFullName))));
+                constraints.AddRange(genericParameter.Constraints.Select(x => TypeConstraint(x.Type.ReflectionFullName)));
 
                 if (constraints.Count > 0)
                 {
-                    constraintClauses.Add(TypeParameterConstraintClause(IdentifierName(genericParameter.Name), SeparatedList(constraints)));
+                    constraintClauses.Add(TypeParameterConstraintClause(genericParameter.Name, constraints));
                 }
             }
 
-            var parameters = genericParameterContainer.GenericParameters.Select(factory.Generate<TypeParameterSyntax>);
+            var parameters = genericParameterContainer.GenericParameters.Select(factory.Generate<TypeParameterSyntax>).ToList();
 
             return (constraintClauses, parameters);
+        }
+
+        public static SyntaxToken AddLeadingNewLines(this SyntaxToken item, int number = 1)
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, number);
+            return item.WithLeadingTrivia(carriageReturnList);
+        }
+
+        public static SyntaxToken AddTrialingNewLines(this SyntaxToken item, int number = 1)
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, number);
+            return item.WithTrailingTrivia(carriageReturnList);
+        }
+
+        public static SyntaxToken AddLeadingNewLinesAndSpaces(this SyntaxToken item, int numberNewLines = 1, int numberSpaces = 1)
+        {
+            if (numberNewLines == 0 && numberSpaces == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, numberNewLines);
+            var leadingSpaces = Enumerable.Repeat(Space, numberSpaces);
+
+            return item.WithLeadingTrivia(carriageReturnList.Concat(leadingSpaces));
+        }
+
+        public static SyntaxToken AddLeadingSpaces(this SyntaxToken item, int number = 1)
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var leadingSpaces = Enumerable.Repeat(Space, number);
+            return item.WithLeadingTrivia(leadingSpaces);
+        }
+
+        public static SyntaxToken AddTrialingSpaces(this SyntaxToken item, int number = 1)
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var leadingSpaces = Enumerable.Repeat(Space, number);
+            return item.WithTrailingTrivia(leadingSpaces);
+        }
+
+        public static T AddLeadingNewLinesAndSpaces<T>(this T item, int numberNewLines = 1, int numberSpaces = 1)
+            where T : SyntaxNode
+        {
+            if (numberNewLines == 0 && numberSpaces == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, numberNewLines);
+            var leadingSpaces = Enumerable.Repeat(Space, numberSpaces);
+
+            return item.WithLeadingTrivia(carriageReturnList.Concat(leadingSpaces));
+        }
+
+        public static T AddLeadingNewLines<T>(this T item, int number = 1)
+            where T : SyntaxNode
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, number);
+            return item.WithLeadingTrivia(carriageReturnList);
+        }
+
+        public static T AddTrialingNewLines<T>(this T item, int number = 1)
+            where T : SyntaxNode
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var carriageReturnList = Enumerable.Repeat(CarriageReturnLineFeed, number);
+            return item.WithTrailingTrivia(carriageReturnList);
+        }
+
+        public static T AddLeadingSpaces<T>(this T item, int number = 1)
+            where T : SyntaxNode
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var leadingSpaces = Enumerable.Repeat(Space, number);
+            return item.WithLeadingTrivia(leadingSpaces);
+        }
+
+        public static T AddTrialingSpaces<T>(this T item, int number = 1)
+            where T : SyntaxNode
+        {
+            if (number == 0)
+            {
+                return item;
+            }
+
+            var leadingSpaces = Enumerable.Repeat(Space, number);
+            return item.WithTrailingTrivia(leadingSpaces);
         }
     }
 }

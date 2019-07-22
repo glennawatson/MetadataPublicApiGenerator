@@ -5,15 +5,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using LightweightMetadata;
-using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
@@ -42,7 +41,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeWrapper type)
+        public MemberDeclarationSyntax Generate(TypeWrapper type, int level)
         {
             if (ExcludeFunc(type))
             {
@@ -54,36 +53,23 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 return null;
             }
 
-            var enumDeclaration = SyntaxFactory.EnumDeclaration(type.Name)
-                .WithModifiers(type.GetModifiers())
-                .WithAttributeLists(Factory.Generate(type.Attributes));
-
             var enumKnownType = enumType.KnownType;
 
+            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.Accessibility == EntityAccessibility.Public).Select(field =>
+                {
+                    var memberName = field.Name;
+                    var constant = field.DefaultValue;
+
+                    return EnumMemberDeclaration(Factory.Generate(field.Attributes, level), memberName, constant == null ? null : EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
+                }).ToList();
+
+            string enumName = null;
             if (enumKnownType != KnownTypeCode.Int32)
             {
-                enumDeclaration = enumDeclaration.WithBaseList(
-                    SyntaxFactory.BaseList(
-                        SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(
-                            SyntaxFactory.SimpleBaseType(
-                                SyntaxFactory.IdentifierName(enumType.FullName)))));
+                enumName = enumType.FullName;
             }
 
-            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.Accessibility == EntityAccessibility.Public).Select(field =>
-            {
-                var memberName = field.Name;
-                var enumMember = SyntaxFactory.EnumMemberDeclaration(memberName).WithAttributeLists(Factory.Generate(field.Attributes));
-
-                if (field.DefaultValue != null)
-                {
-                    var constant = field.DefaultValue;
-                    enumMember = enumMember.WithEqualsValue(SyntaxFactory.EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
-                }
-
-                return enumMember;
-            });
-
-            return enumDeclaration.WithMembers(SyntaxFactory.SeparatedList(members));
+            return EnumDeclaration(type.Name, Factory.Generate(type.Attributes, level), members, type.GetModifiers(), enumName, level);
         }
     }
 }

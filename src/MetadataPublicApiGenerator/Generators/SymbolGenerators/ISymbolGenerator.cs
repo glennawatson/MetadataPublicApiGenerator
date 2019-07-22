@@ -16,7 +16,8 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         /// Generates a member syntax from the specified member.
         /// </summary>
         /// <param name="member">The member we are generating for.</param>
+        /// <param name="level">The level in the hierarchy where this item is located.</param>
         /// <returns>a member declaration syntax.</returns>
-        CSharpSyntaxNode Generate(IHandleWrapper member);
+        CSharpSyntaxNode Generate(IHandleWrapper member, int level);
     }
 }

@@ -4,11 +4,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         }
 
         /// <inheritdoc />
-        public override AttributeSyntax Generate(IHandleWrapper member)
+        public override AttributeSyntax Generate(IHandleWrapper member, int level)
         {
             if (!(member is AttributeWrapper customAttribute))
             {
@@ -31,23 +31,15 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             foreach (var fixedArgument in customAttribute.FixedArguments)
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.GetValueExpression(fixedArgument.Type, fixedArgument.Value)));
+                arguments.Add(AttributeArgument(SyntaxHelper.GetValueExpression(fixedArgument.Type, fixedArgument.Value)));
             }
 
             foreach (var namedArgument in customAttribute.NamedArguments)
             {
-                arguments.Add(SyntaxFactory.AttributeArgument(SyntaxHelper.GetValueExpression(namedArgument.Type, namedArgument.Value)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(namedArgument.Name))));
+                arguments.Add(AttributeArgument(NameEquals(IdentifierName(namedArgument.Name)), SyntaxHelper.GetValueExpression(namedArgument.Type, namedArgument.Value)));
             }
 
-            var attributeName = SyntaxFactory.IdentifierName(customAttribute.FullName);
-            var attribute = SyntaxFactory.Attribute(attributeName);
-
-            if (arguments.Count > 0)
-            {
-                attribute = attribute.WithArgumentList(SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(arguments)));
-            }
-
-            return attribute;
+            return Attribute(customAttribute.FullName, arguments);
         }
     }
 }

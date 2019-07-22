@@ -9,6 +9,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
+
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
     internal class InterfaceTypeGenerator : TypeGeneratorBase
@@ -29,9 +31,9 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public override TypeKind TypeKind => TypeKind.Interface;
 
         /// <inheritdoc />
-        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper wrapper)
+        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
         {
-            return SyntaxFactory.InterfaceDeclaration(wrapper.Name);
+            return InterfaceDeclaration(typeDefinition.Name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
         }
     }
 }

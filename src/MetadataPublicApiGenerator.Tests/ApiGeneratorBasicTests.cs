@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Tests
         [Fact]
         public void GeneratesContent()
         {
-            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(ArrayTypes)));
+            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
 
             Assert.NotNull(value);
         }

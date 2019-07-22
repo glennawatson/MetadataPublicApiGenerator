@@ -5,8 +5,10 @@
 using System.Collections.Generic;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using Microsoft.CodeAnalysis.CSharp;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
@@ -17,18 +19,18 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override FieldDeclarationSyntax Generate(IHandleWrapper member)
+        public override FieldDeclarationSyntax Generate(IHandleWrapper member, int level)
         {
             if (!(member is FieldWrapper field))
             {
                 return null;
             }
 
-            return SyntaxFactory.FieldDeclaration(SyntaxFactory
-                .VariableDeclaration(SyntaxFactory.IdentifierName(field.FieldType.FullName))
-                .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(field.Name))))
-                .WithAttributeLists(Factory.Generate(field.Attributes))
-                .WithModifiers(field.GetModifiers());
+            var variables = new[] { VariableDeclarator(field.Name) };
+
+            var declaration = VariableDeclaration(field.FieldType.GetTypeSyntax(), variables);
+
+            return FieldDeclaration(Factory.Generate(field.Attributes, 0), field.GetModifiers(), declaration, level);
         }
     }
 }

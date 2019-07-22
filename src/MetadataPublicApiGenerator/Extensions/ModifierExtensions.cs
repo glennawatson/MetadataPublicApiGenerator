@@ -19,11 +19,9 @@ namespace MetadataPublicApiGenerator.Extensions
     /// </summary>
     internal static class ModifierExtensions
     {
-        public static SyntaxTokenList GetModifiers(this TypeWrapper typeDefinition)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this TypeWrapper typeDefinition)
         {
-            var modifierList = new List<SyntaxKind>();
-
-            modifierList.AddRange(AccessibilityToSyntaxKind(typeDefinition.Accessibility));
+            var modifierList = new List<SyntaxKind>(AccessibilityToSyntaxKind(typeDefinition.Accessibility));
 
             if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsAbstract && !typeDefinition.IsStatic)
             {
@@ -40,15 +38,15 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }
 
-            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+            return modifierList;
         }
 
-        public static SyntaxTokenList GetModifiers(this MethodWrapper method)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this MethodWrapper method)
         {
-            return SyntaxFactory.TokenList(GetModifiersList(method).Select(SyntaxFactory.Token));
+            return GetModifiersList(method);
         }
 
-        public static SyntaxTokenList GetModifiers(this PropertyWrapper property)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this PropertyWrapper property)
         {
             var modifierList = new List<SyntaxKind>();
 
@@ -58,7 +56,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
             if (anyGetter == null)
             {
-                return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+                return modifierList;
             }
 
             foreach (var value in GetModifiersList(anyGetter))
@@ -69,10 +67,10 @@ namespace MetadataPublicApiGenerator.Extensions
                 }
             }
 
-            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+            return modifierList;
         }
 
-        public static SyntaxTokenList GetModifiers(this MethodWrapper accessor, PropertyWrapper property)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this MethodWrapper accessor, PropertyWrapper property)
         {
             var modifierList = new List<SyntaxKind>();
 
@@ -81,10 +79,10 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.AddRange(AccessibilityToSyntaxKind(accessor.Accessibility));
             }
 
-            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+            return modifierList;
         }
 
-        public static SyntaxTokenList GetModifiers(this FieldWrapper field)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this FieldWrapper field)
         {
             var modifierList = new List<SyntaxKind>();
 
@@ -95,17 +93,17 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+            return modifierList;
         }
 
-        public static SyntaxTokenList GetModifiers(this EventWrapper eventDefinition)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this EventWrapper eventDefinition)
         {
             var method = eventDefinition.AnyAccessor;
 
-            return SyntaxFactory.TokenList(GetModifiersList(method).Select(SyntaxFactory.Token));
+            return GetModifiersList(method);
         }
 
-        public static SyntaxTokenList GetModifiers(this ParameterWrapper parameter)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this ParameterWrapper parameter)
         {
             var modifierList = new List<SyntaxKind>();
             if (parameter.IsIn)
@@ -123,10 +121,10 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.ParamsKeyword);
             }
 
-            return SyntaxFactory.TokenList(modifierList.Select(SyntaxFactory.Token));
+            return modifierList;
         }
 
-        private static IEnumerable<SyntaxKind> GetModifiersList(MethodWrapper method)
+        private static IReadOnlyCollection<SyntaxKind> GetModifiersList(MethodWrapper method)
         {
             var modifierList = new List<SyntaxKind>();
 
@@ -160,7 +158,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return modifierList;
         }
 
-        private static IEnumerable<SyntaxKind> AccessibilityToSyntaxKind(EntityAccessibility accessibility)
+        private static IReadOnlyCollection<SyntaxKind> AccessibilityToSyntaxKind(EntityAccessibility accessibility)
         {
             switch (accessibility)
             {

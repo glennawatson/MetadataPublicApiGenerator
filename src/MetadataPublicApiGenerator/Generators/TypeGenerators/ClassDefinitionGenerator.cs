@@ -9,6 +9,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
+
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
     /// <summary>
@@ -31,9 +33,10 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// <inheritdoc />
         public override TypeKind TypeKind => TypeKind.Class;
 
-        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper wrapper)
+        /// <inheritdoc />
+        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
         {
-            return SyntaxFactory.ClassDeclaration(wrapper.Name);
+            return ClassDeclaration(typeDefinition.Name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
         }
     }
 }

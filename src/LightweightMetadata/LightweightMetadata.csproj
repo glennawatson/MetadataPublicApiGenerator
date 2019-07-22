@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageDescription>Provides a light-weight wrapper around System.Reflection.Metadata.</PackageDescription>
+    <DebugType>Full</DebugType>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafe>true</AllowUnsafe>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.Metadata" Version="1.6.0" />
+  </ItemGroup>
+</Project>

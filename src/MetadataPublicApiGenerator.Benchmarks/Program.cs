@@ -16,6 +16,6 @@ namespace MetadataPublicApiGenerator.Benchmarks
         /// The main entry point into the benchmarking application.
         /// </summary>
         /// <param name="args">Arguments from the command line.</param>
-        public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, new DebugInProcessConfig());
+        public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
     }
 }

@@ -29,7 +29,8 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// Generate the member declaration.
         /// </summary>
         /// <param name="type">The type we are generating for.</param>
+        /// <param name="level">The level in the hierarchy where this item is located.</param>
         /// <returns>a member declaration syntax.</returns>
-        MemberDeclarationSyntax Generate(TypeWrapper type);
+        MemberDeclarationSyntax Generate(TypeWrapper type, int level);
     }
 }

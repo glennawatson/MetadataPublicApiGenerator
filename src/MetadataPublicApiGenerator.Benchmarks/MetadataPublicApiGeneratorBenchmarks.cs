@@ -5,6 +5,7 @@
 using System.Reflection;
 
 using BenchmarkDotNet.Attributes;
+using MetadataPublicApiGenerator.IntegrationTestData;
 using Newtonsoft.Json;
 using PublicApiGenerator;
 

@@ -9,8 +9,10 @@ using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis.CSharp;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
@@ -21,54 +23,41 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override BaseMethodDeclarationSyntax Generate(IHandleWrapper handle)
+        public override BaseMethodDeclarationSyntax Generate(IHandleWrapper handle, int level)
         {
             if (!(handle is MethodWrapper method))
             {
                 return null;
             }
 
+            var parameters = method.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x, 0)).Where(x => x != null).ToList();
+            var attributes = Factory.Generate(method.Attributes, level);
+            var modifiers = method.GetModifiers();
+
             switch (method.MethodKind)
             {
                 case SymbolMethodKind.Constructor:
-                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConstructorDeclaration(method.DeclaringType.Name), method);
+                    return ConstructorDeclaration(attributes, modifiers, parameters, method.DeclaringType.Name, level);
                 case SymbolMethodKind.Destructor:
-                    return GenerateFromMethodSyntax(Factory, SyntaxFactory.DestructorDeclaration(method.DeclaringType.Name), method);
+                    return DestructorDeclaration(attributes, modifiers, method.DeclaringType.Name, level);
                 case SymbolMethodKind.Ordinary:
-                    var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), method.Name)
-                        .WithAttributeLists(Factory.Generate(method.Attributes))
-                        .AddTypeParameters(method, Factory);
+                    var (constraints, typeParameters) = method.GetTypeParameters(Factory);
 
-                    return GenerateFromMethodSyntax(Factory, methodDeclaration, method);
+                    return MethodDeclaration(attributes, modifiers, method.ReturningType.GetTypeSyntax(), method.Name, parameters, constraints, typeParameters, level);
                 case SymbolMethodKind.BuiltinOperator:
                 case SymbolMethodKind.UserDefinedOperator:
                     switch (method.Name)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.ConversionOperatorDeclaration(SyntaxHelper.OperatorNameToToken(method.Name), SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName)), method);
+                            return ConversionOperatorDeclaration(attributes, modifiers, SyntaxHelper.OperatorNameToToken(method.Name), method.ReturningType.ReflectionFullName, parameters, level);
                         default:
-                            return GenerateFromMethodSyntax(Factory, SyntaxFactory.OperatorDeclaration(SyntaxFactory.IdentifierName(method.ReturningType.ReflectionFullName), SyntaxHelper.OperatorNameToToken(method.Name)), method);
+                            return OperatorDeclaration(attributes, modifiers, parameters, method.ReturningType.GetTypeSyntax(), SyntaxHelper.OperatorNameToToken(method.Name), level);
                     }
 
                 default:
                     return null;
             }
-        }
-
-        private static BaseMethodDeclarationSyntax GenerateFromMethodSyntax(IGeneratorFactory factory, BaseMethodDeclarationSyntax item, in MethodWrapper member)
-        {
-            var parameters = member.Parameters.Select(factory.Generate<ParameterSyntax>).Where(x => x != null).ToList();
-
-            var returnItem = item.WithModifiers(member.GetModifiers());
-
-            if (parameters.Count > 0)
-            {
-                return returnItem.WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameters)))
-                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
-            }
-
-            return returnItem.WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
     }
 }

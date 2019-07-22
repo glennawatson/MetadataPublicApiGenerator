@@ -12,6 +12,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
+
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
     /// <summary>
@@ -42,44 +44,51 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         /// Generates the syntax required.
         /// </summary>
         /// <param name="typeDefinition">The definition to generate for.</param>
+        /// <param name="attributes">A list of attributes.</param>
+        /// <param name="modifiers">A list of modifiers.</param>
+        /// <param name="members">A list of members.</param>
+        /// <param name="typeParameterConstraintClauses">Constraints on the parameters.</param>
+        /// <param name="typeParameters">The type parameters of the type.</param>
+        /// <param name="bases">Gets the base classes.</param>
+        /// <param name="level">The level of indentation.</param>
         /// <returns>The syntax.</returns>
-        public abstract TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition);
+        public abstract TypeDeclarationSyntax GenerateSyntax(
+            TypeWrapper typeDefinition,
+            IReadOnlyCollection<AttributeListSyntax> attributes,
+            IReadOnlyCollection<SyntaxKind> modifiers,
+            IReadOnlyCollection<MemberDeclarationSyntax> members,
+            IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses,
+            IReadOnlyCollection<TypeParameterSyntax> typeParameters,
+            IReadOnlyCollection<BaseTypeSyntax> bases,
+            int level);
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeWrapper type)
+        public MemberDeclarationSyntax Generate(TypeWrapper type, int level)
         {
             if (ExcludeFunc(type))
             {
                 return null;
             }
 
-            var item = GenerateSyntax(type);
+            var (constraints, typeParameters) = type.GetTypeParameters(Factory);
 
-            return item.WithModifiers(type.GetModifiers())
-                .WithAttributeLists(Factory.Generate(type.Attributes))
-                .WithMembers(GenerateMemberDeclaration(type))
-                .AddBaseList(type.Base, type.InterfaceImplementations)
-                .AddTypeParameters(type, Factory);
+            var baseTypes = type.GetBaseTypes();
+
+            return GenerateSyntax(type, Factory.Generate(type.Attributes, level), type.GetModifiers(), GenerateMemberDeclaration(type, level), constraints, typeParameters, baseTypes, level);
         }
 
-        internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper)
+        internal SyntaxList<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper, int level)
         {
-            return GenerateTypeList<MemberDeclarationSyntax>(typeWrapper.Fields.Cast<IHandleNameWrapper>()
+            var items = typeWrapper.Fields.Cast<IHandleNameWrapper>()
                 .Concat(typeWrapper.Events)
                 .Concat(typeWrapper.Properties)
-                .Concat(typeWrapper.Methods));
-        }
-
-        private SyntaxList<T> GenerateTypeList<T>(IEnumerable<IHandleNameWrapper> items)
-            where T : CSharpSyntaxNode
-        {
-            var validHandles = items
+                .Concat(typeWrapper.Methods)
                 .OrderByAndExclude(ExcludeMembersAttributes, ExcludeAttributes)
-                .Select(x => Factory.Generate<T>(x))
+                .Select(x => Factory.Generate<MemberDeclarationSyntax>(x, level + 1))
                 .Where(x => x != null)
                 .ToList();
 
-            return validHandles.Count == 0 ? SyntaxFactory.List<T>() : SyntaxFactory.List(validHandles);
+            return items.Count == 0 ? List<MemberDeclarationSyntax>() : List(items);
         }
     }
 }

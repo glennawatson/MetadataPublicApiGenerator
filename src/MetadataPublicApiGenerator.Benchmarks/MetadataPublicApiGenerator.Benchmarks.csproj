@@ -6,7 +6,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);SA1633</NoWarn>
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)analyzers.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet></CodeAnalysisRuleSet>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MetadataPublicApiGenerator.IntegrationTestData\MetadataPublicApiGenerator.IntegrationTestData.csproj" />
     <ProjectReference Include="..\MetadataPublicApiGenerator\MetadataPublicApiGenerator.csproj" />
   </ItemGroup>
 

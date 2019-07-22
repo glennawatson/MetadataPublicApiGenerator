@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>MetadataPublicApiGenerator.Benchmarks.MetadataPublicApiGeneratorBenchmarks-20190716-044846</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet=v0.11.5, OS=Windows 10.0.18362
+Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
+.NET Core SDK=3.0.100-preview6-012264
+  [Host] : .NET Core 2.2.6 (CoreCLR 4.6.27817.03, CoreFX 4.6.27818.02), 64bit RyuJIT
+  Core   : .NET Core 2.2.6 (CoreCLR 4.6.27817.03, CoreFX 4.6.27818.02), 64bit RyuJIT
+</code></pre>
+<pre><code>Job=Core  Runtime=Core  
+</code></pre>
+
+<table>
+<thead><tr><th>        Method</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen 0</th><th>Gen 1</th><th>Gen 2</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>MetadataApiGenerator</td><td>602.9 ms</td><td>21.315 ms</td><td>57.99 ms</td><td>585.1 ms</td><td>21000.0000</td><td>7000.0000</td><td>-</td><td>129.97 MB</td>
+</tr><tr><td>PublicApiGenerator</td><td>246.3 ms</td><td>9.624 ms</td><td>25.69 ms</td><td>238.7 ms</td><td>4000.0000</td><td>1000.0000</td><td>-</td><td>36.5 MB</td>
+</tr></tbody></table>
+</body>
+</html>

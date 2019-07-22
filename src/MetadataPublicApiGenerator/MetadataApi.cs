@@ -7,12 +7,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+
 using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
+
 using MetadataPublicApiGenerator.Generators;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator
 {
@@ -93,56 +92,9 @@ namespace MetadataPublicApiGenerator
 
         internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<TypeWrapper, bool> excludeFunc, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
         {
-            var compilationUnit = SyntaxFactory.CompilationUnit();
+            var factory = new GeneratorFactory(excludeAttributes, excludeMembersAttributes, excludeFunc, shouldIncludeAssemblyAttributes);
 
-            var factory = new GeneratorFactory(excludeAttributes, excludeMembersAttributes, excludeFunc);
-
-            if (shouldIncludeAssemblyAttributes)
-            {
-                compilationUnit = compilationUnit.WithAttributeLists(factory.Generate(compilation.MainModule.MainAssembly.Attributes, SyntaxKind.AssemblyKeyword));
-            }
-
-            compilationUnit = GenerateCompilationUnit(compilation, compilationUnit, factory);
-
-            return compilationUnit.NormalizeWhitespace().ToFullString();
-        }
-
-        internal static CompilationUnitSyntax GenerateCompilationUnit(ICompilation compilation, CompilationUnitSyntax compilationUnit, IGeneratorFactory factory)
-        {
-            var namespaceProcessingStack = new Stack<NamespaceWrapper>(new[] { compilation.RootNamespace });
-
-            var list = new List<MemberDeclarationSyntax>(128);
-
-            var outsideNamespaceList = new List<MemberDeclarationSyntax>();
-
-            while (namespaceProcessingStack.Count > 0)
-            {
-                var namespaceInfo = namespaceProcessingStack.Pop();
-
-                var members = factory.GenerateMembers(namespaceInfo);
-
-                if (members.Count != 0)
-                {
-                    var namespaceName = namespaceInfo.FullName;
-                    if (string.IsNullOrEmpty(namespaceName))
-                    {
-                        outsideNamespaceList.AddRange(members);
-                    }
-                    else
-                    {
-                        var namespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceName)).WithMembers(SyntaxFactory.List(members));
-
-                        list.Add(namespaceDeclaration);
-                    }
-                }
-
-                foreach (var child in namespaceInfo.ChildNamespaces.OrderByDescending(x => x.Name))
-                {
-                    namespaceProcessingStack.Push(child);
-                }
-            }
-
-            return compilationUnit.WithMembers(SyntaxFactory.List(outsideNamespaceList.Concat(list)));
+            return factory.Generate(compilation).ToFullString();
         }
     }
 }

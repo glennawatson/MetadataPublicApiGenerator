@@ -9,8 +9,9 @@ using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
@@ -36,23 +37,15 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         public Func<TypeWrapper, bool> ExcludeFunc { get; }
 
         /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeWrapper type)
+        public MemberDeclarationSyntax Generate(TypeWrapper type, int level)
         {
             var invokeMember = type.GetDelegateInvokeMethod();
 
-            var parameters = invokeMember.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x)).Where(x => x != null).ToList();
+            var parameters = invokeMember.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x, level)).Where(x => x != null).ToList();
 
-            var returnValue = SyntaxFactory.DelegateDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), type.Name)
-                .WithAttributeLists(Factory.Generate(type.Attributes))
-                .WithModifiers(type.GetModifiers())
-                .AddTypeParameters(type, Factory);
+            var (constraints, typeParameters) = type.GetTypeParameters(Factory);
 
-            if (parameters.Count > 0)
-            {
-                returnValue.WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(parameters)));
-            }
-
-            return returnValue;
+            return DelegateDeclaration(Factory.Generate(type.Attributes, 0), type.GetModifiers(), "void", type.Name, parameters, constraints, typeParameters, level);
         }
     }
 }

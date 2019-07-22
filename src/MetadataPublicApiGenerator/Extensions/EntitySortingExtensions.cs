@@ -7,9 +7,6 @@ using System.Linq;
 using System.Reflection.Metadata;
 using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
-using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator.Extensions
 {

@@ -3,11 +3,12 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using Microsoft.CodeAnalysis.CSharp;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
@@ -18,25 +19,15 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override EventFieldDeclarationSyntax Generate(IHandleWrapper member)
+        public override EventFieldDeclarationSyntax Generate(IHandleWrapper member, int level)
         {
             if (!(member is EventWrapper eventWrapper))
             {
                 return null;
             }
 
-            var memberName = eventWrapper.FullName;
-
-            if (string.IsNullOrWhiteSpace(memberName))
-            {
-                return null;
-            }
-
-            return SyntaxFactory.EventFieldDeclaration(
-                    SyntaxFactory.VariableDeclaration(SyntaxFactory.IdentifierName(memberName))
-                        .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(eventWrapper.Name)))))
-                    .WithModifiers(eventWrapper.GetModifiers())
-                    .WithAttributeLists(Factory.Generate(eventWrapper.Attributes));
+            var variable = VariableDeclaration(eventWrapper.GetTypeSyntax());
+            return EventFieldDeclaration(Factory.Generate(eventWrapper.Attributes, 0), eventWrapper.GetModifiers(), variable, level);
         }
     }
 }

@@ -20,12 +20,13 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         /// Generates the symbol for the item.
         /// </summary>
         /// <param name="member">The member we are generating for.</param>
+        /// <param name="level">The level in the hierarchy where this item is located.</param>
         /// <returns>a member declaration syntax.</returns>
-        public abstract TOutput Generate(IHandleWrapper member);
+        public abstract TOutput Generate(IHandleWrapper member, int level);
 
-        CSharpSyntaxNode ISymbolGenerator.Generate(IHandleWrapper member)
+        CSharpSyntaxNode ISymbolGenerator.Generate(IHandleWrapper member, int level)
         {
-            return Generate(member);
+            return Generate(member, level);
         }
     }
 }

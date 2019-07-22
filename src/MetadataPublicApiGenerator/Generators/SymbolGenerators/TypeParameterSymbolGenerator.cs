@@ -10,6 +10,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
+
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal class TypeParameterSymbolGenerator : SymbolGeneratorBase<TypeParameterSyntax>
@@ -19,16 +21,15 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
         {
         }
 
-        public override TypeParameterSyntax Generate(IHandleWrapper handle)
+        /// <inheritdoc />
+        public override TypeParameterSyntax Generate(IHandleWrapper handle, int level)
         {
             if (!(handle is GenericParameterWrapper typeParameterWrapper))
             {
                 return null;
             }
 
-            TypeParameterSyntax typeParameterSyntax = SyntaxFactory.TypeParameter(typeParameterWrapper.Name).WithVarianceKeyword(GetVarianceToken(typeParameterWrapper.Variance));
-
-            return typeParameterSyntax.WithAttributeLists(Factory.Generate(typeParameterWrapper.Attributes));
+            return TypeParameter(Factory.Generate(typeParameterWrapper.Attributes, 0), GetVarianceToken(typeParameterWrapper.Variance), typeParameterWrapper.Name);
         }
 
         private static SyntaxToken GetVarianceToken(VarianceType variance)
@@ -36,11 +37,11 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             switch (variance)
             {
                 case VarianceType.Contravariant:
-                    return SyntaxFactory.Token(SyntaxKind.InKeyword);
+                    return Token(SyntaxKind.InKeyword);
                 case VarianceType.Covariant:
-                    return SyntaxFactory.Token(SyntaxKind.OutKeyword);
+                    return Token(SyntaxKind.OutKeyword);
                 default:
-                    return SyntaxFactory.Token(SyntaxKind.None);
+                    return Token(SyntaxKind.None);
             }
         }
     }

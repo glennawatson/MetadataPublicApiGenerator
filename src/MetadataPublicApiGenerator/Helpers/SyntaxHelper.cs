@@ -26,22 +26,17 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <returns>The expression syntax.</returns>
         public static ExpressionSyntax GetValueExpression(ITypeNamedWrapper wrapper, object value)
         {
-            if (wrapper is ArrayTypeWrapper arrayTypeWrapper)
+            switch (wrapper)
             {
-                return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.ArrayType(SyntaxFactory.IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName))));
-            }
-
-            if (wrapper is TypeWrapper typeWrapper)
-            {
-                if (typeWrapper.IsEnumType)
-                {
+                case ArrayTypeWrapper arrayTypeWrapper:
+                    return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.ArrayType(SyntaxFactory.IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName))));
+                case TypeWrapper typeWrapper when typeWrapper.IsEnumType:
                     return GetEnumNames(typeWrapper, value);
-                }
-
-                return GetValueExpressionForKnownType(typeWrapper.KnownType, value);
+                case TypeWrapper typeWrapper:
+                    return GetValueExpressionForKnownType(typeWrapper.KnownType, value);
+                default:
+                    return null;
             }
-
-            return null;
         }
 
         public static ExpressionSyntax GetValueExpressionForKnownType(KnownTypeCode underlyingType, object value)
