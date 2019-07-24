@@ -5,6 +5,9 @@
 using System;
 using System.Collections.Generic;
 using LightweightMetadata.TypeWrappers;
+
+using MetadataPublicApiGenerator.Extensions;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,25 +19,23 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// <summary>
     /// Generates Class declarations.
     /// </summary>
-    internal class ClassDefinitionGenerator : TypeGeneratorBase
+    internal static class ClassDefinitionGenerator
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ClassDefinitionGenerator"/> class.
-        /// </summary>
-        /// <param name="excludeAttributes">A set of attributes to exclude from being generated.</param>
-        /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
-        /// <param name="excludeFunc">An exclusion func which will potentially exclude attributes.</param>
-        /// <param name="factory">A factory for generating sub types.</param>
-        public ClassDefinitionGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, excludeFunc, factory)
+        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
         {
+            if (excludeFunc(type))
+            {
+                return null;
+            }
+
+            var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
+
+            var baseTypes = type.GetBaseTypes();
+
+            return GenerateSyntax(type, GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, level), constraints, typeParameters, baseTypes, level);
         }
 
-        /// <inheritdoc />
-        public override TypeKind TypeKind => TypeKind.Class;
-
-        /// <inheritdoc />
-        public override TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
+        private static TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
         {
             return ClassDeclaration(typeDefinition.Name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
         }

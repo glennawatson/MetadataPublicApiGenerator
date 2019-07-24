@@ -12,14 +12,9 @@ using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
-    internal class FieldSymbolGenerator : SymbolGeneratorBase<FieldDeclarationSyntax>
+    internal static class FieldSymbolGenerator
     {
-        public FieldSymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        public override FieldDeclarationSyntax Generate(IHandleWrapper member, int level)
+        public static FieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(member is FieldWrapper field))
             {
@@ -30,7 +25,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             var declaration = VariableDeclaration(field.FieldType.GetTypeSyntax(), variables);
 
-            return FieldDeclaration(Factory.Generate(field.Attributes, 0), field.GetModifiers(), declaration, level);
+            return FieldDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), field.GetModifiers(), declaration);
         }
     }
 }

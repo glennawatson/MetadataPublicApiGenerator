@@ -29,8 +29,10 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<string> _namespace;
         private readonly Lazy<string> _fullName;
         private readonly Lazy<string> _reflectionFullName;
+        private readonly Lazy<string> _nameWithNumeric;
         private readonly Lazy<bool> _isKnownType;
         private readonly Lazy<bool> _isEnumType;
+        private readonly Lazy<bool> _isDelegateType;
         private readonly Lazy<IHandleTypeNamedWrapper> _base;
         private readonly Lazy<SymbolTypeKind> _typeKind;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
@@ -51,13 +53,15 @@ namespace LightweightMetadata.TypeWrappers
             Handle = typeDefinition;
             TypeDefinition = CompilationModule.MetadataReader.GetTypeDefinition(typeDefinition);
 
-            _name = new Lazy<string>(() => CompilationModule.MetadataReader.GetString(TypeDefinition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _nameWithNumeric = new Lazy<string>(() => CompilationModule.MetadataReader.GetString(TypeDefinition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(GetNameWithoutNumeric, LazyThreadSafetyMode.PublicationOnly);
             _namespace = new Lazy<string>(() => TypeDefinition.Namespace.GetName(CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             _reflectionFullName = new Lazy<string>(GetReflectionFullName, LazyThreadSafetyMode.PublicationOnly);
             _isKnownType = new Lazy<bool>(() => this.ToKnownTypeCode() != KnownTypeCode.None, LazyThreadSafetyMode.PublicationOnly);
             _isEnumType = new Lazy<bool>(IsEnum, LazyThreadSafetyMode.PublicationOnly);
             _typeKind = new Lazy<SymbolTypeKind>(GetTypeKind, LazyThreadSafetyMode.PublicationOnly);
+            _isDelegateType = new Lazy<bool>(IsDelegate, LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(TypeDefinition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
             _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(TypeDefinition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), CompilationModule));
@@ -146,7 +150,17 @@ namespace LightweightMetadata.TypeWrappers
         public IReadOnlyList<TypeWrapper> NestedTypes => _nestedTypes.Value;
 
         /// <inheritdoc />
-        public virtual string Name => _name.Value;
+        public string Name => _name.Value;
+
+        /// <summary>
+        /// Gets a value indicating whether this type is nested.
+        /// </summary>
+        public bool IsNested => DeclaringType != null;
+
+        /// <summary>
+        /// Gets the name with numeric portion.
+        /// </summary>
+        public string NameWithNumeric => _nameWithNumeric.Value;
 
         /// <inheritdoc />
         public string TypeNamespace => _namespace.Value;
@@ -163,6 +177,11 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets a value indicating whether the type is a enum type.
         /// </summary>
         public virtual bool IsEnumType => _isEnumType.Value;
+
+        /// <summary>
+        /// Gets a value indicating whether the type is a delegate type.
+        /// </summary>
+        public bool IsDelegateType => _isDelegateType.Value;
 
         /// <inheritdoc />
         public bool IsAbstract { get; }
@@ -452,7 +471,7 @@ namespace LightweightMetadata.TypeWrappers
                 return SymbolTypeKind.Struct;
             }
 
-            if (IsDelegate())
+            if (IsDelegateType)
             {
                 return SymbolTypeKind.Delegate;
             }
@@ -472,13 +491,13 @@ namespace LightweightMetadata.TypeWrappers
                     stringBuilder.Append(TypeNamespace).Append('.');
                 }
 
-                stringBuilder.Append(Name);
+                stringBuilder.Append(NameWithNumeric);
             }
             else
             {
                 stringBuilder.Append(DeclaringType.FullName)
                     .Append('.')
-                    .Append(Name);
+                    .Append(NameWithNumeric);
             }
 
             return stringBuilder.ToString();
@@ -490,7 +509,7 @@ namespace LightweightMetadata.TypeWrappers
 
             var stringBuilder = new StringBuilder();
 
-            var strippedName = Name.SplitTypeParameterCountFromReflectionName(out _);
+            var strippedName = Name;
 
             if (declaringType == null)
             {
@@ -509,6 +528,11 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return stringBuilder.ToString().GetRealTypeName();
+        }
+
+        private string GetNameWithoutNumeric()
+        {
+            return NameWithNumeric.SplitTypeParameterCountFromReflectionName(out _);
         }
 
         private IReadOnlyList<string> HandleFlagsEnum(ulong value)

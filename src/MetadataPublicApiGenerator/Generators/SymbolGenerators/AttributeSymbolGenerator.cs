@@ -12,22 +12,16 @@ using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
-    internal class AttributeSymbolGenerator : SymbolGeneratorBase<AttributeSyntax>
+    internal static class AttributeSymbolGenerator
     {
-        public AttributeSymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        /// <inheritdoc />
-        public override AttributeSyntax Generate(IHandleWrapper member, int level)
+        public static AttributeSyntax Generate(IHandleWrapper member)
         {
             if (!(member is AttributeWrapper customAttribute))
             {
                 return null;
             }
 
-            var arguments = new List<AttributeArgumentSyntax>();
+            var arguments = new List<AttributeArgumentSyntax>(customAttribute.FixedArguments.Count + customAttribute.NamedArguments.Count);
 
             foreach (var fixedArgument in customAttribute.FixedArguments)
             {

@@ -4,12 +4,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using LightweightMetadata;
 using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace MetadataPublicApiGenerator.Extensions
@@ -33,7 +31,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType)
+            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType && !typeDefinition.IsDelegateType)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }
@@ -48,7 +46,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this PropertyWrapper property)
         {
-            var modifierList = new List<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>(6);
 
             modifierList.AddRange(AccessibilityToSyntaxKind(property.Accessibility));
 
@@ -72,7 +70,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this MethodWrapper accessor, PropertyWrapper property)
         {
-            var modifierList = new List<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>(6);
 
             if (property.Accessibility != accessor.Accessibility)
             {
@@ -84,7 +82,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this FieldWrapper field)
         {
-            var modifierList = new List<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>(6);
 
             modifierList.AddRange(AccessibilityToSyntaxKind(field.Accessibility));
 
@@ -105,7 +103,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this ParameterWrapper parameter)
         {
-            var modifierList = new List<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>(6);
             if (parameter.IsIn)
             {
                 modifierList.Add(SyntaxKind.InKeyword);
@@ -126,7 +124,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
         private static IReadOnlyCollection<SyntaxKind> GetModifiersList(MethodWrapper method)
         {
-            var modifierList = new List<SyntaxKind>();
+            var modifierList = new List<SyntaxKind>(6);
 
             modifierList.AddRange(AccessibilityToSyntaxKind(method.Accessibility));
 
@@ -140,7 +138,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (method.IsSealed && !method.IsStatic && !method.IsDelegate)
+            if (method.IsSealed && !method.IsStatic)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }

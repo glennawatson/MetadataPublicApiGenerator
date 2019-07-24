@@ -126,7 +126,7 @@ namespace LightweightMetadata.TypeWrappers
         {
             NamespaceWrapper current = this;
 
-            var names = new List<string>();
+            var names = new List<string>(10);
             while (current != null)
             {
                 names.Add(current.Name);

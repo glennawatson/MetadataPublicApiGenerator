@@ -131,7 +131,7 @@ namespace LightweightMetadata.TypeWrappers
         {
             var stringBuilder = new StringBuilder();
 
-            var list = new List<string>();
+            var list = new List<string>(10);
             var current = Parent;
             while (current != null)
             {

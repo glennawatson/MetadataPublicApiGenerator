@@ -306,10 +306,11 @@ namespace LightweightMetadata.TypeWrappers
 
         private IReadOnlyList<ParameterWrapper> GetParameters()
         {
-            var parameterList = new List<ParameterWrapper>();
-            var parameterHandles = Definition.GetParameters().ToList();
+            var parameterCollection = Definition.GetParameters();
+
+            var parameterList = new List<ParameterWrapper>(parameterCollection.Count);
             int i = 0;
-            foreach (var parameterHandle in parameterHandles)
+            foreach (var parameterHandle in parameterCollection)
             {
                 var parameterInstance = CompilationModule.MetadataReader.GetParameter(parameterHandle);
 

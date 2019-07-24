@@ -16,43 +16,38 @@ using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
-    internal class MethodSymbolGenerator : SymbolGeneratorBase<BaseMethodDeclarationSyntax>
+    internal static class MethodSymbolGenerator
     {
-        public MethodSymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        public override BaseMethodDeclarationSyntax Generate(IHandleWrapper handle, int level)
+        public static BaseMethodDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(handle is MethodWrapper method))
             {
                 return null;
             }
 
-            var parameters = method.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x, 0)).Where(x => x != null).ToList();
-            var attributes = Factory.Generate(method.Attributes, level);
+            var parameters = method.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes)).Where(x => x != null).ToList();
+            var attributes = GeneratorFactory.Generate(method.Attributes, excludeMembersAttributes, excludeAttributes);
             var modifiers = method.GetModifiers();
 
             switch (method.MethodKind)
             {
                 case SymbolMethodKind.Constructor:
-                    return ConstructorDeclaration(attributes, modifiers, parameters, method.DeclaringType.Name, level);
+                    return ConstructorDeclaration(attributes, modifiers, parameters, method.DeclaringType.Name);
                 case SymbolMethodKind.Destructor:
-                    return DestructorDeclaration(attributes, modifiers, method.DeclaringType.Name, level);
+                    return DestructorDeclaration(attributes, modifiers, method.DeclaringType.Name);
                 case SymbolMethodKind.Ordinary:
-                    var (constraints, typeParameters) = method.GetTypeParameters(Factory);
+                    var (constraints, typeParameters) = method.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
 
-                    return MethodDeclaration(attributes, modifiers, method.ReturningType.GetTypeSyntax(), method.Name, parameters, constraints, typeParameters, level);
+                    return MethodDeclaration(attributes, modifiers, method.ReturningType.GetTypeSyntax(), method.Name, parameters, constraints, typeParameters);
                 case SymbolMethodKind.BuiltinOperator:
                 case SymbolMethodKind.UserDefinedOperator:
                     switch (method.Name)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return ConversionOperatorDeclaration(attributes, modifiers, SyntaxHelper.OperatorNameToToken(method.Name), method.ReturningType.ReflectionFullName, parameters, level);
+                            return ConversionOperatorDeclaration(attributes, modifiers, SyntaxHelper.OperatorNameToToken(method.Name), method.ReturningType.ReflectionFullName, parameters);
                         default:
-                            return OperatorDeclaration(attributes, modifiers, parameters, method.ReturningType.GetTypeSyntax(), SyntaxHelper.OperatorNameToToken(method.Name), level);
+                            return OperatorDeclaration(attributes, modifiers, parameters, method.ReturningType.GetTypeSyntax(), SyntaxHelper.OperatorNameToToken(method.Name));
                     }
 
                 default:

@@ -5,9 +5,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+
 using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Generators;
+using MetadataPublicApiGenerator.Generators.SymbolGenerators;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -41,7 +45,7 @@ namespace MetadataPublicApiGenerator.Extensions
             {
                 if (arrayType.ArrayShapeData != null)
                 {
-                    var shapeExpressions = new List<int?>();
+                    var shapeExpressions = new List<int?>(arrayType.ArrayShapeData.Rank);
                     for (int i = 0; i < arrayType.ArrayShapeData.Rank; ++i)
                     {
                         int? size = arrayType.ArrayShapeData.Sizes.Count > 0 ? new int?(arrayType.ArrayShapeData.Sizes[i]) : 0;
@@ -69,18 +73,18 @@ namespace MetadataPublicApiGenerator.Extensions
             return type;
         }
 
-        public static (IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters) GetTypeParameters(this IHasGenericParameters genericParameterContainer, IGeneratorFactory factory)
+        public static (IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters) GetTypeParameters(this IHasGenericParameters genericParameterContainer, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (genericParameterContainer.GenericParameters.Count == 0)
             {
                 return default;
             }
 
-            var constraintClauses = new List<TypeParameterConstraintClauseSyntax>();
+            var constraintClauses = new List<TypeParameterConstraintClauseSyntax>(genericParameterContainer.GenericParameters.Count * 2);
 
             foreach (var genericParameter in genericParameterContainer.GenericParameters)
             {
-                var constraints = new List<TypeParameterConstraintSyntax>();
+                var constraints = new List<TypeParameterConstraintSyntax>(genericParameter.Constraints.Count + 3);
                 if (genericParameter.HasDefaultConstructorConstraint)
                 {
                     constraints.Add(ConstructorConstraint());
@@ -104,11 +108,12 @@ namespace MetadataPublicApiGenerator.Extensions
                 }
             }
 
-            var parameters = genericParameterContainer.GenericParameters.Select(factory.Generate<TypeParameterSyntax>).ToList();
+            var parameters = genericParameterContainer.GenericParameters.Select(x => TypeParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes)).ToList();
 
             return (constraintClauses, parameters);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken AddLeadingNewLines(this SyntaxToken item, int number = 1)
         {
             if (number == 0)
@@ -120,6 +125,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(carriageReturnList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken AddTrialingNewLines(this SyntaxToken item, int number = 1)
         {
             if (number == 0)
@@ -131,6 +137,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithTrailingTrivia(carriageReturnList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken AddLeadingNewLinesAndSpaces(this SyntaxToken item, int numberNewLines = 1, int numberSpaces = 1)
         {
             if (numberNewLines == 0 && numberSpaces == 0)
@@ -144,6 +151,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(carriageReturnList.Concat(leadingSpaces));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken AddLeadingSpaces(this SyntaxToken item, int number = 1)
         {
             if (number == 0)
@@ -155,6 +163,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(leadingSpaces);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken AddTrialingSpaces(this SyntaxToken item, int number = 1)
         {
             if (number == 0)
@@ -166,6 +175,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithTrailingTrivia(leadingSpaces);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddLeadingNewLinesAndSpaces<T>(this T item, int numberNewLines = 1, int numberSpaces = 1)
             where T : SyntaxNode
         {
@@ -180,6 +190,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(carriageReturnList.Concat(leadingSpaces));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddLeadingNewLines<T>(this T item, int number = 1)
             where T : SyntaxNode
         {
@@ -192,6 +203,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(carriageReturnList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddTrialingNewLines<T>(this T item, int number = 1)
             where T : SyntaxNode
         {
@@ -204,6 +216,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithTrailingTrivia(carriageReturnList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddLeadingSpaces<T>(this T item, int number = 1)
             where T : SyntaxNode
         {
@@ -216,6 +229,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return item.WithLeadingTrivia(leadingSpaces);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddTrialingSpaces<T>(this T item, int number = 1)
             where T : SyntaxNode
         {

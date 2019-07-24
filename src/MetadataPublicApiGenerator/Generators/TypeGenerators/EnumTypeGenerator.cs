@@ -9,7 +9,6 @@ using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
@@ -19,31 +18,11 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// <summary>
     /// Generates enum types.
     /// </summary>
-    internal class EnumTypeGenerator : GeneratorBase, ITypeGenerator
+    internal static class EnumTypeGenerator
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="EnumTypeGenerator"/> class.
-        /// </summary>
-        /// <param name="excludeAttributes">A set of attributes to exclude from being generated.</param>
-        /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
-        /// <param name="excludeFunc">A function to determine if we should exclude a type definition.</param>
-        /// <param name="factory">The factory for generating children.</param>
-        internal EnumTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
+        public static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
         {
-            ExcludeFunc = excludeFunc;
-        }
-
-        /// <inheritdoc />
-        public TypeKind TypeKind => TypeKind.Enum;
-
-        /// <inheritdoc />
-        public Func<TypeWrapper, bool> ExcludeFunc { get; }
-
-        /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeWrapper type, int level)
-        {
-            if (ExcludeFunc(type))
+            if (excludeFunc(type))
             {
                 return null;
             }
@@ -55,12 +34,12 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var enumKnownType = enumType.KnownType;
 
-            var members = type.Fields.Where(x => x.ShouldIncludeEntity(ExcludeMembersAttributes, ExcludeAttributes) && x.IsStatic && x.Accessibility == EntityAccessibility.Public).Select(field =>
+            var members = type.Fields.Where(x => x.ShouldIncludeEntity(excludeMembersAttributes, excludeAttributes) && x.IsStatic && x.Accessibility == EntityAccessibility.Public).Select(field =>
                 {
                     var memberName = field.Name;
                     var constant = field.DefaultValue;
 
-                    return EnumMemberDeclaration(Factory.Generate(field.Attributes, level), memberName, constant == null ? null : EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
+                    return EnumMemberDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), memberName, constant == null ? null : EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
                 }).ToList();
 
             string enumName = null;
@@ -69,7 +48,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 enumName = enumType.FullName;
             }
 
-            return EnumDeclaration(type.Name, Factory.Generate(type.Attributes, level), members, type.GetModifiers(), enumName, level);
+            return EnumDeclaration(type.Name, GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), members, type.GetModifiers(), enumName, level);
         }
     }
 }

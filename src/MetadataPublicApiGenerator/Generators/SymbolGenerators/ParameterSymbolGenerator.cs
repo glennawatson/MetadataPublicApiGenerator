@@ -14,21 +14,16 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
     /// <summary>
     /// Generates parameters syntax.
     /// </summary>
-    internal class ParameterSymbolGenerator : SymbolGeneratorBase<ParameterSyntax>
+    internal static class ParameterSymbolGenerator
     {
-        public ParameterSymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        public override ParameterSyntax Generate(IHandleWrapper nameWrapper, int level)
+        public static ParameterSyntax Generate(IHandleWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(nameWrapper is ParameterWrapper parameterWrapper))
             {
                 return null;
             }
 
-            return Parameter(Factory.Generate(parameterWrapper.Attributes, 0), parameterWrapper.GetModifiers(), parameterWrapper.ParameterType.GetTypeSyntax(), parameterWrapper.Name);
+            return Parameter(GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes), parameterWrapper.GetModifiers(), parameterWrapper.ParameterType.GetTypeSyntax(), parameterWrapper.Name);
         }
     }
 }

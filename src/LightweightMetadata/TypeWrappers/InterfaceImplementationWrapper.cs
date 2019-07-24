@@ -115,6 +115,12 @@ namespace LightweightMetadata.TypeWrappers
             return output;
         }
 
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return ReflectionFullName;
+        }
+
         private InterfaceImplementation Resolve()
         {
             return CompilationModule.MetadataReader.GetInterfaceImplementation(InterfaceImplementationHandle);

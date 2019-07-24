@@ -8,44 +8,35 @@ using System.Linq;
 using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
-using Microsoft.CodeAnalysis;
+using MetadataPublicApiGenerator.Generators.SymbolGenerators;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
-    internal class DelegateTypeGenerator : GeneratorBase, ITypeGenerator
+    internal static class DelegateTypeGenerator
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DelegateTypeGenerator"/> class.
-        /// </summary>
-        /// <param name="excludeAttributes">A set of attributes to exclude from being generated.</param>
-        /// <param name="excludeMembersAttributes">A set of attributes for any types we should avoid that are decorated with these attribute types.</param>
-        /// <param name="excludeFunc">A func to determine if we exclude a type or not.</param>
-        /// <param name="factory">The factory for generating children.</param>
-        internal DelegateTypeGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, Func<TypeWrapper, bool> excludeFunc, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
+        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc)
         {
-            ExcludeFunc = excludeFunc;
+            if (excludeFunc(type))
+            {
+                return null;
+            }
+
+            return GenerateSyntax(type, excludeMembersAttributes, excludeAttributes);
         }
 
-        /// <inheritdoc />
-        public TypeKind TypeKind => TypeKind.Delegate;
-
-        /// <inheritdoc />
-        public Func<TypeWrapper, bool> ExcludeFunc { get; }
-
-        /// <inheritdoc />
-        public MemberDeclarationSyntax Generate(TypeWrapper type, int level)
+        private static MemberDeclarationSyntax GenerateSyntax(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             var invokeMember = type.GetDelegateInvokeMethod();
 
-            var parameters = invokeMember.Parameters.Select(x => Factory.Generate<ParameterSyntax>(x, level)).Where(x => x != null).ToList();
+            var parameters = invokeMember.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes)).Where(x => x != null).ToList();
 
-            var (constraints, typeParameters) = type.GetTypeParameters(Factory);
+            var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
 
-            return DelegateDeclaration(Factory.Generate(type.Attributes, 0), type.GetModifiers(), "void", type.Name, parameters, constraints, typeParameters, level);
+            return DelegateDeclaration(GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), "void", type.Name, parameters, constraints, typeParameters);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace LightweightMetadata.Extensions
         /// <returns>The new read only list.</returns>
         public static IReadOnlyList<T> ToList<T>(this in ImmutableArray<T> input)
         {
-            var list = new List<T>();
+            var list = new List<T>(input.Length);
 
             foreach (var value in input)
             {

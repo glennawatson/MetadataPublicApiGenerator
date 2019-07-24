@@ -12,14 +12,9 @@ using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
-    internal class EventSymbolGenerator : SymbolGeneratorBase<EventFieldDeclarationSyntax>
+    internal static class EventSymbolGenerator
     {
-        public EventSymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        public override EventFieldDeclarationSyntax Generate(IHandleWrapper member, int level)
+        public static EventFieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(member is EventWrapper eventWrapper))
             {
@@ -27,7 +22,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             }
 
             var variable = VariableDeclaration(eventWrapper.GetTypeSyntax());
-            return EventFieldDeclaration(Factory.Generate(eventWrapper.Attributes, 0), eventWrapper.GetModifiers(), variable, level);
+            return EventFieldDeclaration(GeneratorFactory.Generate(eventWrapper.Attributes, excludeMembersAttributes, excludeAttributes), eventWrapper.GetModifiers(), variable);
         }
     }
 }

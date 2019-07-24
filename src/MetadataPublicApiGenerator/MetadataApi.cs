@@ -82,19 +82,12 @@ namespace MetadataPublicApiGenerator
                 System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(),
             };
 
-            using (var compilation = new EventBuilderCompiler(assemblyPath, searchDirectories))
+            using (var compilationMetadata = new EventBuilderCompiler(assemblyPath, searchDirectories))
             {
                 Func<TypeWrapper, bool> excludeFunc = tr => false;
 
-                return CreatePublicApiForAssembly(compilation, excludeFunc, shouldIncludeAssemblyAttributes, whitelistedNamespacePrefixes, attributesToExclude, attributesMembersToExclude);
+                return GeneratorFactory.Generate(compilationMetadata, attributesToExclude, attributesMembersToExclude, excludeFunc, shouldIncludeAssemblyAttributes).ToFullString();
             }
-        }
-
-        internal static string CreatePublicApiForAssembly(ICompilation compilation, Func<TypeWrapper, bool> excludeFunc, bool shouldIncludeAssemblyAttributes, IEnumerable<string> whitelistedNamespacePrefixes, ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes)
-        {
-            var factory = new GeneratorFactory(excludeAttributes, excludeMembersAttributes, excludeFunc, shouldIncludeAssemblyAttributes);
-
-            return factory.Generate(compilation).ToFullString();
         }
     }
 }

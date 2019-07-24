@@ -14,33 +14,28 @@ using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
-    internal class PropertySymbolGenerator : SymbolGeneratorBase<PropertyDeclarationSyntax>
+    internal static class PropertySymbolGenerator
     {
-        public PropertySymbolGenerator(ISet<string> excludeAttributes, ISet<string> excludeMembersAttributes, IGeneratorFactory factory)
-            : base(excludeAttributes, excludeMembersAttributes, factory)
-        {
-        }
-
-        public override PropertyDeclarationSyntax Generate(IHandleWrapper handle, int level)
+        public static PropertyDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(handle is PropertyWrapper property))
             {
                 return null;
             }
 
-            var accessorList = new List<AccessorDeclarationSyntax>();
+            var accessorList = new List<AccessorDeclarationSyntax>(2);
 
             if (property.Getter != null && property.Getter.Accessibility == EntityAccessibility.Public)
             {
-                accessorList.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration, Factory.Generate(property.Getter.Attributes, level), property.Getter.GetModifiers(property)));
+                accessorList.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration, GeneratorFactory.Generate(property.Getter.Attributes, excludeMembersAttributes, excludeAttributes), property.Getter.GetModifiers(property)));
             }
 
             if (property.Setter != null && property.Setter.Accessibility == EntityAccessibility.Public)
             {
-                accessorList.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, Factory.Generate(property.Setter.Attributes, level), property.Setter.GetModifiers(property)));
+                accessorList.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, GeneratorFactory.Generate(property.Setter.Attributes, excludeMembersAttributes, excludeAttributes), property.Setter.GetModifiers(property)));
             }
 
-            return PropertyDeclaration(property.ReturnType.GetTypeSyntax(), property.Name, Factory.Generate(property.Attributes, level), property.GetModifiers(), accessorList, level);
+            return PropertyDeclaration(property.ReturnType.GetTypeSyntax(), property.Name, GeneratorFactory.Generate(property.Attributes, excludeMembersAttributes, excludeAttributes), property.GetModifiers(), accessorList);
         }
     }
 }
