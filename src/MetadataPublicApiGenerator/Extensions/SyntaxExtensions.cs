@@ -31,10 +31,10 @@ namespace MetadataPublicApiGenerator.Extensions
 
             if (baseEntity != null && baseEntity.KnownType != KnownTypeCode.Object)
             {
-                bases.Add(SimpleBaseType(baseEntity.ReflectionFullName));
+                bases.Add(SimpleBaseType(baseEntity.GetTypeWithGenerics()));
             }
 
-            bases.AddRange(interfaces.Select(x => SimpleBaseType(x.ReflectionFullName)));
+            bases.AddRange(interfaces.Select(x => SimpleBaseType(x.GetTypeWithGenerics())));
 
             return bases;
         }
@@ -71,6 +71,17 @@ namespace MetadataPublicApiGenerator.Extensions
             }
 
             return type;
+        }
+
+        public static TypeSyntax GetTypeWithGenerics(this ITypeNamedWrapper wrapper)
+        {
+            if (!(wrapper is IHasGenericParameters generics) || generics.GenericParameters.Count == 0)
+            {
+                return IdentifierName(wrapper.ReflectionFullName);
+            }
+
+            var typeArguments = generics.GenericParameters.Select(x => IdentifierName(x.Name)).ToList();
+            return GenericName(wrapper.ReflectionFullName, typeArguments);
         }
 
         public static (IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters) GetTypeParameters(this IHasGenericParameters genericParameterContainer, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)

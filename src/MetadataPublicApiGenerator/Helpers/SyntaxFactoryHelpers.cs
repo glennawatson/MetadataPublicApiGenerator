@@ -2,9 +2,9 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 using MetadataPublicApiGenerator.Extensions;
 
@@ -21,8 +21,6 @@ namespace MetadataPublicApiGenerator.Helpers
     {
         private const int LeadingSpacesPerLevel = 4;
 
-        public static SyntaxTrivia CarriageReturn => SyntaxFactory.CarriageReturn;
-
         public static SyntaxTrivia Space => SyntaxFactory.Space;
 
         public static SyntaxTrivia CarriageReturnLineFeed => SyntaxFactory.CarriageReturnLineFeed;
@@ -36,26 +34,31 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.NamespaceDeclaration(SyntaxFactory.Token(SyntaxKind.NamespaceKeyword).AddLeadingNewLines(), name, SyntaxFactory.Token(SyntaxKind.OpenBraceToken).AddLeadingNewLines(), default, default, membersList, SyntaxFactory.Token(SyntaxKind.CloseBraceToken), default);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static AttributeArgumentSyntax AttributeArgument(ExpressionSyntax expression)
         {
             return SyntaxFactory.AttributeArgument(expression);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static AttributeArgumentSyntax AttributeArgument(NameEqualsSyntax nameEquals, ExpressionSyntax expression)
         {
             return SyntaxFactory.AttributeArgument(nameEquals, default, expression);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static NameEqualsSyntax NameEquals(IdentifierNameSyntax name)
         {
             return SyntaxFactory.NameEquals(name);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IdentifierNameSyntax IdentifierName(string name)
         {
             return SyntaxFactory.IdentifierName(name);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static AttributeSyntax Attribute(string name, IReadOnlyCollection<AttributeArgumentSyntax> arguments)
         {
             var argumentsList = AttributeArgumentList(arguments);
@@ -63,6 +66,7 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.Attribute(IdentifierName(name), argumentsList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static AttributeArgumentListSyntax AttributeArgumentList(IReadOnlyCollection<AttributeArgumentSyntax> arguments)
         {
             return SyntaxFactory.AttributeArgumentList(SeparatedList(arguments));
@@ -120,17 +124,20 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.SeparatedList(GetIndentedNodes(nodes, level));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SeparatedSyntaxList<TNode> SingletonSeparatedList<TNode>(TNode node)
             where TNode : SyntaxNode
         {
             return SyntaxFactory.SingletonSeparatedList(node);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxToken Identifier(string text)
         {
             return SyntaxFactory.Identifier(text).AddLeadingSpaces();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VariableDeclaratorSyntax VariableDeclarator(string identifier)
         {
             return SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(identifier));
@@ -144,6 +151,7 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.EventFieldDeclaration(attributesList, modifiersList, SyntaxFactory.Token(SyntaxKind.EventKeyword), declaration, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VariableDeclarationSyntax VariableDeclaration(TypeSyntax type)
         {
             return SyntaxFactory.VariableDeclaration(type);
@@ -236,11 +244,6 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.PropertyDeclaration(attributesList, modifiersList, type, default, name, accessorList, default, default, default);
         }
 
-        public static AccessorListSyntax AccessorList(IReadOnlyCollection<AccessorDeclarationSyntax> accessors)
-        {
-            return SyntaxFactory.AccessorList(List(accessors));
-        }
-
         public static AccessorDeclarationSyntax AccessorDeclaration(SyntaxKind kind, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers)
         {
             var modifiersList = TokenList(modifiers);
@@ -283,9 +286,15 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.BaseList(SyntaxFactory.Token(SyntaxKind.ColonToken).AddLeadingSpaces().AddTrialingSpaces(), SeparatedList(baseItems));
         }
 
-        public static SimpleBaseTypeSyntax SimpleBaseType(string type)
+        public static SimpleBaseTypeSyntax SimpleBaseType(TypeSyntax type)
         {
-            return SyntaxFactory.SimpleBaseType(SyntaxFactory.IdentifierName(type));
+            return SyntaxFactory.SimpleBaseType(type);
+        }
+
+        public static GenericNameSyntax GenericName(string name, IReadOnlyCollection<TypeSyntax> types)
+        {
+            var typesList = types == null || types.Count == 0 ? default : SyntaxFactory.TypeArgumentList(SeparatedList(types));
+            return SyntaxFactory.GenericName(Identifier(name), typesList);
         }
 
         public static EqualsValueClauseSyntax EqualsValueClause(ExpressionSyntax value)
@@ -355,13 +364,9 @@ namespace MetadataPublicApiGenerator.Helpers
 
             var items = new List<SyntaxToken>(tokens.Count);
 
-            int i = 0;
-
             foreach (var token in tokens)
             {
                 items.Add(SyntaxFactory.Token(token).AddTrialingSpaces());
-
-                i++;
             }
 
             return SyntaxFactory.TokenList(items);
@@ -388,6 +393,7 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.TokenList(items);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SyntaxList<TNode> List<TNode>()
             where TNode : SyntaxNode
         {
@@ -406,6 +412,7 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.RefType(SyntaxFactory.Token(SyntaxKind.RefKeyword).AddTrialingSpaces(), readOnlySyntax, type);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PointerTypeSyntax PointerType(TypeSyntax type)
         {
             return SyntaxFactory.PointerType(type);
@@ -423,27 +430,32 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.ArrayRankSpecifier(SeparatedList<ExpressionSyntax>(sizeSpecifier));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ConstructorConstraintSyntax ConstructorConstraint()
         {
             return SyntaxFactory.ConstructorConstraint();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ClassOrStructConstraintSyntax ClassOrStructConstraint(SyntaxKind syntaxKind)
         {
             return SyntaxFactory.ClassOrStructConstraint(syntaxKind);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static TypeConstraintSyntax TypeConstraint(string typeName)
         {
             return SyntaxFactory.TypeConstraint(SyntaxFactory.IdentifierName(typeName));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static TypeParameterConstraintClauseSyntax TypeParameterConstraintClause(string name, IReadOnlyCollection<TypeParameterConstraintSyntax> constraints)
         {
             var constraintsList = SeparatedList(constraints);
-            return SyntaxFactory.TypeParameterConstraintClause(SyntaxFactory.IdentifierName(name), constraintsList);
+            return SyntaxFactory.TypeParameterConstraintClause(SyntaxFactory.Token(SyntaxKind.WhereKeyword).AddLeadingSpaces().AddTrialingSpaces(), SyntaxFactory.IdentifierName(name), SyntaxFactory.Token(SyntaxKind.ColonToken).AddLeadingSpaces().AddTrialingSpaces(), constraintsList);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static TypeParameterListSyntax TypeParameterList(IReadOnlyCollection<TypeParameterSyntax> parameters)
         {
             if (parameters == null || parameters.Count == 0)
@@ -452,6 +464,90 @@ namespace MetadataPublicApiGenerator.Helpers
             }
 
             return SyntaxFactory.TypeParameterList(SeparatedList(parameters));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static BinaryExpressionSyntax BinaryExpression(SyntaxKind kind, ExpressionSyntax left, ExpressionSyntax right)
+        {
+            return SyntaxFactory.BinaryExpression(kind, left.AddTrialingSpaces(), right.AddLeadingSpaces());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static MemberAccessExpressionSyntax MemberAccessExpression(SyntaxKind kind, ExpressionSyntax expression, SimpleNameSyntax name)
+        {
+            return SyntaxFactory.MemberAccessExpression(kind, expression, name);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ArrayCreationExpressionSyntax ArrayCreationExpression(ArrayTypeSyntax type)
+        {
+            return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.Token(SyntaxKind.NewKeyword).AddTrialingSpaces(), type, default);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static LiteralExpressionSyntax LiteralExpression(SyntaxKind syntaxKind)
+        {
+            return SyntaxFactory.LiteralExpression(syntaxKind);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static LiteralExpressionSyntax LiteralExpression(SyntaxKind syntaxKind, SyntaxToken token)
+        {
+            return SyntaxFactory.LiteralExpression(syntaxKind, token);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(ulong value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(uint value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(int value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(long value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(char value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(double value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(float value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SyntaxToken Literal(string value)
+        {
+            return SyntaxFactory.Literal(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TypeOfExpressionSyntax TypeOfExpression(TypeSyntax type)
+        {
+            return SyntaxFactory.TypeOfExpression(SyntaxFactory.Token(SyntaxKind.TypeOfKeyword), SyntaxFactory.Token(SyntaxKind.OpenParenToken), type, SyntaxFactory.Token(SyntaxKind.CloseParenToken));
         }
 
         private static IReadOnlyCollection<T> GetIndentedNodes<T>(IReadOnlyCollection<T> modifiers, int level, bool lastNodeTrailingLine = false)

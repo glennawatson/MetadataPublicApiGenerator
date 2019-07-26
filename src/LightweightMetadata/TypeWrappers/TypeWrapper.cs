@@ -6,7 +6,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -46,6 +45,8 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<KnownTypeCode> _knownTypeCode;
 
+        private FieldWrapper _enumMetadataField;
+
         private TypeWrapper(CompilationModule module, TypeDefinitionHandle typeDefinition)
         {
             CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
@@ -67,7 +68,7 @@ namespace LightweightMetadata.TypeWrappers
             _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), CompilationModule));
             _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => MethodWrapper.Create(TypeDefinition.GetMethods(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => PropertyWrapper.Create(TypeDefinition.GetProperties(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _fields = new Lazy<IReadOnlyList<FieldWrapper>>(() => FieldWrapper.Create(TypeDefinition.GetFields(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _fields = new Lazy<IReadOnlyList<FieldWrapper>>(CreateFields, LazyThreadSafetyMode.PublicationOnly);
             _events = new Lazy<IReadOnlyList<EventWrapper>>(() => EventWrapper.Create(TypeDefinition.GetEvents(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Create(TypeDefinition.GetNestedTypes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
             _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => InterfaceImplementationWrapper.Create(TypeDefinition.GetInterfaceImplementations(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
@@ -335,7 +336,7 @@ namespace LightweightMetadata.TypeWrappers
                 return false;
             }
 
-            underlyingType = Fields[0].FieldType;
+            underlyingType = _enumMetadataField.FieldType;
 
             return true;
         }
@@ -390,11 +391,11 @@ namespace LightweightMetadata.TypeWrappers
                 return outEnumValue != null;
             }
 
-            int index = Fields.BinarySearchIndexOfBy((item, compare) => item.LongDefaultValue.CompareTo(compare), value);
+            var matchedValue = Fields.FirstOrDefault(x => x.LongDefaultValue == value);
 
-            if (index >= 0)
+            if (matchedValue != null)
             {
-                outEnumValue = new[] { Fields[index].Name };
+                outEnumValue = new[] { matchedValue.Name };
                 return true;
             }
 
@@ -537,23 +538,17 @@ namespace LightweightMetadata.TypeWrappers
 
         private IReadOnlyList<string> HandleFlagsEnum(ulong value)
         {
-            var foundItems = new List<string>(Fields.Count);
+            var foundItems = new List<string>(Fields.Count - 1);
 
-            // Walk largest to smallest, this is in case we have a direct match early on.
-            for (int i = Fields.Count - 1; i >= 0; i--)
+            ulong checkValue = value;
+
+            foreach (var field in Fields)
             {
-                var field = Fields[i];
-
                 var fieldValue = field.LongDefaultValue;
-                if (value == fieldValue)
-                {
-                    return new[] { field.Name };
-                }
-
                 if ((value & fieldValue) == fieldValue)
                 {
                     foundItems.Add(field.Name);
-                    value -= fieldValue;
+                    checkValue -= fieldValue;
                 }
             }
 
@@ -561,12 +556,26 @@ namespace LightweightMetadata.TypeWrappers
             // a non-zero result, we couldn't match the result to only named values.
             // In that case, we return null and let the call site just generate
             // a string for the integral value.
-            if (value != 0)
+            if (checkValue != 0)
             {
                 return null;
             }
 
             return foundItems;
+        }
+
+        private IReadOnlyList<FieldWrapper> CreateFields()
+        {
+            var fields = FieldWrapper.Create(TypeDefinition.GetFields(), CompilationModule);
+
+            // skip the value__ field, which is a metadata only field for enums.
+            if (fields != null && fields.Count > 0 && fields[0].Name == "value__")
+            {
+                _enumMetadataField = fields[0];
+                return fields.Skip(1).ToList();
+            }
+
+            return fields;
         }
     }
 }

@@ -60,7 +60,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 return false;
             }
 
-            if (entity is AttributeWrapper attributeWrapper && excludeAttributes.Contains(attributeWrapper.FullName))
+            if (entity is AttributeWrapper attributeWrapper && excludeAttributes.Contains(attributeWrapper.ReflectionFullName))
             {
                 return false;
             }
@@ -74,7 +74,7 @@ namespace MetadataPublicApiGenerator.Extensions
                     return true;
                 }
 
-                return !attributes.Any(attr => excludeMembersAttributes.Contains(attr.FullName));
+                return !attributes.Any(attr => excludeMembersAttributes.Contains(attr.ReflectionFullName));
             }
 
             return true;

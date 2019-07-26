@@ -31,7 +31,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.StaticKeyword);
             }
 
-            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType && !typeDefinition.IsDelegateType)
+            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.TypeKind != SymbolTypeKind.Struct && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType && !typeDefinition.IsDelegateType)
             {
                 modifierList.Add(SyntaxKind.SealedKeyword);
             }

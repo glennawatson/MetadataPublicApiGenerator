@@ -77,7 +77,7 @@ namespace MetadataPublicApiGenerator.Generators
                 case HandleKind.PropertyDefinition:
                     return PropertySymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
                 case HandleKind.GenericParameter:
-                    return PropertySymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
+                    return TypeParameterSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
             }
 
             return null;

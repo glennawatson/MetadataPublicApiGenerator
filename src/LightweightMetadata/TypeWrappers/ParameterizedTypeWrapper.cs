@@ -26,7 +26,6 @@ namespace LightweightMetadata.TypeWrappers
     public class ParameterizedTypeWrapper : IHandleTypeNamedWrapper
     {
         private readonly Lazy<string> _name;
-        private readonly Lazy<string> _fullName;
         private readonly Lazy<string> _reflectionName;
 
         /// <summary>
@@ -51,8 +50,7 @@ namespace LightweightMetadata.TypeWrappers
             CompilationModule = genericType.CompilationModule;
 
             _name = new Lazy<string>(() => GenericType.Name, LazyThreadSafetyMode.PublicationOnly);
-            _fullName = new Lazy<string>(() => GetFullName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
-            _reflectionName = new Lazy<string>(() => GetFullName(x => x.ReflectionFullName), LazyThreadSafetyMode.PublicationOnly);
+            _reflectionName = new Lazy<string>(GetReflectionName, LazyThreadSafetyMode.PublicationOnly);
 
             Accessibility = genericType.Accessibility;
             IsAbstract = genericType.IsAbstract;
@@ -69,7 +67,7 @@ namespace LightweightMetadata.TypeWrappers
         public IReadOnlyList<IHandleTypeNamedWrapper> TypeArguments { get; }
 
         /// <inheritdoc />
-        public string FullName => _fullName.Value;
+        public string FullName => GenericType.FullName;
 
         /// <inheritdoc />
         public string ReflectionFullName => _reflectionName.Value;
@@ -95,16 +93,16 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public Handle Handle => GenericType.Handle;
 
-        private string GetFullName(Func<IHandleTypeNamedWrapper, string> nameGetter)
+        private string GetReflectionName()
         {
-            string strippedName = nameGetter(GenericType);
+            string strippedName = GenericType.ReflectionFullName;
 
             var sb = new StringBuilder(strippedName);
 
             if (TypeArguments.Count > 0)
             {
                 sb.Append("<")
-                    .Append(string.Join(", ", TypeArguments.Select(nameGetter)))
+                    .Append(string.Join(", ", TypeArguments.Select(x => x.ReflectionFullName)))
                     .Append(">");
             }
 

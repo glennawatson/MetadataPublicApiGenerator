@@ -27,16 +27,17 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 return null;
             }
 
+            var name = type.Name;
             var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
 
             var baseTypes = type.GetBaseTypes();
 
-            return GenerateSyntax(type, GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, level), constraints, typeParameters, baseTypes, level);
+            return GenerateSyntax(name, GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, level), constraints, typeParameters, baseTypes, level);
         }
 
-        private static TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
+        private static TypeDeclarationSyntax GenerateSyntax(string name, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
         {
-            return StructDeclaration(typeDefinition.Name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
+            return StructDeclaration(name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
         }
     }
 }

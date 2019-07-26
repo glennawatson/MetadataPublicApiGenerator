@@ -5,11 +5,12 @@
 using System;
 using System.Linq;
 using LightweightMetadata;
-using LightweightMetadata.Extensions;
 using LightweightMetadata.TypeWrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
 
 namespace MetadataPublicApiGenerator.Helpers
 {
@@ -29,7 +30,7 @@ namespace MetadataPublicApiGenerator.Helpers
             switch (wrapper)
             {
                 case ArrayTypeWrapper arrayTypeWrapper:
-                    return SyntaxFactory.ArrayCreationExpression(SyntaxFactory.ArrayType(SyntaxFactory.ArrayType(SyntaxFactory.IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName))));
+                    return ArrayCreationExpression(ArrayType(IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName), Array.Empty<ArrayRankSpecifierSyntax>()));
                 case TypeWrapper typeWrapper when typeWrapper.IsEnumType:
                     return GetEnumNames(typeWrapper, value);
                 case TypeWrapper typeWrapper:
@@ -43,42 +44,42 @@ namespace MetadataPublicApiGenerator.Helpers
         {
             if (value == null)
             {
-                return SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
+                return LiteralExpression(SyntaxKind.NullLiteralExpression);
             }
 
             switch (underlyingType)
             {
                 case KnownTypeCode.Char:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.CharacterLiteralExpression, SyntaxFactory.Literal((char)value));
+                    return LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal((char)value));
                 case KnownTypeCode.Boolean:
                     bool testValue = (bool)value;
-                    return SyntaxFactory.LiteralExpression(testValue ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression);
+                    return LiteralExpression(testValue ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression);
                 case KnownTypeCode.SByte:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((sbyte)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((sbyte)value));
                 case KnownTypeCode.Byte:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((byte)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((byte)value));
                 case KnownTypeCode.Int16:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((short)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((short)value));
                 case KnownTypeCode.UInt16:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((ushort)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((ushort)value));
                 case KnownTypeCode.Int32:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((int)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)value));
                 case KnownTypeCode.UInt32:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((uint)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)value));
                 case KnownTypeCode.Int64:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((long)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)value));
                 case KnownTypeCode.UInt64:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((ulong)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((ulong)value));
                 case KnownTypeCode.Single:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((float)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((float)value));
                 case KnownTypeCode.Double:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal((double)value));
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((double)value));
                 case KnownTypeCode.String:
-                    return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal((string)value));
+                    return LiteralExpression(SyntaxKind.StringLiteralExpression, Literal((string)value));
                 case KnownTypeCode.Object:
-                    return SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(((Type)value).FullName));
+                    return TypeOfExpression(IdentifierName(((Type)value).FullName));
                 case KnownTypeCode.Type:
-                    return SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(value.ToString()));
+                    return TypeOfExpression(IdentifierName(value.ToString()));
             }
 
             throw new Exception($"Unknown parameter type for a parameter: {underlyingType}");
@@ -89,57 +90,57 @@ namespace MetadataPublicApiGenerator.Helpers
             switch (operatorName)
             {
                 case "op_Equality":
-                    return SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken);
+                    return Token(SyntaxKind.EqualsEqualsToken);
                 case "op_Inequality":
-                    return SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken);
+                    return Token(SyntaxKind.ExclamationEqualsToken);
                 case "op_GreaterThan":
-                    return SyntaxFactory.Token(SyntaxKind.GreaterThanToken);
+                    return Token(SyntaxKind.GreaterThanToken);
                 case "op_LessThan":
-                    return SyntaxFactory.Token(SyntaxKind.LessThanToken);
+                    return Token(SyntaxKind.LessThanToken);
                 case "op_GreaterThanOrEqual":
-                    return SyntaxFactory.Token(SyntaxKind.GreaterThanEqualsToken);
+                    return Token(SyntaxKind.GreaterThanEqualsToken);
                 case "op_LessThanOrEqual":
-                    return SyntaxFactory.Token(SyntaxKind.LessThanEqualsToken);
+                    return Token(SyntaxKind.LessThanEqualsToken);
                 case "op_BitwiseAnd":
-                    return SyntaxFactory.Token(SyntaxKind.AmpersandToken);
+                    return Token(SyntaxKind.AmpersandToken);
                 case "op_BitwiseOr":
-                    return SyntaxFactory.Token(SyntaxKind.BarToken);
+                    return Token(SyntaxKind.BarToken);
                 case "op_Addition":
-                    return SyntaxFactory.Token(SyntaxKind.PlusToken);
+                    return Token(SyntaxKind.PlusToken);
                 case "op_Subtraction":
-                    return SyntaxFactory.Token(SyntaxKind.MinusToken);
+                    return Token(SyntaxKind.MinusToken);
                 case "op_Division":
-                    return SyntaxFactory.Token(SyntaxKind.SlashToken);
+                    return Token(SyntaxKind.SlashToken);
                 case "op_Modulus":
-                    return SyntaxFactory.Token(SyntaxKind.PercentToken);
+                    return Token(SyntaxKind.PercentToken);
                 case "op_Multiply":
-                    return SyntaxFactory.Token(SyntaxKind.AsteriskToken);
+                    return Token(SyntaxKind.AsteriskToken);
                 case "op_LeftShift":
-                    return SyntaxFactory.Token(SyntaxKind.LessThanLessThanToken);
+                    return Token(SyntaxKind.LessThanLessThanToken);
                 case "op_RightShift":
-                    return SyntaxFactory.Token(SyntaxKind.GreaterThanGreaterThanToken);
+                    return Token(SyntaxKind.GreaterThanGreaterThanToken);
                 case "op_ExclusiveOr":
-                    return SyntaxFactory.Token(SyntaxKind.CaretToken);
+                    return Token(SyntaxKind.CaretToken);
                 case "op_UnaryNegation":
-                    return SyntaxFactory.Token(SyntaxKind.MinusToken);
+                    return Token(SyntaxKind.MinusToken);
                 case "op_UnaryPlus":
-                    return SyntaxFactory.Token(SyntaxKind.PlusToken);
+                    return Token(SyntaxKind.PlusToken);
                 case "op_LogicalNot":
-                    return SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken);
+                    return Token(SyntaxKind.ExclamationEqualsToken);
                 case "op_False":
-                    return SyntaxFactory.Token(SyntaxKind.FalseKeyword);
+                    return Token(SyntaxKind.FalseKeyword);
                 case "op_True":
-                    return SyntaxFactory.Token(SyntaxKind.TrueKeyword);
+                    return Token(SyntaxKind.TrueKeyword);
                 case "op_Increment":
-                    return SyntaxFactory.Token(SyntaxKind.PlusPlusToken);
+                    return Token(SyntaxKind.PlusPlusToken);
                 case "op_Decrement":
-                    return SyntaxFactory.Token(SyntaxKind.MinusMinusToken);
+                    return Token(SyntaxKind.MinusMinusToken);
                 case "op_OnesComplement":
-                    return SyntaxFactory.Token(SyntaxKind.TildeToken);
+                    return Token(SyntaxKind.TildeToken);
                 case "op_Implicit":
-                    return SyntaxFactory.Token(SyntaxKind.ImplicitKeyword);
+                    return Token(SyntaxKind.ImplicitKeyword);
                 case "op_Explicit":
-                    return SyntaxFactory.Token(SyntaxKind.ExplicitKeyword);
+                    return Token(SyntaxKind.ExplicitKeyword);
             }
 
             throw new Exception($"Unknown name for a operator: {operatorName}");
@@ -149,7 +150,7 @@ namespace MetadataPublicApiGenerator.Helpers
         {
             if (enumType.TryGetEnumName(enumValue, out var enumNames))
             {
-                var memberAccesses = enumNames.Select(x => SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(enumType.FullName), SyntaxFactory.IdentifierName(x))).ToList();
+                var memberAccesses = enumNames.Select(x => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(enumType.FullName), IdentifierName(x))).ToList();
                 if (enumNames.Count == 1)
                 {
                     return memberAccesses[0];
@@ -157,10 +158,10 @@ namespace MetadataPublicApiGenerator.Helpers
 
                 if (enumNames.Count > 1)
                 {
-                    var first = SyntaxFactory.BinaryExpression(SyntaxKind.BitwiseOrExpression, memberAccesses[0], memberAccesses[1]);
+                    var first = BinaryExpression(SyntaxKind.BitwiseOrExpression, memberAccesses[0], memberAccesses[1]);
                     for (int i = 2; i < enumNames.Count; ++i)
                     {
-                        first = SyntaxFactory.BinaryExpression(SyntaxKind.BitwiseOrExpression, first, memberAccesses[i]);
+                        first = BinaryExpression(SyntaxKind.BitwiseOrExpression, first, memberAccesses[i]);
                     }
 
                     return first;

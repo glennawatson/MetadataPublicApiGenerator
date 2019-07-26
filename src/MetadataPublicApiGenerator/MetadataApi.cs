@@ -86,7 +86,7 @@ namespace MetadataPublicApiGenerator
             {
                 Func<TypeWrapper, bool> excludeFunc = tr => false;
 
-                return GeneratorFactory.Generate(compilationMetadata, attributesToExclude, attributesMembersToExclude, excludeFunc, shouldIncludeAssemblyAttributes).ToFullString();
+                return GeneratorFactory.Generate(compilationMetadata, attributesMembersToExclude, attributesToExclude, excludeFunc, shouldIncludeAssemblyAttributes).ToFullString();
             }
         }
     }

@@ -14,7 +14,7 @@ namespace LightweightMetadata.TypeWrappers
     /// <summary>
     /// A wrapper around the <see cref="TypeSpecification"/>.
     /// </summary>
-    public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
         private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper>();
 
@@ -30,7 +30,7 @@ namespace LightweightMetadata.TypeWrappers
 
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
 
-            _type = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _type = new Lazy<IHandleTypeNamedWrapper>(GetHandleType, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -78,6 +78,9 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public KnownTypeCode KnownType => Type.KnownType;
 
+        /// <inheritdoc />
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => Type is IHasGenericParameters parameters ? parameters.GenericParameters : Array.Empty<GenericParameterWrapper>();
+
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
@@ -97,6 +100,11 @@ namespace LightweightMetadata.TypeWrappers
         private TypeSpecification Resolve()
         {
             return CompilationModule.MetadataReader.GetTypeSpecification(TypeSpecificationHandle);
+        }
+
+        private IHandleTypeNamedWrapper GetHandleType()
+        {
+            return Definition.DecodeSignature(new TypeSpecificationSignatureDecoder(CompilationModule.Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
         }
     }
 }

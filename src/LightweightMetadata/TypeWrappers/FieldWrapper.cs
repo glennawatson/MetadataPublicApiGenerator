@@ -171,6 +171,12 @@ namespace LightweightMetadata.TypeWrappers
             return output;
         }
 
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return Name;
+        }
+
         private FieldDefinition Resolve()
         {
             return CompilationModule.MetadataReader.GetFieldDefinition(FieldDefinitionHandle);

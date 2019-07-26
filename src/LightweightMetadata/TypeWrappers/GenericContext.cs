@@ -13,6 +13,8 @@ namespace LightweightMetadata.TypeWrappers
     {
         private readonly CompilationModule _module;
 
+        private readonly IHandleWrapper _handleWrapper;
+
         internal GenericContext(CompilationModule module)
         {
             ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
@@ -28,6 +30,7 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             _module = wrapper.CompilationModule;
+            _handleWrapper = wrapper;
 
             switch (wrapper)
             {
