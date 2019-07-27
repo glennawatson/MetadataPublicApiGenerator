@@ -29,12 +29,12 @@ namespace LightweightMetadata
         private MemberReferenceWrapper(MemberReferenceHandle handle, AssemblyMetadata module)
         {
             MemberReferenceHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _parent = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Parent, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Parent, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(() => GetName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
             _reflectionFullName = new Lazy<string>(() => GetName(x => x.ReflectionFullName), LazyThreadSafetyMode.PublicationOnly);
@@ -54,7 +54,7 @@ namespace LightweightMetadata
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -129,7 +129,7 @@ namespace LightweightMetadata
 
         private MemberReference Resolve()
         {
-            return CompilationModule.MetadataReader.GetMemberReference(MemberReferenceHandle);
+            return AssemblyMetadata.MetadataReader.GetMemberReference(MemberReferenceHandle);
         }
 
         private string GetName(Func<IHandleTypeNamedWrapper, string> nameGetter)

@@ -44,7 +44,7 @@ namespace LightweightMetadata
             _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
             _namesToTypes = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => Types.ToDictionary(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
             _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
-            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyMetadata>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this).Select(x => Compilation.GetCompilationModuleForAssemblyReference(x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyMetadata>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this).Select(x => Compilation.GetAssemblyMetadataForAssemblyReference(x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
             _mainAssembly = new Lazy<AssemblyWrapper>(() => new AssemblyWrapper(this), LazyThreadSafetyMode.PublicationOnly);
         }

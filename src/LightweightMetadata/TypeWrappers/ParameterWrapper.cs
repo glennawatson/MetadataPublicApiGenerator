@@ -24,7 +24,7 @@ namespace LightweightMetadata
 
         private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata module)
         {
-            CompilationModule = module;
+            AssemblyMetadata = module;
             ParameterHandle = handle;
             Handle = handle;
             Definition = Resolve(handle, module);
@@ -76,7 +76,7 @@ namespace LightweightMetadata
         public string FullName => Name;
 
         /// <inheritdoc/>
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }

@@ -30,7 +30,7 @@ namespace LightweightMetadata
         private PropertyWrapper(PropertyDefinitionHandle handle, AssemblyMetadata module)
         {
             PropertyDefinitionHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
@@ -66,7 +66,7 @@ namespace LightweightMetadata
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -158,7 +158,7 @@ namespace LightweightMetadata
 
         private PropertyDefinition Resolve()
         {
-            return CompilationModule.MetadataReader.GetPropertyDefinition(PropertyDefinitionHandle);
+            return AssemblyMetadata.MetadataReader.GetPropertyDefinition(PropertyDefinitionHandle);
         }
 
         private MethodWrapper GetAnyAccessor()

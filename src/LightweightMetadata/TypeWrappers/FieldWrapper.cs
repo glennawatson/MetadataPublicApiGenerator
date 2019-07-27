@@ -30,11 +30,11 @@ namespace LightweightMetadata
         private FieldWrapper(FieldDefinitionHandle handle, AssemblyMetadata module)
         {
             FieldDefinitionHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
-            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
@@ -89,7 +89,7 @@ namespace LightweightMetadata
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -192,7 +192,7 @@ namespace LightweightMetadata
 
         private FieldDefinition Resolve()
         {
-            return CompilationModule.MetadataReader.GetFieldDefinition(FieldDefinitionHandle);
+            return AssemblyMetadata.MetadataReader.GetFieldDefinition(FieldDefinitionHandle);
         }
     }
 }

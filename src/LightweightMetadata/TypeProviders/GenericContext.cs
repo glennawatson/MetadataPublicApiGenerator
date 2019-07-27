@@ -29,7 +29,7 @@ namespace LightweightMetadata.TypeWrappers
                 throw new System.ArgumentNullException(nameof(wrapper));
             }
 
-            _module = wrapper.CompilationModule;
+            _module = wrapper.AssemblyMetadata;
             _handleWrapper = wrapper;
 
             switch (wrapper)

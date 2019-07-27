@@ -28,7 +28,7 @@ namespace LightweightMetadata
         private TypeReferenceWrapper(TypeReferenceHandle handle, AssemblyMetadata module)
         {
             TypeReferenceHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
             _type = new Lazy<IHandleTypeNamedWrapper>(GetDeclaringType, LazyThreadSafetyMode.PublicationOnly);
@@ -52,7 +52,7 @@ namespace LightweightMetadata
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -128,14 +128,14 @@ namespace LightweightMetadata
                 switch (current.Definition.ResolutionScope.Kind)
                 {
                     case HandleKind.TypeReference:
-                        current = Create((TypeReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
+                        current = Create((TypeReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
                         break;
                     case HandleKind.AssemblyReference:
-                        var assemblyReference = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
-                        return current.CompilationModule.Compilation.GetCompilationModuleForAssemblyReference(assemblyReference);
+                        var assemblyReference = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
+                        return current.AssemblyMetadata.Compilation.GetAssemblyMetadataForAssemblyReference(assemblyReference);
                     case HandleKind.ModuleReference:
-                        var assemblyModuleReference = ModuleReferenceWrapper.Create((ModuleReferenceHandle)current.Definition.ResolutionScope, current.CompilationModule);
-                        return assemblyModuleReference.CompilationModule;
+                        var assemblyModuleReference = ModuleReferenceWrapper.Create((ModuleReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
+                        return assemblyModuleReference.AssemblyMetadata;
                     default:
                         return default;
                 }
@@ -146,12 +146,12 @@ namespace LightweightMetadata
 
         private IHandleTypeNamedWrapper GetDeclaringType()
         {
-            return CompilationModule.GetTypeByName(FullName);
+            return AssemblyMetadata.GetTypeByName(FullName);
         }
 
         private TypeReference Resolve()
         {
-            return CompilationModule.MetadataReader.GetTypeReference(TypeReferenceHandle);
+            return AssemblyMetadata.MetadataReader.GetTypeReference(TypeReferenceHandle);
         }
 
         private string GetFullName()
@@ -161,7 +161,7 @@ namespace LightweightMetadata
                 return TypeNamespace + "." + Name;
             }
 
-            var typeReference = Create((TypeReferenceHandle)Definition.ResolutionScope, CompilationModule);
+            var typeReference = Create((TypeReferenceHandle)Definition.ResolutionScope, AssemblyMetadata);
 
             return typeReference.FullName + "." + Name;
         }

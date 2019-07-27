@@ -26,7 +26,7 @@ namespace LightweightMetadata
         private MethodSpecificationWrapper(MethodSpecificationHandle handle, AssemblyMetadata module)
         {
             MethodSpecificationHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve(handle, module);
 
@@ -60,7 +60,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => Method.GenericParameters;

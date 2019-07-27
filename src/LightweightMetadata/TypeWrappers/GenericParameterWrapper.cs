@@ -25,7 +25,7 @@ namespace LightweightMetadata
 
         private GenericParameterWrapper(AssemblyMetadata module, IHandleTypeNamedWrapper owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes genericParameterAttribute)
         {
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Owner = owner;
             Handle = handle;
             Name = name;
@@ -48,7 +48,7 @@ namespace LightweightMetadata
                     break;
             }
 
-            _constraints = new Lazy<IReadOnlyList<GenericParameterConstraintWrapper>>(() => GenericParameterConstraintWrapper.Create(GenericParameter.GetConstraints(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _constraints = new Lazy<IReadOnlyList<GenericParameterConstraintWrapper>>(() => GenericParameterConstraintWrapper.Create(GenericParameter.GetConstraints(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace LightweightMetadata
         public GenericParameter GenericParameter { get; }
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <summary>
         /// Gets a list of constraints.

@@ -25,7 +25,7 @@ namespace LightweightMetadata
             TypeNamespace = string.Empty;
             Accessibility = EntityAccessibility.None;
             IsAbstract = false;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = default;
         }
 
@@ -51,7 +51,7 @@ namespace LightweightMetadata
         public Handle Handle { get; }
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public KnownTypeCode KnownType => KnownTypeCode.None;

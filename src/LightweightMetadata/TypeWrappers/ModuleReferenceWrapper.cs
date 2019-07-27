@@ -40,7 +40,7 @@ namespace LightweightMetadata
         public ModuleReferenceHandle ModuleReferenceHandle { get; }
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule => _compilationModule.Value;
+        public AssemblyMetadata AssemblyMetadata => _compilationModule.Value;
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -95,7 +95,7 @@ namespace LightweightMetadata
 
         private AssemblyMetadata GetDeclaringModule()
         {
-            return ParentCompilationModule.Compilation.GetCompilationModuleForName(Name, ParentCompilationModule);
+            return ParentCompilationModule.Compilation.GetAssemblyMetadataForName(Name, ParentCompilationModule);
         }
     }
 }

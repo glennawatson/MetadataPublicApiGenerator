@@ -53,7 +53,7 @@ namespace LightweightMetadata
         public Handle Handle => TypeDefinition.Handle;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule => TypeDefinition.CompilationModule;
+        public AssemblyMetadata AssemblyMetadata => TypeDefinition.AssemblyMetadata;
 
         /// <inheritdoc />
         public override string ToString()

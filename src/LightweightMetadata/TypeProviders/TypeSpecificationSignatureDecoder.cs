@@ -28,13 +28,13 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
         {
-            return TypeWrapper.Create(handle, _compilation.GetCompilationModuleForReader(reader));
+            return TypeWrapper.Create(handle, _compilation.GetAssemblyMetadataForReader(reader));
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
-            var module = _compilation.GetCompilationModuleForReader(reader);
+            var module = _compilation.GetAssemblyMetadataForReader(reader);
 
             return WrapperFactory.Create(handle, module);
         }

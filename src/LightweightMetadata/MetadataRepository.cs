@@ -62,7 +62,7 @@ namespace LightweightMetadata
         internal TypeProvider TypeProvider => _typeProvider.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata GetCompilationModuleForReader(MetadataReader reader)
+        public AssemblyMetadata GetAssemblyMetadataForReader(MetadataReader reader)
         {
             if (MainModule.MetadataReader == reader)
             {
@@ -73,7 +73,7 @@ namespace LightweightMetadata
         }
 
         /// <inheritdoc />
-        public AssemblyMetadata GetCompilationModuleForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        public AssemblyMetadata GetAssemblyMetadataForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
             if (parent == null)
             {
@@ -84,14 +84,14 @@ namespace LightweightMetadata
         }
 
         /// <inheritdoc />
-        public AssemblyMetadata GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper)
+        public AssemblyMetadata GetAssemblyMetadataForAssemblyReference(AssemblyReferenceWrapper wrapper)
         {
             if (wrapper == null)
             {
                 throw new ArgumentNullException(nameof(wrapper));
             }
 
-            return GetCompilationModuleForName(wrapper.Name, wrapper.ParentCompilationModule, wrapper.Version, wrapper.IsWindowsRuntime, wrapper.IsRetargetable, wrapper.PublicKey);
+            return GetAssemblyMetadataForName(wrapper.Name, wrapper.ParentCompilationModule, wrapper.Version, wrapper.IsWindowsRuntime, wrapper.IsRetargetable, wrapper.PublicKey);
         }
 
         /// <inheritdoc />

@@ -32,7 +32,7 @@ namespace LightweightMetadata
 
         internal NamespaceWrapper(NamespaceDefinition definition, AssemblyMetadata module)
         {
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Definition = definition;
             Handle = default;
 
@@ -45,7 +45,7 @@ namespace LightweightMetadata
 
         private NamespaceWrapper(NamespaceDefinitionHandle handle, AssemblyMetadata module)
         {
-            CompilationModule = module;
+            AssemblyMetadata = module;
             NamespaceHandle = handle;
             Handle = handle;
             Definition = Resolve(handle, module);
@@ -71,7 +71,7 @@ namespace LightweightMetadata
         public Handle Handle { get; }
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <summary>
         /// Gets the parent namespace.

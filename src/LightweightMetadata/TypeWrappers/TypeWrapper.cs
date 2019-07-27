@@ -50,14 +50,14 @@ namespace LightweightMetadata
 
         private TypeWrapper(AssemblyMetadata module, TypeDefinitionHandle typeDefinition)
         {
-            CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
+            AssemblyMetadata = module ?? throw new ArgumentNullException(nameof(module));
             TypeDefinitionHandle = typeDefinition;
             Handle = typeDefinition;
-            TypeDefinition = CompilationModule.MetadataReader.GetTypeDefinition(typeDefinition);
+            TypeDefinition = AssemblyMetadata.MetadataReader.GetTypeDefinition(typeDefinition);
 
-            _nameWithNumeric = new Lazy<string>(() => CompilationModule.MetadataReader.GetString(TypeDefinition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _nameWithNumeric = new Lazy<string>(() => AssemblyMetadata.MetadataReader.GetString(TypeDefinition.Name), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(GetNameWithoutNumeric, LazyThreadSafetyMode.PublicationOnly);
-            _namespace = new Lazy<string>(() => TypeDefinition.Namespace.GetName(CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _namespace = new Lazy<string>(() => TypeDefinition.Namespace.GetName(AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             _reflectionFullName = new Lazy<string>(GetReflectionFullName, LazyThreadSafetyMode.PublicationOnly);
             _isKnownType = new Lazy<bool>(() => this.ToKnownTypeCode() != KnownTypeCode.None, LazyThreadSafetyMode.PublicationOnly);
@@ -65,14 +65,14 @@ namespace LightweightMetadata
             _typeKind = new Lazy<SymbolTypeKind>(GetTypeKind, LazyThreadSafetyMode.PublicationOnly);
             _isDelegateType = new Lazy<bool>(IsDelegate, LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(TypeDefinition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
-            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(TypeDefinition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), CompilationModule));
-            _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => MethodWrapper.Create(TypeDefinition.GetMethods(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => PropertyWrapper.Create(TypeDefinition.GetProperties(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(TypeDefinition.GetGenericParameters(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), AssemblyMetadata));
+            _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => MethodWrapper.Create(TypeDefinition.GetMethods(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _properties = new Lazy<IReadOnlyList<PropertyWrapper>>(() => PropertyWrapper.Create(TypeDefinition.GetProperties(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _fields = new Lazy<IReadOnlyList<FieldWrapper>>(CreateFields, LazyThreadSafetyMode.PublicationOnly);
-            _events = new Lazy<IReadOnlyList<EventWrapper>>(() => EventWrapper.Create(TypeDefinition.GetEvents(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Create(TypeDefinition.GetNestedTypes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => InterfaceImplementationWrapper.Create(TypeDefinition.GetInterfaceImplementations(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _events = new Lazy<IReadOnlyList<EventWrapper>>(() => EventWrapper.Create(TypeDefinition.GetEvents(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Create(TypeDefinition.GetNestedTypes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => InterfaceImplementationWrapper.Create(TypeDefinition.GetInterfaceImplementations(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
 
             _base = new Lazy<IHandleTypeNamedWrapper>(
@@ -85,7 +85,7 @@ namespace LightweightMetadata
                             return null;
                         }
 
-                        return WrapperFactory.Create(baseType, CompilationModule);
+                        return WrapperFactory.Create(baseType, AssemblyMetadata);
                     }, LazyThreadSafetyMode.PublicationOnly);
 
             switch (TypeDefinition.Attributes & TypeAttributes.VisibilityMask)
@@ -236,7 +236,7 @@ namespace LightweightMetadata
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => _genericParameters.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <summary>
         /// Gets the type definition handle.
@@ -567,7 +567,7 @@ namespace LightweightMetadata
 
         private IReadOnlyList<FieldWrapper> CreateFields()
         {
-            var fields = FieldWrapper.Create(TypeDefinition.GetFields(), CompilationModule);
+            var fields = FieldWrapper.Create(TypeDefinition.GetFields(), AssemblyMetadata);
 
             // skip the value__ field, which is a metadata only field for enums.
             if (fields != null && fields.Count > 0 && fields[0].Name == "value__")

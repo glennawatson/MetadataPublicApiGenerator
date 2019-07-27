@@ -44,7 +44,7 @@ namespace LightweightMetadata
 
             GenericType = genericType ?? throw new ArgumentNullException(nameof(genericType));
             TypeArguments = typeArguments.ToList();
-            CompilationModule = genericType.CompilationModule;
+            AssemblyMetadata = genericType.AssemblyMetadata;
 
             _name = new Lazy<string>(() => GenericType.Name, LazyThreadSafetyMode.PublicationOnly);
             _reflectionName = new Lazy<string>(GetReflectionName, LazyThreadSafetyMode.PublicationOnly);
@@ -82,7 +82,7 @@ namespace LightweightMetadata
         public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public string Name => _name.Value;

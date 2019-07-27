@@ -25,7 +25,7 @@ namespace LightweightMetadata
         private TypeSpecificationWrapper(TypeSpecificationHandle handle, AssemblyMetadata module)
         {
             TypeSpecificationHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
@@ -48,7 +48,7 @@ namespace LightweightMetadata
         public string Name => Type.Name;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -106,12 +106,12 @@ namespace LightweightMetadata
 
         private TypeSpecification Resolve()
         {
-            return CompilationModule.MetadataReader.GetTypeSpecification(TypeSpecificationHandle);
+            return AssemblyMetadata.MetadataReader.GetTypeSpecification(TypeSpecificationHandle);
         }
 
         private IHandleTypeNamedWrapper GetHandleType()
         {
-            return Definition.DecodeSignature(new TypeSpecificationSignatureDecoder(CompilationModule.Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
+            return Definition.DecodeSignature(new TypeSpecificationSignatureDecoder(AssemblyMetadata.Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
         }
     }
 }

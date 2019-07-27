@@ -22,12 +22,12 @@ namespace LightweightMetadata
         private GenericParameterConstraintWrapper(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata module)
         {
             GenericParameterConstraintHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Parent = parent;
             Definition = Resolve();
 
-            _type = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _type = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace LightweightMetadata
         public GenericParameterWrapper Parent { get; }
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -102,7 +102,7 @@ namespace LightweightMetadata
 
         private GenericParameterConstraint Resolve()
         {
-            return CompilationModule.MetadataReader.GetGenericParameterConstraint(GenericParameterConstraintHandle);
+            return AssemblyMetadata.MetadataReader.GetGenericParameterConstraint(GenericParameterConstraintHandle);
         }
     }
 }

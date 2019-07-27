@@ -65,7 +65,7 @@ namespace LightweightMetadata
         public KnownTypeCode KnownType => _parentWrapper.KnownType;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule => _parentWrapper?.CompilationModule;
+        public AssemblyMetadata AssemblyMetadata => _parentWrapper?.AssemblyMetadata;
 
         /// <inheritdoc />
         public Handle Handle => _parentWrapper.Handle;

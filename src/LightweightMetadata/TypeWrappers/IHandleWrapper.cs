@@ -19,6 +19,6 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the module that this wrapped item belongs to.
         /// </summary>
-        AssemblyMetadata CompilationModule { get; }
+        AssemblyMetadata AssemblyMetadata { get; }
     }
 }

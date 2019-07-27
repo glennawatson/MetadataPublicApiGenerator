@@ -24,12 +24,12 @@ namespace LightweightMetadata
         private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, AssemblyMetadata module)
         {
             InterfaceImplementationHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, CompilationModule)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _interface = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Interface, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetCustomAttributes().Select(x => AttributeWrapper.Create(x, AssemblyMetadata)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _interface = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Interface, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace LightweightMetadata
         public string Name => Interface.Name;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -124,7 +124,7 @@ namespace LightweightMetadata
 
         private InterfaceImplementation Resolve()
         {
-            return CompilationModule.MetadataReader.GetInterfaceImplementation(InterfaceImplementationHandle);
+            return AssemblyMetadata.MetadataReader.GetInterfaceImplementation(InterfaceImplementationHandle);
         }
     }
 }

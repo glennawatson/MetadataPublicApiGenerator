@@ -42,14 +42,14 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
         {
-            var module = Compilation.GetCompilationModuleForReader(reader);
+            var module = Compilation.GetAssemblyMetadataForReader(reader);
             return TypeWrapper.Create(handle, module);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
-            var module = Compilation.GetCompilationModuleForReader(reader);
+            var module = Compilation.GetAssemblyMetadataForReader(reader);
 
             return WrapperFactory.Create(handle, module);
         }
@@ -106,7 +106,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetModifiedType(IHandleTypeNamedWrapper modifier, IHandleTypeNamedWrapper unmodifiedType, bool isRequired)
         {
-            return new ModifiedTypeWrapper(modifier.CompilationModule, modifier, unmodifiedType, isRequired);
+            return new ModifiedTypeWrapper(modifier.AssemblyMetadata, modifier, unmodifiedType, isRequired);
         }
 
         /// <inheritdoc />

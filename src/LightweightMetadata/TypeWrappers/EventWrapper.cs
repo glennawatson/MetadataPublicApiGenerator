@@ -31,7 +31,7 @@ namespace LightweightMetadata
         private EventWrapper(EventDefinitionHandle handle, AssemblyMetadata module)
         {
             EventDefinitionHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve();
 
@@ -40,9 +40,9 @@ namespace LightweightMetadata
 
             _eventType = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, module), LazyThreadSafetyMode.PublicationOnly);
 
-            _adderAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Adder, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _removerAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Remover, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-            _raiserAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Raiser, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _adderAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Adder, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _removerAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Remover, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _raiserAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Raiser, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _anyAccessor = new Lazy<MethodWrapper>(GetAnyAccessor, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -63,7 +63,7 @@ namespace LightweightMetadata
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -175,7 +175,7 @@ namespace LightweightMetadata
 
         private EventDefinition Resolve()
         {
-            return CompilationModule.MetadataReader.GetEventDefinition(EventDefinitionHandle);
+            return AssemblyMetadata.MetadataReader.GetEventDefinition(EventDefinitionHandle);
         }
     }
 }

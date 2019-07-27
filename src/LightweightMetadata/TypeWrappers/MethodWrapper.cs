@@ -35,7 +35,7 @@ namespace LightweightMetadata
         private MethodWrapper(MethodDefinitionHandle handle, AssemblyMetadata module)
         {
             MethodDefinitionHandle = handle;
-            CompilationModule = module;
+            AssemblyMetadata = module;
             Handle = handle;
             Definition = Resolve(handle, module);
 
@@ -50,10 +50,10 @@ namespace LightweightMetadata
             _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
             _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
             _nameWithFullType = new Lazy<string>(GetNameWithFullType, LazyThreadSafetyMode.PublicationOnly);
-            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(Definition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(Definition.GetGenericParameters(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _semanticData = new Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)>(GetMethodSymbolKind, LazyThreadSafetyMode.PublicationOnly);
             _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(GetParameters, LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _isDelegate = new Lazy<bool>(() => MethodKind == SymbolMethodKind.DelegateInvoke, LazyThreadSafetyMode.PublicationOnly);
             _isExtensionMethod = new Lazy<bool>(() => IsStatic & Attributes.HasKnownAttribute(KnownAttribute.Extension), LazyThreadSafetyMode.PublicationOnly);
             _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
@@ -178,7 +178,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -242,14 +242,14 @@ namespace LightweightMetadata
 
         private string GetNameWithFullType()
         {
-            return Resolve(MethodDefinitionHandle, CompilationModule).Name.GetName(CompilationModule);
+            return Resolve(MethodDefinitionHandle, AssemblyMetadata).Name.GetName(AssemblyMetadata);
         }
 
         private (ITypeNamedWrapper owner, SymbolMethodKind symbolKind) GetMethodSymbolKind()
         {
-            var (accessorOwnerHandle, semanticsAttribute) = CompilationModule.MethodSemanticsLookup.GetSemantics(MethodDefinitionHandle);
+            var (accessorOwnerHandle, semanticsAttribute) = AssemblyMetadata.MethodSemanticsLookup.GetSemantics(MethodDefinitionHandle);
 
-            var accessorOwner = WrapperFactory.Create(accessorOwnerHandle, CompilationModule);
+            var accessorOwner = WrapperFactory.Create(accessorOwnerHandle, AssemblyMetadata);
 
             var name = Name;
             var parameterCount = Parameters.Count;
@@ -319,13 +319,13 @@ namespace LightweightMetadata
             int i = 0;
             foreach (var parameterHandle in parameterCollection)
             {
-                var parameterInstance = CompilationModule.MetadataReader.GetParameter(parameterHandle);
+                var parameterInstance = AssemblyMetadata.MetadataReader.GetParameter(parameterHandle);
 
                 if (parameterInstance.SequenceNumber > 0 && i < _signature.Value.RequiredParameterCount)
                 {
                     var parameterType = _signature.Value.ParameterTypes[parameterInstance.SequenceNumber - 1];
 
-                    var parameter = ParameterWrapper.Create(parameterHandle, parameterType, CompilationModule);
+                    var parameter = ParameterWrapper.Create(parameterHandle, parameterType, AssemblyMetadata);
 
                     parameterList.Add(parameter);
                 }
@@ -369,7 +369,7 @@ namespace LightweightMetadata
             {
                 var typeName = NameWithFullType.Substring(0, lastDot);
 
-                return CompilationModule.Compilation.GetTypeByName(typeName);
+                return AssemblyMetadata.Compilation.GetTypeByName(typeName);
             }
 
             return null;

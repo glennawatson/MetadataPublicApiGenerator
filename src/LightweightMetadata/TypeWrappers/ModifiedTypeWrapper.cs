@@ -21,7 +21,7 @@ namespace LightweightMetadata
         /// <param name="isRequired">If the type is required.</param>
         public ModifiedTypeWrapper(AssemblyMetadata module, IHandleTypeNamedWrapper modifier, IHandleTypeNamedWrapper unmodifiedType, bool isRequired)
         {
-            CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
+            AssemblyMetadata = module ?? throw new ArgumentNullException(nameof(module));
             Modifier = modifier ?? throw new ArgumentNullException(nameof(modifier));
             Unmodified = unmodifiedType ?? throw new ArgumentNullException(nameof(unmodifiedType));
             IsRequired = isRequired;
@@ -67,7 +67,7 @@ namespace LightweightMetadata
         public Handle Handle => Unmodified.Handle;
 
         /// <inheritdoc/>
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <inheritdoc />
         public override string ToString()

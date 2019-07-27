@@ -31,7 +31,7 @@ namespace LightweightMetadata
 
         private AttributeWrapper(CustomAttributeHandle handle, AssemblyMetadata module)
         {
-            CompilationModule = module;
+            AssemblyMetadata = module;
             AttributeHandle = handle;
             Handle = handle;
             Definition = Resolve(handle, module);
@@ -113,7 +113,7 @@ namespace LightweightMetadata
         public IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> NamedArguments => _arguments.Value.namedArguments;
 
         /// <inheritdoc />
-        public AssemblyMetadata CompilationModule { get; }
+        public AssemblyMetadata AssemblyMetadata { get; }
 
         /// <summary>
         /// Gets the attribute type.
@@ -173,16 +173,16 @@ namespace LightweightMetadata
             switch (Definition.Constructor.Kind)
             {
                 case HandleKind.MethodDefinition:
-                    var methodDefinition = CompilationModule.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
+                    var methodDefinition = AssemblyMetadata.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
 
-                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(CompilationModule.Compilation), new GenericContext(CompilationModule));
+                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.Compilation), new GenericContext(AssemblyMetadata));
                     break;
 
                 case HandleKind.MemberReference:
-                    var memberReference = CompilationModule.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
+                    var memberReference = AssemblyMetadata.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
 
                     // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(CompilationModule.Compilation), new GenericContext(CompilationModule));
+                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.Compilation), new GenericContext(AssemblyMetadata));
                     break;
                 default:
                     throw new Exception("Unknown method type");
@@ -193,7 +193,7 @@ namespace LightweightMetadata
 
         private ITypeNamedWrapper GetAttributeType()
         {
-            var type = WrapperFactory.Create(Definition.Constructor, CompilationModule);
+            var type = WrapperFactory.Create(Definition.Constructor, AssemblyMetadata);
 
             if (type is MemberReferenceWrapper memberReference)
             {
@@ -210,7 +210,7 @@ namespace LightweightMetadata
 
         private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()
         {
-            var wrapper = Definition.DecodeValue(new TypeProvider(CompilationModule.Compilation));
+            var wrapper = Definition.DecodeValue(new TypeProvider(AssemblyMetadata.Compilation));
 
             var fixedArgumentsList = wrapper.FixedArguments.ToArray();
 
