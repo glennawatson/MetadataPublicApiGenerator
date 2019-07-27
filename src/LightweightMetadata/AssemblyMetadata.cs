@@ -16,24 +16,23 @@ namespace LightweightMetadata
     /// <summary>
     /// Represents a assembly or module.
     /// </summary>
-    public sealed class CompilationModule : IDisposable, IEquatable<CompilationModule>
+    public sealed class AssemblyMetadata : IDisposable, IEquatable<AssemblyMetadata>
     {
         private readonly Lazy<IReadOnlyDictionary<string, TypeWrapper>> _namesToTypes;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _types;
-        private readonly Lazy<IReadOnlyList<TypeWrapper>> _publicTypes;
         private readonly Lazy<IReadOnlyList<TypeReferenceWrapper>> _typeReferences;
-        private readonly Lazy<IReadOnlyList<CompilationModule>> _assemblyReferences;
+        private readonly Lazy<IReadOnlyList<AssemblyMetadata>> _assemblyReferences;
         private readonly Lazy<AssemblyWrapper> _mainAssembly;
         private readonly Lazy<MethodSemanticsLookup> _methodSemanticsLookup;
         private readonly PEReader _reader;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CompilationModule"/> class.
+        /// Initializes a new instance of the <see cref="AssemblyMetadata"/> class.
         /// </summary>
         /// <param name="fileName">The file name to the module.</param>
         /// <param name="compilation">The compilation unit that holds the module.</param>
         /// <param name="typeProvider">A type provider for decoding signatures.</param>
-        internal CompilationModule(string fileName, ICompilation compilation, TypeProvider typeProvider)
+        internal AssemblyMetadata(string fileName, IMetadataRepository compilation, TypeProvider typeProvider)
         {
             FileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
             Compilation = compilation ?? throw new ArgumentNullException(nameof(compilation));
@@ -43,10 +42,9 @@ namespace LightweightMetadata
             MetadataReader = _reader.GetMetadataReader();
 
             _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
-            _publicTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Types.Where(x => x.Accessibility == EntityAccessibility.Public).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _namesToTypes = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => Types.ToDictionary(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
             _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
-            _assemblyReferences = new Lazy<IReadOnlyList<CompilationModule>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this).Select(x => Compilation.GetCompilationModuleForAssemblyReference(x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyMetadata>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this).Select(x => Compilation.GetCompilationModuleForAssemblyReference(x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
             _mainAssembly = new Lazy<AssemblyWrapper>(() => new AssemblyWrapper(this), LazyThreadSafetyMode.PublicationOnly);
         }
@@ -59,12 +57,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the compilation that this module belongs to.
         /// </summary>
-        public ICompilation Compilation { get; }
-
-        /// <summary>
-        /// Gets all the public type definition handles for this module.
-        /// </summary>
-        public IReadOnlyList<TypeWrapper> PublicTypes => _publicTypes.Value;
+        public IMetadataRepository Compilation { get; }
 
         /// <summary>
         /// Gets all the types.
@@ -79,7 +72,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets a list of assembly references.
         /// </summary>
-        public IReadOnlyList<CompilationModule> AssemblyReferences => _assemblyReferences.Value;
+        public IReadOnlyList<AssemblyMetadata> AssemblyReferences => _assemblyReferences.Value;
 
         /// <summary>
         /// Gets the main assembly reference inside this module.
@@ -107,7 +100,7 @@ namespace LightweightMetadata
         /// <param name="left">The left element to compare.</param>
         /// <param name="right">The right element to compare.</param>
         /// <returns>If the two sides are equal.</returns>
-        public static bool operator ==(CompilationModule left, CompilationModule right)
+        public static bool operator ==(AssemblyMetadata left, AssemblyMetadata right)
         {
             return Equals(left, right);
         }
@@ -118,7 +111,7 @@ namespace LightweightMetadata
         /// <param name="left">The left element to compare.</param>
         /// <param name="right">The right element to compare.</param>
         /// <returns>If the two sides are not equal.</returns>
-        public static bool operator !=(CompilationModule left, CompilationModule right)
+        public static bool operator !=(AssemblyMetadata left, AssemblyMetadata right)
         {
             return !Equals(left, right);
         }
@@ -151,7 +144,7 @@ namespace LightweightMetadata
         }
 
         /// <inheritdoc />
-        public bool Equals(CompilationModule other)
+        public bool Equals(AssemblyMetadata other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -169,7 +162,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
-            return ReferenceEquals(this, obj) || (obj is CompilationModule other && Equals(other));
+            return ReferenceEquals(this, obj) || (obj is AssemblyMetadata other && Equals(other));
         }
 
         /// <inheritdoc />

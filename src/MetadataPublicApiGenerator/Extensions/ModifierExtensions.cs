@@ -41,11 +41,21 @@ namespace MetadataPublicApiGenerator.Extensions
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this MethodWrapper method)
         {
+            if (method.DeclaringType.TypeKind == SymbolTypeKind.Interface)
+            {
+                return Array.Empty<SyntaxKind>();
+            }
+
             return GetModifiersList(method);
         }
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this PropertyWrapper property)
         {
+            if (property.DeclaringType.TypeKind == SymbolTypeKind.Interface)
+            {
+                return Array.Empty<SyntaxKind>();
+            }
+
             var modifierList = new List<SyntaxKind>(6);
 
             modifierList.AddRange(AccessibilityToSyntaxKind(property.Accessibility));
@@ -86,9 +96,21 @@ namespace MetadataPublicApiGenerator.Extensions
 
             modifierList.AddRange(AccessibilityToSyntaxKind(field.Accessibility));
 
-            if (field.IsStatic)
+            if (field.IsConst)
             {
-                modifierList.Add(SyntaxKind.StaticKeyword);
+                modifierList.Add(SyntaxKind.ConstKeyword);
+            }
+            else
+            {
+                if (field.IsStatic)
+                {
+                    modifierList.Add(SyntaxKind.StaticKeyword);
+                }
+
+                if (field.IsReadOnly)
+                {
+                    modifierList.Add(SyntaxKind.ReadOnlyKeyword);
+                }
             }
 
             return modifierList;
@@ -101,17 +123,26 @@ namespace MetadataPublicApiGenerator.Extensions
             return GetModifiersList(method);
         }
 
-        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this ParameterWrapper parameter)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this ParameterWrapper parameter, bool isExtensionMethod)
         {
             var modifierList = new List<SyntaxKind>(6);
-            if (parameter.IsIn)
+
+            if (isExtensionMethod)
             {
-                modifierList.Add(SyntaxKind.InKeyword);
+                modifierList.Add(SyntaxKind.ThisKeyword);
             }
 
-            if (parameter.IsOut)
+            switch (parameter.ReferenceKind)
             {
-                modifierList.Add(SyntaxKind.OutKeyword);
+                case ParameterReferenceKind.In:
+                    modifierList.Add(SyntaxKind.InKeyword);
+                    break;
+                case ParameterReferenceKind.Out:
+                    modifierList.Add(SyntaxKind.OutKeyword);
+                    break;
+                case ParameterReferenceKind.Ref:
+                    modifierList.Add(SyntaxKind.RefKeyword);
+                    break;
             }
 
             if (parameter.Attributes.HasKnownAttribute(KnownAttribute.ParamArray))

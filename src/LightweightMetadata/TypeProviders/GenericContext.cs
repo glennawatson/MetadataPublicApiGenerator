@@ -11,11 +11,11 @@ namespace LightweightMetadata.TypeWrappers
 {
     internal class GenericContext
     {
-        private readonly CompilationModule _module;
+        private readonly AssemblyMetadata _module;
 
         private readonly IHandleWrapper _handleWrapper;
 
-        internal GenericContext(CompilationModule module)
+        internal GenericContext(AssemblyMetadata module)
         {
             ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
             MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
@@ -43,6 +43,10 @@ namespace LightweightMetadata.TypeWrappers
 
                     ClassTypeParameters = declaringTypeDefinition.GenericParameters;
                     MethodTypeParameters = methodWrapper.GenericParameters;
+                    break;
+                case PropertyWrapper propertyWrapper:
+                    ClassTypeParameters = propertyWrapper.DeclaringType.GenericParameters;
+                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
                     break;
                 default:
                     ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;

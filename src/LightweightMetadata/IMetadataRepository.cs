@@ -12,12 +12,12 @@ namespace LightweightMetadata
     /// <summary>
     /// Represents a compilation input.
     /// </summary>
-    public interface ICompilation
+    public interface IMetadataRepository
     {
         /// <summary>
         /// Gets the main module.
         /// </summary>
-        CompilationModule MainModule { get; }
+        AssemblyMetadata MainModule { get; }
 
         /// <summary>
         /// Gets the main namespace.
@@ -34,7 +34,7 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="reader">The reader to use.</param>
         /// <returns>The compilation module.</returns>
-        CompilationModule GetCompilationModuleForReader(MetadataReader reader);
+        AssemblyMetadata GetCompilationModuleForReader(MetadataReader reader);
 
         /// <summary>
         /// Gets the compilation module for the specified name.
@@ -46,14 +46,14 @@ namespace LightweightMetadata
         /// <param name="isRetargetable">If the assembly can be targeting another assembly.</param>
         /// <param name="publicKey">The optional public key.</param>
         /// <returns>The compilation module.</returns>
-        CompilationModule GetCompilationModuleForName(string name, CompilationModule parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null);
+        AssemblyMetadata GetCompilationModuleForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null);
 
         /// <summary>
         /// Gets the compilation module for the specified assembly reference.
         /// </summary>
         /// <param name="wrapper">The wrapper to get for.</param>
         /// <returns>The compilation module.</returns>
-        CompilationModule GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper);
+        AssemblyMetadata GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper);
 
         /// <summary>
         /// Gets a type by the full name.

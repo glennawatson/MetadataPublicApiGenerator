@@ -7,23 +7,21 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
-using System.Text;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the <see cref="InterfaceImplementation" />.
     /// </summary>
-    public class InterfaceImplementationWrapper : IHandleTypeNamedWrapper, IHasAttributes
+    public class InterfaceImplementationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
         private static readonly ConcurrentDictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _interface;
 
-        private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, CompilationModule module)
+        private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, AssemblyMetadata module)
         {
             InterfaceImplementationHandle = handle;
             CompilationModule = module;
@@ -48,7 +46,7 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => Interface.Name;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -79,13 +77,16 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public KnownTypeCode KnownType => Interface.KnownType;
 
+        /// <inheritdoc />
+        public IReadOnlyList<GenericParameterWrapper> GenericParameters => Interface is IHasGenericParameters parameters ? parameters.GenericParameters : Array.Empty<GenericParameterWrapper>();
+
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static InterfaceImplementationWrapper Create(InterfaceImplementationHandle handle, CompilationModule module)
+        public static InterfaceImplementationWrapper Create(InterfaceImplementationHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -101,7 +102,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<InterfaceImplementationWrapper> Create(in InterfaceImplementationHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<InterfaceImplementationWrapper> Create(in InterfaceImplementationHandleCollection collection, AssemblyMetadata module)
         {
             var output = new InterfaceImplementationWrapper[collection.Count];
 
@@ -118,7 +119,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public override string ToString()
         {
-            return ReflectionFullName;
+            return FullName;
         }
 
         private InterfaceImplementation Resolve()

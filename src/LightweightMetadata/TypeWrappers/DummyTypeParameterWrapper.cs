@@ -2,10 +2,9 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Diagnostics;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// If there is no type parameter at the index, this is a dummy value for the placement.
@@ -19,7 +18,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="index">The index of the parameter.</param>
         /// <param name="type">The type name of the parameter.</param>
         /// <param name="module">The module where the calling was requested through.</param>
-        public DummyTypeParameterWrapper(int index, string type, CompilationModule module)
+        public DummyTypeParameterWrapper(int index, string type, AssemblyMetadata module)
         {
             Name = index + " " + type;
             FullName = Name;
@@ -52,9 +51,15 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle { get; }
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public KnownTypeCode KnownType => KnownTypeCode.None;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

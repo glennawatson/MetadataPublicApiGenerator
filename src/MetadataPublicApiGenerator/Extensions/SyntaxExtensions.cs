@@ -8,8 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
-using MetadataPublicApiGenerator.Generators;
+
 using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 
 using Microsoft.CodeAnalysis;
@@ -39,7 +38,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return bases;
         }
 
-        public static TypeSyntax GetTypeSyntax(this ITypeNamedWrapper wrapper)
+        public static TypeSyntax GetTypeSyntax(this ITypeNamedWrapper wrapper, bool includeRef = true)
         {
             if (wrapper is ArrayTypeWrapper arrayType)
             {
@@ -60,7 +59,7 @@ namespace MetadataPublicApiGenerator.Extensions
             }
 
             var type = IdentifierName(wrapper.ReflectionFullName);
-            if (wrapper is ByReferenceWrapper)
+            if (includeRef && wrapper is ByReferenceWrapper)
             {
                 return RefType(type, false);
             }

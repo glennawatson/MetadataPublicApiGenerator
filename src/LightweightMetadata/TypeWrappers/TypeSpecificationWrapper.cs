@@ -7,21 +7,22 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the <see cref="TypeSpecification"/>.
     /// </summary>
     public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, CompilationModule module), TypeSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata module), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata module), TypeSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
-        private TypeSpecificationWrapper(TypeSpecificationHandle handle, CompilationModule module)
+        private TypeSpecificationWrapper(TypeSpecificationHandle handle, AssemblyMetadata module)
         {
             TypeSpecificationHandle = handle;
             CompilationModule = module;
@@ -47,7 +48,7 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => Type.Name;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -87,7 +88,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, CompilationModule module)
+        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -95,6 +96,12 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return _registerTypes.GetOrAdd((handle, module), data => new TypeSpecificationWrapper(data.handle, data.module));
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
         }
 
         private TypeSpecification Resolve()

@@ -8,16 +8,17 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps the <see cref="AssemblyReference" /> class.
     /// </summary>
     public class AssemblyReferenceWrapper : IEquatable<AssemblyReferenceWrapper>
     {
-        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle handle, CompilationModule module), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, CompilationModule), AssemblyReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle handle, AssemblyMetadata module), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, AssemblyMetadata), AssemblyReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _culture;
@@ -26,7 +27,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<string> _fullName;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
 
-        private AssemblyReferenceWrapper(AssemblyReferenceHandle handle, CompilationModule module)
+        private AssemblyReferenceWrapper(AssemblyReferenceHandle handle, AssemblyMetadata module)
         {
             AssemblyReferenceHandle = handle;
             ParentCompilationModule = module;
@@ -69,7 +70,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the parent's compilation module.
         /// </summary>
-        public CompilationModule ParentCompilationModule { get; }
+        public AssemblyMetadata ParentCompilationModule { get; }
 
         /// <summary>
         /// Gets the version of the assembly.
@@ -144,7 +145,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, CompilationModule module)
+        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -160,7 +161,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, AssemblyMetadata module)
         {
             var output = new AssemblyReferenceWrapper[collection.Count];
 

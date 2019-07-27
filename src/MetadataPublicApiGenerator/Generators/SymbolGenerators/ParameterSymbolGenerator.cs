@@ -3,8 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
-using LightweightMetadata.TypeWrappers;
+
+using LightweightMetadata;
 using MetadataPublicApiGenerator.Extensions;
+using MetadataPublicApiGenerator.Helpers;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static MetadataPublicApiGenerator.Helpers.SyntaxFactoryHelpers;
@@ -16,14 +19,20 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
     /// </summary>
     internal static class ParameterSymbolGenerator
     {
-        public static ParameterSyntax Generate(IHandleWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
+        public static ParameterSyntax Generate(IHandleWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, bool isExtensionMethod)
         {
             if (!(nameWrapper is ParameterWrapper parameterWrapper))
             {
                 return null;
             }
 
-            return Parameter(GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes), parameterWrapper.GetModifiers(), parameterWrapper.ParameterType.GetTypeSyntax(), parameterWrapper.Name);
+            EqualsValueClauseSyntax equals = null;
+            if (parameterWrapper.HasDefaultValue)
+            {
+                equals = EqualsValueClause(SyntaxHelper.GetValueExpression(parameterWrapper.ParameterType, parameterWrapper.DefaultValue));
+            }
+
+            return Parameter(GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes), parameterWrapper.GetModifiers(isExtensionMethod), parameterWrapper.ParameterType.GetTypeSyntax(false), parameterWrapper.Name, equals);
         }
     }
 }

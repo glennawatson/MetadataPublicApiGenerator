@@ -96,7 +96,7 @@ namespace LightweightMetadata.Extensions
         /// <param name="knownTypeCode">The known type code to convert.</param>
         /// <param name="compilation">The compilation of all known modules.</param>
         /// <returns>The type wrapper if its available, null otherwise.</returns>
-        internal static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, ICompilation compilation)
+        internal static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, IMetadataRepository compilation)
         {
             if (compilation == null)
             {
@@ -206,49 +206,6 @@ namespace LightweightMetadata.Extensions
                     return KnownTypeCode.Void;
                 default:
                     return KnownTypeCode.None;
-            }
-        }
-
-        internal static string GetRealTypeName(this string typeDefinitionName) => GetRealTypeName(ToKnownTypeCode(typeDefinitionName), typeDefinitionName);
-
-        internal static string GetRealTypeName(this KnownTypeCode knownTypeCode, string defaultTypeName = null)
-        {
-            switch (knownTypeCode)
-            {
-                case KnownTypeCode.Boolean:
-                    return "bool";
-                case KnownTypeCode.Byte:
-                    return "byte";
-                case KnownTypeCode.Char:
-                    return "char";
-                case KnownTypeCode.Decimal:
-                    return "decimal";
-                case KnownTypeCode.Double:
-                    return "double";
-                case KnownTypeCode.Int16:
-                    return "short";
-                case KnownTypeCode.Int32:
-                    return "int";
-                case KnownTypeCode.Int64:
-                    return "long";
-                case KnownTypeCode.SByte:
-                    return "sbyte";
-                case KnownTypeCode.Single:
-                    return "single";
-                case KnownTypeCode.String:
-                    return "string";
-                case KnownTypeCode.UInt16:
-                    return "ushort";
-                case KnownTypeCode.UInt32:
-                    return "uint";
-                case KnownTypeCode.UInt64:
-                    return "ulong";
-                case KnownTypeCode.Object:
-                    return "object";
-                case KnownTypeCode.Void:
-                    return "void";
-                default:
-                    return defaultTypeName ?? knownTypeCode.ToTypeName();
             }
         }
     }

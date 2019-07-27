@@ -2,10 +2,9 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Diagnostics;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// A type that has been pinned.
@@ -51,6 +50,12 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle => TypeDefinition.Handle;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule => TypeDefinition.CompilationModule;
+        public AssemblyMetadata CompilationModule => TypeDefinition.CompilationModule;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

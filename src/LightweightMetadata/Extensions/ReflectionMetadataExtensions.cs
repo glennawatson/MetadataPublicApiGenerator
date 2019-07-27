@@ -35,29 +35,13 @@ namespace LightweightMetadata.Extensions
 
             foreach (var customAttribute in attributes)
             {
-                if (customAttribute.IsKnownAttribute(type))
+                if (customAttribute.KnownAttributeType == type)
                 {
                     return true;
                 }
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Gets if the attribute is of a known type.
-        /// </summary>
-        /// <param name="attr">The attribute to check.</param>
-        /// <param name="attrType">The type to check.</param>
-        /// <returns>If the attribute is of the known type.</returns>
-        public static bool IsKnownAttribute(this AttributeWrapper attr, KnownAttribute attrType)
-        {
-            if (attr == null)
-            {
-                throw new ArgumentNullException(nameof(attr));
-            }
-
-            return attr.KnownAttribute == attrType;
         }
 
         /// <summary>
@@ -101,7 +85,7 @@ namespace LightweightMetadata.Extensions
             }
         }
 
-        internal static string CalculatePublicKeyToken(this BlobHandle publicKeyBlob, CompilationModule module, AssemblyHashAlgorithm assemblyHashAlgorithm)
+        internal static string CalculatePublicKeyToken(this BlobHandle publicKeyBlob, AssemblyMetadata module, AssemblyHashAlgorithm assemblyHashAlgorithm)
         {
             if (publicKeyBlob.IsNil)
             {
@@ -129,7 +113,7 @@ namespace LightweightMetadata.Extensions
             }
         }
 
-        internal static object ReadConstant(this ConstantHandle constantHandle, CompilationModule module)
+        internal static object ReadConstant(this ConstantHandle constantHandle, AssemblyMetadata module)
         {
             if (constantHandle.IsNil)
             {

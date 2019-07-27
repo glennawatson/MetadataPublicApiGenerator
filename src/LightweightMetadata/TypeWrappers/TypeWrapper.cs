@@ -12,9 +12,10 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around a type.
@@ -47,7 +48,7 @@ namespace LightweightMetadata.TypeWrappers
 
         private FieldWrapper _enumMetadataField;
 
-        private TypeWrapper(CompilationModule module, TypeDefinitionHandle typeDefinition)
+        private TypeWrapper(AssemblyMetadata module, TypeDefinitionHandle typeDefinition)
         {
             CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
             TypeDefinitionHandle = typeDefinition;
@@ -235,7 +236,7 @@ namespace LightweightMetadata.TypeWrappers
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => _genericParameters.Value;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <summary>
         /// Gets the type definition handle.
@@ -251,7 +252,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to wrap.</param>
         /// <param name="module">The module containing the handle.</param>
         /// <returns>The wrapped instance if the handle is not nil, otherwise null.</returns>
-        public static TypeWrapper Create(TypeDefinitionHandle handle, CompilationModule module)
+        public static TypeWrapper Create(TypeDefinitionHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -272,7 +273,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeWrapper> Create(in TypeDefinitionHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<TypeWrapper> Create(in TypeDefinitionHandleCollection collection, AssemblyMetadata module)
         {
             var output = new TypeWrapper[collection.Count];
 
@@ -292,7 +293,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeWrapper> Create(in ImmutableArray<TypeDefinitionHandle> collection, CompilationModule module)
+        public static IReadOnlyList<TypeWrapper> Create(in ImmutableArray<TypeDefinitionHandle> collection, AssemblyMetadata module)
         {
             var output = new TypeWrapper[collection.Length];
 

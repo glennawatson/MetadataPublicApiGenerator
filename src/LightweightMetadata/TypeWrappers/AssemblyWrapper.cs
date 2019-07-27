@@ -4,13 +4,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps a <see cref="AssemblyDefinition"/>.
@@ -28,12 +28,12 @@ namespace LightweightMetadata.TypeWrappers
         /// Initializes a new instance of the <see cref="AssemblyWrapper"/> class.
         /// </summary>
         /// <param name="module">The module containing the definition.</param>
-        internal AssemblyWrapper(CompilationModule module)
+        internal AssemblyWrapper(AssemblyMetadata module)
             : this(module.MetadataReader.GetAssemblyDefinition(), module)
         {
         }
 
-        internal AssemblyWrapper(AssemblyDefinition reference, CompilationModule module)
+        internal AssemblyWrapper(AssemblyDefinition reference, AssemblyMetadata module)
         {
             Definition = reference;
             _name = new Lazy<string>(() => module.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
@@ -91,7 +91,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the compilation module that holds the assembly.
         /// </summary>
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <summary>
         /// Gets a string representation of the public token.
@@ -100,6 +100,12 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc/>
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
 
         private string GetCulture()
         {

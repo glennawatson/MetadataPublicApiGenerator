@@ -4,7 +4,7 @@
 
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Represents a wrapper that has a handle.
@@ -19,6 +19,6 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the module that this wrapped item belongs to.
         /// </summary>
-        CompilationModule CompilationModule { get; }
+        AssemblyMetadata CompilationModule { get; }
     }
 }

@@ -4,7 +4,7 @@
 
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Creates wrapper given a handle.
@@ -17,7 +17,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="entity">The handle of the element to be wrapped.</param>
         /// <param name="module">The module hosting the handle.</param>
         /// <returns>A wrapper or null if one cannot be created.</returns>
-        public static IHandleTypeNamedWrapper Create(EntityHandle entity, CompilationModule module)
+        public static IHandleTypeNamedWrapper Create(EntityHandle entity, AssemblyMetadata module)
         {
             if (entity.IsNil)
             {

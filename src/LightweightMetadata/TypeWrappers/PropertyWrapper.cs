@@ -4,13 +4,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the PropertyDefinition class.
@@ -27,7 +27,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
         private readonly Lazy<EntityAccessibility> _accessibility;
 
-        private PropertyWrapper(PropertyDefinitionHandle handle, CompilationModule module)
+        private PropertyWrapper(PropertyDefinitionHandle handle, AssemblyMetadata module)
         {
             PropertyDefinitionHandle = handle;
             CompilationModule = module;
@@ -66,7 +66,7 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
@@ -120,7 +120,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static PropertyWrapper Create(PropertyDefinitionHandle handle, CompilationModule module)
+        public static PropertyWrapper Create(PropertyDefinitionHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -136,7 +136,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<PropertyWrapper> Create(in PropertyDefinitionHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<PropertyWrapper> Create(in PropertyDefinitionHandleCollection collection, AssemblyMetadata module)
         {
             var output = new PropertyWrapper[collection.Count];
 
@@ -148,6 +148,12 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return output;
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
         }
 
         private PropertyDefinition Resolve()

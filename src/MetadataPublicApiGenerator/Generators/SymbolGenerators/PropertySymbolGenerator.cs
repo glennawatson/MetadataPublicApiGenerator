@@ -16,7 +16,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class PropertySymbolGenerator
     {
-        public static PropertyDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
+        public static PropertyDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, int level)
         {
             if (!(handle is PropertyWrapper property))
             {
@@ -35,7 +35,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 accessorList.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, GeneratorFactory.Generate(property.Setter.Attributes, excludeMembersAttributes, excludeAttributes), property.Setter.GetModifiers(property)));
             }
 
-            return PropertyDeclaration(property.ReturnType.GetTypeSyntax(), property.Name, GeneratorFactory.Generate(property.Attributes, excludeMembersAttributes, excludeAttributes), property.GetModifiers(), accessorList);
+            return PropertyDeclaration(property.ReturnType.GetTypeSyntax(), property.Name, GeneratorFactory.Generate(property.Attributes, excludeMembersAttributes, excludeAttributes), property.GetModifiers(), accessorList, level);
         }
     }
 }

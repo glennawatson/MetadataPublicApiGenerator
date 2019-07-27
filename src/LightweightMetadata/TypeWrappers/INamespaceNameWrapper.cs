@@ -2,7 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Contains a wrapper which has a namespace and a name.
@@ -13,10 +13,5 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets the name of the namespace.
         /// </summary>
         string NamespaceName { get; }
-
-        /// <summary>
-        /// Gets the full name.
-        /// </summary>
-        string FullName { get; }
     }
 }

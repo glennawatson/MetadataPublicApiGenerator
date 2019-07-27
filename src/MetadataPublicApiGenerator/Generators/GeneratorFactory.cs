@@ -12,10 +12,8 @@ using LightweightMetadata;
 using LightweightMetadata.TypeWrappers;
 
 using MetadataPublicApiGenerator.Extensions;
-using MetadataPublicApiGenerator.Extensions.HandleTypeNamedWrapper;
 using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 using MetadataPublicApiGenerator.Generators.TypeGenerators;
-using MetadataPublicApiGenerator.Helpers;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -30,7 +28,7 @@ namespace MetadataPublicApiGenerator.Generators
     /// </summary>
     internal static class GeneratorFactory
     {
-        public static CompilationUnitSyntax Generate(ICompilation compilation, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, bool shouldIncludeAssemblyAttributes)
+        public static CompilationUnitSyntax Generate(IMetadataRepository compilation, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, bool shouldIncludeAssemblyAttributes)
         {
             var attributes = shouldIncludeAssemblyAttributes ?
                                  Generate(compilation.MainModule.MainAssembly.Attributes, excludeMembersAttributes, excludeAttributes, SyntaxKind.AssemblyKeyword) :
@@ -47,7 +45,7 @@ namespace MetadataPublicApiGenerator.Generators
                 case SymbolTypeKind.Class:
                     return ClassDefinitionGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, level);
                 case SymbolTypeKind.Delegate:
-                    return DelegateTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc);
+                    return DelegateTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, level);
                 case SymbolTypeKind.Enum:
                     return EnumTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, level);
                 case SymbolTypeKind.Interface:
@@ -59,7 +57,7 @@ namespace MetadataPublicApiGenerator.Generators
             return null;
         }
 
-        public static TOutput Generate<TOutput>(IHandleWrapper wrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
+        public static TOutput Generate<TOutput>(IHandleWrapper wrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, int level)
             where TOutput : SyntaxNode
         {
             switch (wrapper.Handle.Kind)
@@ -67,15 +65,13 @@ namespace MetadataPublicApiGenerator.Generators
                 case HandleKind.CustomAttribute:
                     return AttributeSymbolGenerator.Generate(wrapper) as TOutput;
                 case HandleKind.EventDefinition:
-                    return EventSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
+                    return EventSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes, level) as TOutput;
                 case HandleKind.FieldDefinition:
-                    return FieldSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
+                    return FieldSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes, level) as TOutput;
                 case HandleKind.MethodDefinition:
-                    return MethodSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
-                case HandleKind.Parameter:
-                    return ParameterSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
+                    return MethodSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes, level) as TOutput;
                 case HandleKind.PropertyDefinition:
-                    return PropertySymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
+                    return PropertySymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes, level) as TOutput;
                 case HandleKind.GenericParameter:
                     return TypeParameterSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
             }

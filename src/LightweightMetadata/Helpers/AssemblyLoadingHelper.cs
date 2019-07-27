@@ -14,10 +14,10 @@ namespace LightweightMetadata.Helpers
 {
     internal static class AssemblyLoadingHelper
     {
-        private static readonly ConcurrentDictionary<(string name, Version version, string publicKey), CompilationModule> _nameToModule
-            = new ConcurrentDictionary<(string name, Version version, string publicKey), CompilationModule>();
+        private static readonly ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata> _nameToModule
+            = new ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata>();
 
-        public static CompilationModule ResolveCompilationModule(string name, CompilationModule parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        public static AssemblyMetadata ResolveCompilationModule(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
             var key = (name, version, publicKey);
 
@@ -34,11 +34,11 @@ namespace LightweightMetadata.Helpers
                             return null;
                         }
 
-                        return new CompilationModule(fileName, parent.Compilation, parent.TypeProvider);
+                        return new AssemblyMetadata(fileName, parent.Compilation, parent.TypeProvider);
                     });
         }
 
-        private static string GetFileName(string name, Version version, CompilationModule baseReader, IEnumerable<string> searchDirectories, bool isWindowsRuntime, bool isRetargetable, string publicKey)
+        private static string GetFileName(string name, Version version, AssemblyMetadata baseReader, IEnumerable<string> searchDirectories, bool isWindowsRuntime, bool isRetargetable, string publicKey)
         {
             var extensions = new[] { ".winmd", ".dll", ".exe" };
 
@@ -75,7 +75,7 @@ namespace LightweightMetadata.Helpers
             return null;
         }
 
-        private static string FindInParentDirectory(string name, CompilationModule parent, IEnumerable<string> extensions)
+        private static string FindInParentDirectory(string name, AssemblyMetadata parent, IEnumerable<string> extensions)
         {
             if (parent == null)
             {

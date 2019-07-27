@@ -27,6 +27,11 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <returns>The expression syntax.</returns>
         public static ExpressionSyntax GetValueExpression(ITypeNamedWrapper wrapper, object value)
         {
+            if (value == null)
+            {
+                return LiteralExpression(SyntaxKind.NullLiteralExpression);
+            }
+
             switch (wrapper)
             {
                 case ArrayTypeWrapper arrayTypeWrapper:

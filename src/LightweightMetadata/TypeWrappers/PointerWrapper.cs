@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Represents a type that is wrapped by a pointer.
@@ -53,9 +53,15 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle => TypeDefinition.Handle;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule => TypeDefinition.CompilationModule;
+        public AssemblyMetadata CompilationModule => TypeDefinition.CompilationModule;
 
         /// <inheritdoc />
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => TypeDefinition.GenericParameters;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

@@ -19,12 +19,12 @@ namespace LightweightMetadata
         /// Initializes a new instance of the <see cref="TypeProvider"/> class.
         /// </summary>
         /// <param name="compilation">The compilation to use to determine types.</param>
-        public TypeProvider(ICompilation compilation)
+        public TypeProvider(IMetadataRepository compilation)
         {
             Compilation = compilation;
         }
 
-        protected ICompilation Compilation { get; }
+        protected IMetadataRepository Compilation { get; }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
@@ -118,7 +118,7 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromSpecification(MetadataReader reader, GenericContext genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
         {
-            return reader.GetTypeSpecification(handle).DecodeSignature(this, genericContext);
+            return reader.GetTypeSpecification(handle).DecodeSignature(new TypeSpecificationSignatureDecoder(Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
         }
 
         /// <inheritdoc />

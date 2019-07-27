@@ -12,9 +12,9 @@ namespace LightweightMetadata.TypeWrappers
 {
     internal class TypeSpecificationSignatureDecoder : ISignatureTypeProvider<IHandleTypeNamedWrapper, TypeSpecificationSignatureDecoder.Unit>
     {
-        private readonly ICompilation _compilation;
+        private readonly IMetadataRepository _compilation;
 
-        public TypeSpecificationSignatureDecoder(ICompilation compilation)
+        public TypeSpecificationSignatureDecoder(IMetadataRepository compilation)
         {
             _compilation = compilation;
         }

@@ -3,10 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Diagnostics;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Represents a modified type.
@@ -20,7 +19,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="modifier">The modifier of the first type.</param>
         /// <param name="unmodifiedType">The unmodified type.</param>
         /// <param name="isRequired">If the type is required.</param>
-        public ModifiedTypeWrapper(CompilationModule module, IHandleTypeNamedWrapper modifier, IHandleTypeNamedWrapper unmodifiedType, bool isRequired)
+        public ModifiedTypeWrapper(AssemblyMetadata module, IHandleTypeNamedWrapper modifier, IHandleTypeNamedWrapper unmodifiedType, bool isRequired)
         {
             CompilationModule = module ?? throw new ArgumentNullException(nameof(module));
             Modifier = modifier ?? throw new ArgumentNullException(nameof(modifier));
@@ -68,6 +67,12 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle => Unmodified.Handle;
 
         /// <inheritdoc/>
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

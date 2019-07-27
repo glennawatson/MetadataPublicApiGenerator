@@ -5,20 +5,20 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the NamespaceDefinition.
     /// </summary>
     public class NamespaceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(NamespaceDefinitionHandle handle, CompilationModule module), NamespaceWrapper> _registeredNamespaces = new ConcurrentDictionary<(NamespaceDefinitionHandle handle, CompilationModule module), NamespaceWrapper>();
+        private static readonly ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata module), NamespaceWrapper> _registeredNamespaces = new ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata module), NamespaceWrapper>();
 
         private readonly Lazy<string> _fullName;
 
@@ -30,7 +30,7 @@ namespace LightweightMetadata.TypeWrappers
 
         private readonly Lazy<IReadOnlyList<NamespaceWrapper>> _childNamespaces;
 
-        internal NamespaceWrapper(NamespaceDefinition definition, CompilationModule module)
+        internal NamespaceWrapper(NamespaceDefinition definition, AssemblyMetadata module)
         {
             CompilationModule = module;
             Definition = definition;
@@ -43,7 +43,7 @@ namespace LightweightMetadata.TypeWrappers
             _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        private NamespaceWrapper(NamespaceDefinitionHandle handle, CompilationModule module)
+        private NamespaceWrapper(NamespaceDefinitionHandle handle, AssemblyMetadata module)
         {
             CompilationModule = module;
             NamespaceHandle = handle;
@@ -71,7 +71,7 @@ namespace LightweightMetadata.TypeWrappers
         public Handle Handle { get; }
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <summary>
         /// Gets the parent namespace.
@@ -102,7 +102,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The namespace definition to generate.</param>
         /// <param name="module">The module hosting the handle.</param>
         /// <returns>A namespace wrapper or null if the handle is nil.</returns>
-        public static NamespaceWrapper Create(NamespaceDefinitionHandle handle, CompilationModule module)
+        public static NamespaceWrapper Create(NamespaceDefinitionHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -112,12 +112,18 @@ namespace LightweightMetadata.TypeWrappers
             return _registeredNamespaces.GetOrAdd((handle, module), data => new NamespaceWrapper(data.handle, data.module));
         }
 
-        private static NamespaceDefinition Resolve(NamespaceDefinitionHandle handle, CompilationModule compilation)
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
+
+        private static NamespaceDefinition Resolve(NamespaceDefinitionHandle handle, AssemblyMetadata compilation)
         {
             return compilation.MetadataReader.GetNamespaceDefinition(handle);
         }
 
-        private static string GetName(NamespaceDefinition handle, CompilationModule compilation)
+        private static string GetName(NamespaceDefinition handle, AssemblyMetadata compilation)
         {
             return handle.Name.GetName(compilation);
         }

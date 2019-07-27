@@ -5,8 +5,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LightweightMetadata.TypeWrappers;
-using MetadataPublicApiGenerator.Extensions.HandleNameWrapper;
+
+using LightweightMetadata;
+
+using MetadataPublicApiGenerator.Extensions;
+using MetadataPublicApiGenerator.Generators.SymbolGenerators;
+
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MetadataPublicApiGenerator.Generators.TypeGenerators
@@ -20,18 +24,12 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
         {
             var returnValueList = new List<MemberDeclarationSyntax>(typeWrapper.Events.Count + typeWrapper.Properties.Count + typeWrapper.Methods.Count + typeWrapper.NestedTypes.Count);
 
-            returnValueList.AddRange(
-                typeWrapper.Fields.Cast<IHandleNameWrapper>()
-                    .Concat(typeWrapper.Events)
-                    .Concat(typeWrapper.Properties)
-                    .Concat(typeWrapper.Methods)
-                    .OrderByAndExclude(excludeMembersAttributes, excludeAttributes)
-                    .Select(x => GeneratorFactory.Generate<MemberDeclarationSyntax>(x, excludeMembersAttributes, excludeAttributes))
-                    .Where(x => x != null));
-
+            returnValueList.AddRange(typeWrapper.Events.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => EventSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
+            returnValueList.AddRange(typeWrapper.Properties.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => PropertySymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
+            returnValueList.AddRange(typeWrapper.Methods.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => MethodSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
             returnValueList.AddRange(typeWrapper.NestedTypes.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => GeneratorFactory.Generate(x, excludeMembersAttributes, excludeAttributes, excludeFunc, level + 1)).Where(x => x != null));
 
-            return returnValueList;
+            return returnValueList.Where(x => x != null).ToList();
         }
     }
 }

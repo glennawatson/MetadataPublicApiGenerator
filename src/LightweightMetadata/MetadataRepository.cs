@@ -19,16 +19,16 @@ namespace LightweightMetadata
     /// <summary>
     /// Simple compilation implementation.
     /// </summary>
-    public sealed class EventBuilderCompiler : ICompilation, IDisposable
+    public sealed class MetadataRepository : IMetadataRepository, IDisposable
     {
         private readonly Lazy<TypeProvider> _typeProvider;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="EventBuilderCompiler"/> class.
+        /// Initializes a new instance of the <see cref="MetadataRepository"/> class.
         /// </summary>
         /// <param name="mainModulePath">The path to the main module.</param>
         /// <param name="searchDirectories">The directories to search for additional dependencies.</param>
-        public EventBuilderCompiler(string mainModulePath, IEnumerable<string> searchDirectories)
+        public MetadataRepository(string mainModulePath, IEnumerable<string> searchDirectories)
         {
             if (searchDirectories == null)
             {
@@ -41,12 +41,12 @@ namespace LightweightMetadata
             }
 
             _typeProvider = new Lazy<TypeProvider>(() => new TypeProvider(this), LazyThreadSafetyMode.PublicationOnly);
-            MainModule = new CompilationModule(mainModulePath, this, TypeProvider);
+            MainModule = new AssemblyMetadata(mainModulePath, this, TypeProvider);
             SearchDirectories = searchDirectories.ToList();
         }
 
         /// <inheritdoc />
-        public CompilationModule MainModule { get; }
+        public AssemblyMetadata MainModule { get; }
 
         /// <inheritdoc />
         public NamespaceWrapper RootNamespace => new NamespaceWrapper(MainModule.MetadataReader.GetNamespaceDefinitionRoot(), MainModule);
@@ -62,7 +62,7 @@ namespace LightweightMetadata
         internal TypeProvider TypeProvider => _typeProvider.Value;
 
         /// <inheritdoc />
-        public CompilationModule GetCompilationModuleForReader(MetadataReader reader)
+        public AssemblyMetadata GetCompilationModuleForReader(MetadataReader reader)
         {
             if (MainModule.MetadataReader == reader)
             {
@@ -73,7 +73,7 @@ namespace LightweightMetadata
         }
 
         /// <inheritdoc />
-        public CompilationModule GetCompilationModuleForName(string name, CompilationModule parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        public AssemblyMetadata GetCompilationModuleForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
             if (parent == null)
             {
@@ -84,7 +84,7 @@ namespace LightweightMetadata
         }
 
         /// <inheritdoc />
-        public CompilationModule GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper)
+        public AssemblyMetadata GetCompilationModuleForAssemblyReference(AssemblyReferenceWrapper wrapper)
         {
             if (wrapper == null)
             {

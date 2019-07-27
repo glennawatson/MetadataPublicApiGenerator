@@ -5,20 +5,21 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps a AttributeDefinition and represents a .NET attribute.
     /// </summary>
     public class AttributeWrapper : IHandleTypeNamedWrapper
     {
-        private static readonly ConcurrentDictionary<(CustomAttributeHandle handle, CompilationModule module), AttributeWrapper> _registeredTypes = new ConcurrentDictionary<(CustomAttributeHandle handle, CompilationModule module), AttributeWrapper>();
+        private static readonly ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata module), AttributeWrapper> _registeredTypes = new ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata module), AttributeWrapper>();
 
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _methodSignature;
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
@@ -28,7 +29,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _parameterTypes;
 
-        private AttributeWrapper(CustomAttributeHandle handle, CompilationModule module)
+        private AttributeWrapper(CustomAttributeHandle handle, AssemblyMetadata module)
         {
             CompilationModule = module;
             AttributeHandle = handle;
@@ -39,7 +40,7 @@ namespace LightweightMetadata.TypeWrappers
 
             _attributeType = new Lazy<ITypeNamedWrapper>(GetAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
-            _knownAttribute = new Lazy<KnownAttribute>(IsKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
+            _knownAttribute = new Lazy<KnownAttribute>(GetKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
             _parameterTypes = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => _methodSignature.Value.ParameterTypes.ToArray(), LazyThreadSafetyMode.PublicationOnly);
         }
@@ -76,7 +77,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the known attribute type for this attribute.
         /// </summary>
-        public KnownAttribute KnownAttribute => _knownAttribute.Value;
+        public KnownAttribute KnownAttributeType => _knownAttribute.Value;
 
         /// <inheritdoc />
         public string Name => AttributeType?.Name;
@@ -102,11 +103,6 @@ namespace LightweightMetadata.TypeWrappers
         public KnownTypeCode KnownType => _knownTypeCode.Value;
 
         /// <summary>
-        /// Gets a value indicating whether the attribute is a known type.
-        /// </summary>
-        public bool IsKnownAttribute => KnownAttribute != KnownAttribute.None;
-
-        /// <summary>
         /// Gets a list of the fixed arguments.
         /// </summary>
         public IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> FixedArguments => _arguments.Value.fixedArguments;
@@ -117,7 +113,7 @@ namespace LightweightMetadata.TypeWrappers
         public IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> NamedArguments => _arguments.Value.namedArguments;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <summary>
         /// Gets the attribute type.
@@ -130,7 +126,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the attribute.</param>
         /// <param name="module">The module that contains the attribute.</param>
         /// <returns>The new attribute if the handle is not nil, otherwise null.</returns>
-        public static AttributeWrapper Create(CustomAttributeHandle handle, CompilationModule module)
+        public static AttributeWrapper Create(CustomAttributeHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -146,7 +142,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<AttributeWrapper> Create(in CustomAttributeHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<AttributeWrapper> Create(in CustomAttributeHandleCollection collection, AssemblyMetadata module)
         {
             var output = new AttributeWrapper[collection.Count];
 
@@ -160,7 +156,13 @@ namespace LightweightMetadata.TypeWrappers
             return output.ToArray();
         }
 
-        private static CustomAttribute Resolve(CustomAttributeHandle handle, CompilationModule compilation)
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
+
+        private static CustomAttribute Resolve(CustomAttributeHandle handle, AssemblyMetadata compilation)
         {
             return compilation.MetadataReader.GetCustomAttribute(handle);
         }
@@ -217,11 +219,10 @@ namespace LightweightMetadata.TypeWrappers
             return (fixedArgumentsList, namedArgumentsList);
         }
 
-        private KnownAttribute IsKnownAttributeType()
+        private KnownAttribute GetKnownAttributeType()
         {
-            var methodDefinition = MethodWrapper.Create((MethodDefinitionHandle)Definition.Constructor, CompilationModule);
-            var declaredType = methodDefinition.DeclaringType.FullName;
-            var index = Array.IndexOf(KnownTypeCodeNames.TypeNames, declaredType);
+            var fullName = AttributeType.FullName;
+            var index = Array.IndexOf(KnownTypeCodeNames.TypeNames, fullName);
             if (index < 0)
             {
                 return KnownAttribute.None;

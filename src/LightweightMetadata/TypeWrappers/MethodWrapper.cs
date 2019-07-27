@@ -4,14 +4,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the MethodDefinition.
@@ -19,27 +20,24 @@ namespace LightweightMetadata.TypeWrappers
     public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
         private readonly Lazy<string> _name;
+        private readonly Lazy<string> _nameWithFullType;
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<IReadOnlyList<ParameterWrapper>> _parameters;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IReadOnlyList<GenericParameterWrapper>> _genericParameters;
-
         private readonly Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)> _semanticData;
-
         private readonly Lazy<bool> _isDelegate;
+        private readonly Lazy<bool> _isExtensionMethod;
+        private readonly Lazy<EntityAccessibility> _accessibility;
+        private readonly Lazy<IHandleTypeNamedWrapper> _explicitType;
 
-        private MethodWrapper(MethodDefinitionHandle handle, CompilationModule module)
+        private MethodWrapper(MethodDefinitionHandle handle, AssemblyMetadata module)
         {
             MethodDefinitionHandle = handle;
             CompilationModule = module;
             Handle = handle;
             Definition = Resolve(handle, module);
-
-            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
-
-            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
-            _name = new Lazy<string>(GetName, LazyThreadSafetyMode.PublicationOnly);
 
             IsAbstract = (Definition.Attributes & MethodAttributes.Abstract) != 0;
             IsStatic = (Definition.Attributes & MethodAttributes.Static) != 0;
@@ -49,40 +47,18 @@ namespace LightweightMetadata.TypeWrappers
             IsOverride = (Definition.Attributes & (MethodAttributes.NewSlot | MethodAttributes.Virtual)) == MethodAttributes.Virtual;
             IsVirtual = (Definition.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual | MethodAttributes.NewSlot | MethodAttributes.Final)) == (MethodAttributes.Virtual | MethodAttributes.NewSlot);
 
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
+            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _nameWithFullType = new Lazy<string>(GetNameWithFullType, LazyThreadSafetyMode.PublicationOnly);
             _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(Definition.GetGenericParameters(), this, CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-
             _semanticData = new Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)>(GetMethodSymbolKind, LazyThreadSafetyMode.PublicationOnly);
-
             _parameters = new Lazy<IReadOnlyList<ParameterWrapper>>(GetParameters, LazyThreadSafetyMode.PublicationOnly);
-
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), CompilationModule), LazyThreadSafetyMode.PublicationOnly);
-
             _isDelegate = new Lazy<bool>(() => MethodKind == SymbolMethodKind.DelegateInvoke, LazyThreadSafetyMode.PublicationOnly);
-
-            switch (Definition.Attributes & MethodAttributes.MemberAccessMask)
-            {
-                case MethodAttributes.Public:
-                    Accessibility = EntityAccessibility.Public;
-                    break;
-                case MethodAttributes.Assembly:
-                    Accessibility = EntityAccessibility.Internal;
-                    break;
-                case MethodAttributes.Private:
-                    Accessibility = EntityAccessibility.Private;
-                    break;
-                case MethodAttributes.Family:
-                    Accessibility = EntityAccessibility.Protected;
-                    break;
-                case MethodAttributes.FamANDAssem:
-                    Accessibility = EntityAccessibility.PrivateProtected;
-                    break;
-                case MethodAttributes.FamORAssem:
-                    Accessibility = EntityAccessibility.ProtectedInternal;
-                    break;
-                default:
-                    Accessibility = EntityAccessibility.None;
-                    break;
-            }
+            _isExtensionMethod = new Lazy<bool>(() => IsStatic & Attributes.HasKnownAttribute(KnownAttribute.Extension), LazyThreadSafetyMode.PublicationOnly);
+            _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
+            _explicitType = new Lazy<IHandleTypeNamedWrapper>(GetExplicitType, LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(GetName, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -97,6 +73,11 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc />
         public string Name => _name.Value;
+
+        /// <summary>
+        /// Gets the name with any included explicit interface names.
+        /// </summary>
+        public string NameWithFullType => _nameWithFullType.Value;
 
         /// <summary>
         /// Gets the type that declares this method.
@@ -131,7 +112,7 @@ namespace LightweightMetadata.TypeWrappers
         public string TypeNamespace => DeclaringType.TypeNamespace;
 
         /// <inheritdoc />
-        public EntityAccessibility Accessibility { get; }
+        public EntityAccessibility Accessibility => _accessibility.Value;
 
         /// <inheritdoc />
         public bool IsAbstract { get; }
@@ -160,6 +141,11 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets a value indicating whether the method is override.
         /// </summary>
         public bool IsOverride { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the method is a extension method.
+        /// </summary>
+        public bool IsExtensionMethod => _isExtensionMethod.Value;
 
         /// <summary>
         /// Gets the parameters of the method.
@@ -192,10 +178,20 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the method is explicitly implemented.
+        /// </summary>
+        public bool IsExplicitImplementation => NameWithFullType.Contains(".") && !NameWithFullType.Equals(".ctor", StringComparison.InvariantCulture) && !NameWithFullType.Equals(".cctor", StringComparison.CurrentCultureIgnoreCase);
+
+        /// <summary>
+        /// Gets the explicit type if the value is implemented explicitly from a interface.
+        /// </summary>
+        public IHandleTypeNamedWrapper ExplicitType => _explicitType.Value;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -203,7 +199,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MethodWrapper Create(MethodDefinitionHandle handle, CompilationModule module)
+        public static MethodWrapper Create(MethodDefinitionHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -219,7 +215,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<MethodWrapper> Create(in MethodDefinitionHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<MethodWrapper> Create(in MethodDefinitionHandleCollection collection, AssemblyMetadata module)
         {
             var output = new MethodWrapper[collection.Count];
 
@@ -233,12 +229,18 @@ namespace LightweightMetadata.TypeWrappers
             return output;
         }
 
-        private static MethodDefinition Resolve(MethodDefinitionHandle handle, CompilationModule compilation)
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
+
+        private static MethodDefinition Resolve(MethodDefinitionHandle handle, AssemblyMetadata compilation)
         {
             return compilation.MetadataReader.GetMethodDefinition(handle);
         }
 
-        private string GetName()
+        private string GetNameWithFullType()
         {
             return Resolve(MethodDefinitionHandle, CompilationModule).Name.GetName(CompilationModule);
         }
@@ -301,6 +303,11 @@ namespace LightweightMetadata.TypeWrappers
                 }
             }
 
+            if (IsExplicitImplementation)
+            {
+                return (default, SymbolMethodKind.ExplicitInterfaceImplementation);
+            }
+
             return (default, SymbolMethodKind.Ordinary);
         }
 
@@ -327,6 +334,62 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return parameterList;
+        }
+
+        private EntityAccessibility GetAccessibility()
+        {
+            if (IsExplicitImplementation)
+            {
+                return ExplicitType?.Accessibility ?? EntityAccessibility.None;
+            }
+
+            switch (Definition.Attributes & MethodAttributes.MemberAccessMask)
+            {
+                case MethodAttributes.Public:
+                    return EntityAccessibility.Public;
+                case MethodAttributes.Assembly:
+                    return EntityAccessibility.Internal;
+                case MethodAttributes.Private:
+                    return EntityAccessibility.Private;
+                case MethodAttributes.Family:
+                    return EntityAccessibility.Protected;
+                case MethodAttributes.FamANDAssem:
+                    return EntityAccessibility.PrivateProtected;
+                case MethodAttributes.FamORAssem:
+                    return EntityAccessibility.ProtectedInternal;
+                default:
+                    return EntityAccessibility.None;
+            }
+        }
+
+        private IHandleTypeNamedWrapper GetExplicitType()
+        {
+            int lastDot = NameWithFullType.LastIndexOf('.');
+            if (IsExplicitImplementation && lastDot >= 0)
+            {
+                var typeName = NameWithFullType.Substring(0, lastDot);
+
+                return CompilationModule.Compilation.GetTypeByName(typeName);
+            }
+
+            return null;
+        }
+
+        private string GetName()
+        {
+            if (!IsExplicitImplementation)
+            {
+                return NameWithFullType;
+            }
+
+            var index = NameWithFullType.LastIndexOf('.');
+
+            if (index >= 0)
+            {
+                return NameWithFullType.Substring(index + 1);
+            }
+
+            return NameWithFullType;
         }
     }
 }

@@ -4,15 +4,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// ParameterizedTypeWrapper represents an instance of a generic type.
@@ -85,13 +82,19 @@ namespace LightweightMetadata.TypeWrappers
         public KnownTypeCode KnownType => KnownTypeCode.None;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public string Name => _name.Value;
 
         /// <inheritdoc />
         public Handle Handle => GenericType.Handle;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
 
         private string GetReflectionName()
         {

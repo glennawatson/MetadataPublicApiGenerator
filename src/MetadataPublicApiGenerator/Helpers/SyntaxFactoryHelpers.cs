@@ -140,15 +140,23 @@ namespace MetadataPublicApiGenerator.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VariableDeclaratorSyntax VariableDeclarator(string identifier)
         {
-            return SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(identifier));
+            var name = SyntaxFactory.Identifier(identifier);
+            return SyntaxFactory.VariableDeclarator(name, default, default);
         }
 
-        public static EventFieldDeclarationSyntax EventFieldDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, VariableDeclarationSyntax declaration)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VariableDeclaratorSyntax VariableDeclarator(string identifier, EqualsValueClauseSyntax initializer)
         {
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
+            var name = initializer == null ? SyntaxFactory.Identifier(identifier) : SyntaxFactory.Identifier(identifier).AddTrialingSpaces();
+            return SyntaxFactory.VariableDeclarator(name, default, initializer);
+        }
 
-            return SyntaxFactory.EventFieldDeclaration(attributesList, modifiersList, SyntaxFactory.Token(SyntaxKind.EventKeyword), declaration, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+        public static EventFieldDeclarationSyntax EventFieldDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, VariableDeclarationSyntax declaration, int level)
+        {
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
+
+            return SyntaxFactory.EventFieldDeclaration(attributeList, modifiersList, SyntaxFactory.Token(SyntaxKind.EventKeyword).AddTrialingSpaces(), declaration, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -160,64 +168,71 @@ namespace MetadataPublicApiGenerator.Helpers
         public static VariableDeclarationSyntax VariableDeclaration(TypeSyntax type, IReadOnlyCollection<VariableDeclaratorSyntax> variableDeclaratorSyntaxes)
         {
             var variableDeclaratorList = SeparatedList(variableDeclaratorSyntaxes);
-            return SyntaxFactory.VariableDeclaration(type, variableDeclaratorList);
+            return SyntaxFactory.VariableDeclaration(type.AddTrialingSpaces(), variableDeclaratorList);
         }
 
-        public static FieldDeclarationSyntax FieldDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, VariableDeclarationSyntax declaration)
+        public static FieldDeclarationSyntax FieldDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, VariableDeclarationSyntax declaration, int level)
         {
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
-            return SyntaxFactory.FieldDeclaration(attributesList, modifiersList, declaration, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
+            return SyntaxFactory.FieldDeclaration(attributeList, modifiersList, declaration, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
-        public static ConstructorDeclarationSyntax ConstructorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<ParameterSyntax> parameters, string identifier)
+        public static ConstructorDeclarationSyntax ConstructorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<ParameterSyntax> parameters, string identifier, int level)
         {
             var name = SyntaxFactory.Identifier(identifier);
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
-            return SyntaxFactory.ConstructorDeclaration(attributesList, modifiersList, name, parametersList, default, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
+            return SyntaxFactory.ConstructorDeclaration(attributeList, modifiersList, name, parametersList, default, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
-        public static DestructorDeclarationSyntax DestructorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, string identifier)
+        public static DestructorDeclarationSyntax DestructorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, string identifier, int level)
         {
             var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
-            return SyntaxFactory.DestructorDeclaration(attributesList, modifiersList, SyntaxFactory.Token(SyntaxKind.TildeToken), name, SyntaxFactory.ParameterList(), default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
+            return SyntaxFactory.DestructorDeclaration(attributeList, modifiersList, SyntaxFactory.Token(SyntaxKind.TildeToken), name, SyntaxFactory.ParameterList(), default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
-        public static MethodDeclarationSyntax MethodDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters)
+        public static MethodDeclarationSyntax MethodDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, ExplicitInterfaceSpecifierSyntax explicitInterface, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, int level)
         {
-            var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
+            var name = SyntaxFactory.Identifier(identifier);
+            if (explicitInterface == null)
+            {
+                name = name.AddLeadingSpaces();
+            }
+
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
 
             var typeParameterList = TypeParameterList(typeParameters);
-            var typeParameterConstraintList = typeParameterConstraintClauses != null && typeParameterConstraintClauses.Count > 0 ? List(typeParameterConstraintClauses) : default;
+            var typeParameterConstraintList = typeParameterConstraintClauses != null && typeParameterConstraintClauses.Count > 0 ? List(GetIndentedNodes(typeParameterConstraintClauses, level + 1)) : default;
 
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
 
-            return SyntaxFactory.MethodDeclaration(attributesList, modifiersList, type, default, name, typeParameterList, parametersList, typeParameterConstraintList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            explicitInterface = explicitInterface?.AddLeadingSpaces();
+
+            return SyntaxFactory.MethodDeclaration(attributeList, modifiersList, type, explicitInterface, name, typeParameterList, parametersList, typeParameterConstraintList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
-        public static ConversionOperatorDeclarationSyntax ConversionOperatorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, SyntaxToken implicitOrExplicitKeyword, string type, IReadOnlyCollection<ParameterSyntax> parameters)
+        public static ConversionOperatorDeclarationSyntax ConversionOperatorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, SyntaxToken implicitOrExplicitKeyword, string type, IReadOnlyCollection<ParameterSyntax> parameters, int level)
         {
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var typeName = SyntaxFactory.IdentifierName(type).AddLeadingSpaces();
 
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
 
-            return SyntaxFactory.ConversionOperatorDeclaration(attributesList, modifiersList, implicitOrExplicitKeyword, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), typeName, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.ConversionOperatorDeclaration(attributeList, modifiersList, implicitOrExplicitKeyword, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), typeName, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
-        public static OperatorDeclarationSyntax OperatorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<ParameterSyntax> parameters, TypeSyntax returnType, SyntaxToken operatorToken)
+        public static OperatorDeclarationSyntax OperatorDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<ParameterSyntax> parameters, TypeSyntax returnType, SyntaxToken operatorToken, int level)
         {
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
-            return SyntaxFactory.OperatorDeclaration(attributesList, modifiersList, returnType, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), operatorToken, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.OperatorDeclaration(attributeList, modifiersList, returnType, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), operatorToken, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
         public static SyntaxToken Token(SyntaxKind kind)
@@ -225,23 +240,25 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.Token(kind);
         }
 
-        public static ParameterSyntax Parameter(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, string identifier)
+        public static ParameterSyntax Parameter(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, string identifier, EqualsValueClauseSyntax equals)
         {
             var name = SyntaxFactory.Identifier(identifier);
             type = type.AddTrialingSpaces();
             var modifiersList = TokenList(modifiers);
             var attributesList = List(attributes);
-            return SyntaxFactory.Parameter(attributesList, modifiersList, type, name, default);
+            equals = equals?.AddLeadingSpaces();
+
+            return SyntaxFactory.Parameter(attributesList, modifiersList, type, name, equals);
         }
 
-        public static PropertyDeclarationSyntax PropertyDeclaration(TypeSyntax type, string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<AccessorDeclarationSyntax> accessors)
+        public static PropertyDeclarationSyntax PropertyDeclaration(TypeSyntax type, string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<AccessorDeclarationSyntax> accessors, int level)
         {
             var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
-            var modifiersList = TokenList(modifiers);
-            var attributesList = List(attributes);
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var accessorList = SyntaxFactory.AccessorList(SyntaxFactory.Token(SyntaxKind.OpenBraceToken).AddTrialingSpaces().AddLeadingSpaces(), List(GetSpacedAccessors(accessors)), SyntaxFactory.Token(SyntaxKind.CloseBraceToken).AddLeadingSpaces());
 
-            return SyntaxFactory.PropertyDeclaration(attributesList, modifiersList, type, default, name, accessorList, default, default, default);
+            return SyntaxFactory.PropertyDeclaration(attributeList, modifiersList, type, default, name, accessorList, default, default, default);
         }
 
         public static AccessorDeclarationSyntax AccessorDeclaration(SyntaxKind kind, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers)
@@ -283,7 +300,7 @@ namespace MetadataPublicApiGenerator.Helpers
                 return default;
             }
 
-            return SyntaxFactory.BaseList(SyntaxFactory.Token(SyntaxKind.ColonToken).AddLeadingSpaces().AddTrialingSpaces(), SeparatedList(baseItems));
+            return SyntaxFactory.BaseList(SyntaxFactory.Token(SyntaxKind.ColonToken).AddLeadingSpaces(), SeparatedList(baseItems));
         }
 
         public static SimpleBaseTypeSyntax SimpleBaseType(TypeSyntax type)
@@ -302,32 +319,30 @@ namespace MetadataPublicApiGenerator.Helpers
             return SyntaxFactory.EqualsValueClause(SyntaxFactory.Token(SyntaxKind.EqualsToken).AddLeadingSpaces().AddTrialingSpaces(), value);
         }
 
-        public static DelegateDeclarationSyntax DelegateDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, string returnType, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters)
+        public static DelegateDeclarationSyntax DelegateDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax returnType, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, int level)
         {
-            var attributesList = List(attributes);
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
             var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
-            var type = SyntaxFactory.IdentifierName(returnType).AddLeadingSpaces();
-            var modifiersList = TokenList(modifiers);
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var typeParameterList = TypeParameterList(typeParameters);
             var typeParameterConstraintList = List(typeParameterConstraintClauses);
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
-            return SyntaxFactory.DelegateDeclaration(attributesList, modifiersList, SyntaxFactory.Token(SyntaxKind.DelegateKeyword), type, name, typeParameterList, parametersList, typeParameterConstraintList, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.DelegateDeclaration(attributeList, modifiersList, SyntaxFactory.Token(SyntaxKind.DelegateKeyword), returnType.AddLeadingSpaces(), name, typeParameterList, parametersList, typeParameterConstraintList, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
         public static EnumDeclarationSyntax EnumDeclaration(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<EnumMemberDeclarationSyntax> members, IReadOnlyCollection<SyntaxKind> modifiers, string baseIdentifier, int level)
         {
-            var attributesList = List(attributes);
-            var modifiersList = TokenList(modifiers);
-
-            var membersList = SeparatedList(members, level + 1);
+            var attributeList = List(GetIndentedNodes(attributes, level, true));
             var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
+            var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
+            var membersList = SeparatedList(members, level + 1);
 
             BaseListSyntax baseList = !string.IsNullOrWhiteSpace(baseIdentifier) ?
                 BaseList(SyntaxFactory.SimpleBaseType(SyntaxFactory.IdentifierName(baseIdentifier))) :
                 default;
 
             var (openingBrace, closingBrace) = GetBraces(level);
-            return SyntaxFactory.EnumDeclaration(attributesList, modifiersList, SyntaxFactory.Token(SyntaxKind.EnumKeyword), name, baseList, openingBrace, membersList, closingBrace, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.EnumDeclaration(attributeList, modifiersList, SyntaxFactory.Token(SyntaxKind.EnumKeyword), name, baseList, openingBrace, membersList, closingBrace, default);
         }
 
         public static ClassDeclarationSyntax ClassDeclaration(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
@@ -548,6 +563,11 @@ namespace MetadataPublicApiGenerator.Helpers
         public static TypeOfExpressionSyntax TypeOfExpression(TypeSyntax type)
         {
             return SyntaxFactory.TypeOfExpression(SyntaxFactory.Token(SyntaxKind.TypeOfKeyword), SyntaxFactory.Token(SyntaxKind.OpenParenToken), type, SyntaxFactory.Token(SyntaxKind.CloseParenToken));
+        }
+
+        public static ExplicitInterfaceSpecifierSyntax ExplicitInterfaceSpecifier(string name)
+        {
+            return SyntaxFactory.ExplicitInterfaceSpecifier(IdentifierName(name));
         }
 
         private static IReadOnlyCollection<T> GetIndentedNodes<T>(IReadOnlyCollection<T> modifiers, int level, bool lastNodeTrailingLine = false)

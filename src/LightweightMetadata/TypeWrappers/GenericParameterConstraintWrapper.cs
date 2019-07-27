@@ -6,22 +6,20 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
-using System.Text;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps the <see cref="GenericParameterConstraint"/>.
     /// </summary>
     public class GenericParameterConstraintWrapper : IHandleWrapper
     {
-        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle handle, CompilationModule module), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle handle, CompilationModule module), GenericParameterConstraintWrapper>();
+        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata module), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata module), GenericParameterConstraintWrapper>();
 
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
-        private GenericParameterConstraintWrapper(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, CompilationModule module)
+        private GenericParameterConstraintWrapper(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata module)
         {
             GenericParameterConstraintHandle = handle;
             CompilationModule = module;
@@ -53,7 +51,7 @@ namespace LightweightMetadata.TypeWrappers
         public GenericParameterWrapper Parent { get; }
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -65,7 +63,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="parent">The parent of the constraint.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static GenericParameterConstraintWrapper Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, CompilationModule module)
+        public static GenericParameterConstraintWrapper Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -82,7 +80,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="parent">The parent of the constraint.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<GenericParameterConstraintWrapper> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, CompilationModule module)
+        public static IReadOnlyList<GenericParameterConstraintWrapper> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata module)
         {
             var output = new GenericParameterConstraintWrapper[collection.Count];
 
@@ -94,6 +92,12 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return output;
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return "Constraint " + Type.FullName;
         }
 
         private GenericParameterConstraint Resolve()

@@ -5,6 +5,9 @@
 using System.Reflection;
 using MetadataPublicApiGenerator.IntegrationTestData;
 using PublicApiGenerator;
+
+using ReactiveUI;
+
 using Xunit;
 
 namespace MetadataPublicApiGenerator.Tests
@@ -20,22 +23,9 @@ namespace MetadataPublicApiGenerator.Tests
         [Fact]
         public void GeneratesContent()
         {
-            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
+            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(ReactiveCommand)));
 
             Assert.NotNull(value);
-        }
-
-        /// <summary>
-        /// Make sure that the content equal the current metadata and the older one.
-        /// </summary>
-        [Fact]
-        public void ContentEquals()
-        {
-            var assembly = Assembly.GetAssembly(typeof(string));
-            var metadata = MetadataApi.GeneratePublicApi(assembly);
-            var cecil = ApiGenerator.GeneratePublicApi(assembly);
-
-            Assert.Equal(metadata, cecil);
         }
     }
 }

@@ -8,9 +8,10 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Type parameter of a generic class/method.
@@ -22,7 +23,7 @@ namespace LightweightMetadata.TypeWrappers
 
         private readonly GenericParameterAttributes _genericParameterAttribute;
 
-        private GenericParameterWrapper(CompilationModule module, IHandleTypeNamedWrapper owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes genericParameterAttribute)
+        private GenericParameterWrapper(AssemblyMetadata module, IHandleTypeNamedWrapper owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes genericParameterAttribute)
         {
             CompilationModule = module;
             Owner = owner;
@@ -76,7 +77,7 @@ namespace LightweightMetadata.TypeWrappers
         public GenericParameter GenericParameter { get; }
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <summary>
         /// Gets a list of constraints.
@@ -131,7 +132,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="owner">The owner of the generic property.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<GenericParameterWrapper> Create(in GenericParameterHandleCollection collection, IHandleTypeNamedWrapper owner, CompilationModule module)
+        public static IReadOnlyList<GenericParameterWrapper> Create(in GenericParameterHandleCollection collection, IHandleTypeNamedWrapper owner, AssemblyMetadata module)
         {
             var output = new GenericParameterWrapper[collection.Count];
 
@@ -153,7 +154,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="index">The index of the type parameter.</param>
         /// <param name="module">The module that owns the type.</param>
         /// <returns>A <see cref="GenericParameterWrapper"/>.</returns>
-        public static GenericParameterWrapper Create(GenericParameterHandle handle, IHandleTypeNamedWrapper owner, int index, CompilationModule module)
+        public static GenericParameterWrapper Create(GenericParameterHandle handle, IHandleTypeNamedWrapper owner, int index, AssemblyMetadata module)
         {
             if (module == null)
             {
@@ -164,6 +165,12 @@ namespace LightweightMetadata.TypeWrappers
             var name = genericParameter.Name.GetName(module);
             Debug.Assert(genericParameter.Index == index, "The index must match on the generic parameter: " + name);
             return new GenericParameterWrapper(module, owner, index, name, handle, genericParameter.Attributes);
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
         }
     }
 }

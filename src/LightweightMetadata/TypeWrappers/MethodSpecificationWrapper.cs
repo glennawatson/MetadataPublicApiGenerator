@@ -7,21 +7,23 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the MethodSpecification.
     /// </summary>
     public class MethodSpecificationWrapper : IHandleWrapper, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(MethodSpecificationHandle handle, CompilationModule module), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle handle, CompilationModule module), MethodSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata module), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata module), MethodSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _signature;
         private readonly Lazy<MethodWrapper> _method;
 
-        private MethodSpecificationWrapper(MethodSpecificationHandle handle, CompilationModule module)
+        private MethodSpecificationWrapper(MethodSpecificationHandle handle, AssemblyMetadata module)
         {
             MethodSpecificationHandle = handle;
             CompilationModule = module;
@@ -58,7 +60,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <summary>
         /// Gets the module that this method belongs to.
         /// </summary>
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => Method.GenericParameters;
@@ -69,7 +71,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, CompilationModule module)
+        public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -79,7 +81,13 @@ namespace LightweightMetadata.TypeWrappers
             return _registerTypes.GetOrAdd((handle, module), data => new MethodSpecificationWrapper(data.handle, data.module));
         }
 
-        private static MethodSpecification Resolve(MethodSpecificationHandle handle, CompilationModule compilation)
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return Method.FullName;
+        }
+
+        private static MethodSpecification Resolve(MethodSpecificationHandle handle, AssemblyMetadata compilation)
         {
             return compilation.MetadataReader.GetMethodSpecification(handle);
         }

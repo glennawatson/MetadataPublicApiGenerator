@@ -4,7 +4,7 @@
 
 using System.Collections.Generic;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// A class that has attributes.

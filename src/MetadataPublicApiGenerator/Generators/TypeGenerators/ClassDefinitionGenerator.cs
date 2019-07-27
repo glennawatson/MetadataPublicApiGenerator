@@ -4,11 +4,11 @@
 
 using System;
 using System.Collections.Generic;
-using LightweightMetadata.TypeWrappers;
+
+using LightweightMetadata;
 
 using MetadataPublicApiGenerator.Extensions;
 
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

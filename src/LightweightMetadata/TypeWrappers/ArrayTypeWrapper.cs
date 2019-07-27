@@ -4,10 +4,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Represents an array.
@@ -22,7 +21,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="module">The module that owns the array.</param>
         /// <param name="elementType">The wrapper to the element type.</param>
         /// <param name="arrayShapeData">The dimension of the array.</param>
-        public ArrayTypeWrapper(ICompilation module, IHandleTypeNamedWrapper elementType, ArrayShapeData arrayShapeData)
+        public ArrayTypeWrapper(IMetadataRepository module, IHandleTypeNamedWrapper elementType, ArrayShapeData arrayShapeData)
         {
             if (module == null)
             {
@@ -66,12 +65,18 @@ namespace LightweightMetadata.TypeWrappers
         public KnownTypeCode KnownType => _parentWrapper.KnownType;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule => _parentWrapper?.CompilationModule;
+        public AssemblyMetadata CompilationModule => _parentWrapper?.CompilationModule;
 
         /// <inheritdoc />
         public Handle Handle => _parentWrapper.Handle;
 
         /// <inheritdoc />
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => _parentWrapper is IHasGenericParameters ? ((IHasGenericParameters)_parentWrapper).GenericParameters : Array.Empty<GenericParameterWrapper>();
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

@@ -4,15 +4,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+using LightweightMetadata.Extensions;
+using LightweightMetadata.TypeWrappers;
+
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps a FieldDefinition.
@@ -27,7 +27,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<IHandleTypeNamedWrapper> _fieldType;
         private readonly Lazy<ulong> _longEnumValue;
 
-        private FieldWrapper(FieldDefinitionHandle handle, CompilationModule module)
+        private FieldWrapper(FieldDefinitionHandle handle, AssemblyMetadata module)
         {
             FieldDefinitionHandle = handle;
             CompilationModule = module;
@@ -67,6 +67,9 @@ namespace LightweightMetadata.TypeWrappers
                     Accessibility = EntityAccessibility.Private;
                     break;
             }
+
+            IsReadOnly = (Definition.Attributes & FieldAttributes.InitOnly) != 0;
+            IsConst = (Definition.Attributes & FieldAttributes.Literal) != 0;
         }
 
         /// <summary>
@@ -86,7 +89,7 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -110,6 +113,16 @@ namespace LightweightMetadata.TypeWrappers
         /// Gets a value indicating whether the field is static.
         /// </summary>
         public bool IsStatic { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the field is read only.
+        /// </summary>
+        public bool IsReadOnly { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the field is a constant.
+        /// </summary>
+        public bool IsConst { get; }
 
         /// <summary>
         /// Gets the default value of the field.
@@ -141,7 +154,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static FieldWrapper Create(FieldDefinitionHandle handle, CompilationModule module)
+        public static FieldWrapper Create(FieldDefinitionHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -157,7 +170,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, AssemblyMetadata module)
         {
             var output = new FieldWrapper[collection.Count];
 

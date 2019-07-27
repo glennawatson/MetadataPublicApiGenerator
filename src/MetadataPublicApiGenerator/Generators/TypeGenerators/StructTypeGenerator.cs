@@ -4,7 +4,8 @@
 
 using System;
 using System.Collections.Generic;
-using LightweightMetadata.TypeWrappers;
+
+using LightweightMetadata;
 
 using MetadataPublicApiGenerator.Extensions;
 

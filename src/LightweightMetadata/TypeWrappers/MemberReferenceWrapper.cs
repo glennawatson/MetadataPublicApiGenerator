@@ -5,21 +5,20 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Represents a wrapper around the MemberReference.
     /// </summary>
     public class MemberReferenceWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly ConcurrentDictionary<(MemberReferenceHandle handle, CompilationModule module), MemberReferenceWrapper> _registerTypes = new ConcurrentDictionary<(MemberReferenceHandle handle, CompilationModule module), MemberReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(MemberReferenceHandle handle, AssemblyMetadata module), MemberReferenceWrapper> _registerTypes = new ConcurrentDictionary<(MemberReferenceHandle handle, AssemblyMetadata module), MemberReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<IHandleTypeNamedWrapper> _parent;
@@ -27,7 +26,7 @@ namespace LightweightMetadata.TypeWrappers
         private readonly Lazy<string> _reflectionFullName;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
 
-        private MemberReferenceWrapper(MemberReferenceHandle handle, CompilationModule module)
+        private MemberReferenceWrapper(MemberReferenceHandle handle, AssemblyMetadata module)
         {
             MemberReferenceHandle = handle;
             CompilationModule = module;
@@ -55,7 +54,7 @@ namespace LightweightMetadata.TypeWrappers
         public string Name => _name.Value;
 
         /// <inheritdoc />
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc />
         public Handle Handle { get; }
@@ -92,7 +91,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MemberReferenceWrapper Create(MemberReferenceHandle handle, CompilationModule module)
+        public static MemberReferenceWrapper Create(MemberReferenceHandle handle, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -108,7 +107,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="collection">The collection to create.</param>
         /// <param name="module">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<MemberReferenceWrapper> Create(in MemberReferenceHandleCollection collection, CompilationModule module)
+        public static IReadOnlyList<MemberReferenceWrapper> Create(in MemberReferenceHandleCollection collection, AssemblyMetadata module)
         {
             var output = new MemberReferenceWrapper[collection.Count];
 
@@ -120,6 +119,12 @@ namespace LightweightMetadata.TypeWrappers
             }
 
             return output;
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
         }
 
         private MemberReference Resolve()

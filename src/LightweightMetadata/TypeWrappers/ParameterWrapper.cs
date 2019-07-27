@@ -4,14 +4,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
+
 using LightweightMetadata.Extensions;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps a Parameter class.
@@ -19,25 +18,27 @@ namespace LightweightMetadata.TypeWrappers
     public class ParameterWrapper : IHandleNameWrapper, IHasAttributes
     {
         private readonly Lazy<string> _name;
-
+        private readonly Lazy<object> _defaultValue;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
+        private readonly Lazy<ParameterReferenceKind> _referenceKind;
 
-        private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, CompilationModule module)
+        private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata module)
         {
             CompilationModule = module;
             ParameterHandle = handle;
             Handle = handle;
             Definition = Resolve(handle, module);
 
-            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(module).GetKeywordSafeName(), LazyThreadSafetyMode.PublicationOnly);
             _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
 
             ParameterType = typeWrapper;
 
-            IsOut = (Definition.Attributes & ParameterAttributes.Out) != 0;
-            IsIn = (Definition.Attributes & ParameterAttributes.In) != 0;
             Optional = (Definition.Attributes & ParameterAttributes.Optional) != 0;
             HasDefaultValue = (Definition.Attributes & ParameterAttributes.HasDefault) != 0;
+
+            _defaultValue = new Lazy<object>(() => !HasDefaultValue ? null : Definition.GetDefaultValue().ReadConstant(module), LazyThreadSafetyMode.PublicationOnly);
+            _referenceKind = new Lazy<ParameterReferenceKind>(GetReferenceKind, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -52,16 +53,6 @@ namespace LightweightMetadata.TypeWrappers
 
         /// <inheritdoc/>
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
-
-        /// <summary>
-        /// Gets a value indicating whether the parameter is a output parameter.
-        /// </summary>
-        public bool IsOut { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the parameter is a input parameter.
-        /// </summary>
-        public bool IsIn { get; }
 
         /// <summary>
         /// Gets a value indicating whether the parameter is optional.
@@ -81,11 +72,24 @@ namespace LightweightMetadata.TypeWrappers
         /// <inheritdoc />
         public string Name => _name.Value;
 
+        /// <inheritdoc />
+        public string FullName => Name;
+
         /// <inheritdoc/>
-        public CompilationModule CompilationModule { get; }
+        public AssemblyMetadata CompilationModule { get; }
 
         /// <inheritdoc/>
         public Handle Handle { get; }
+
+        /// <summary>
+        /// Gets the default value if there is one.
+        /// </summary>
+        public object DefaultValue => _defaultValue.Value;
+
+        /// <summary>
+        /// Gets the type of reference this parameter is.
+        /// </summary>
+        public ParameterReferenceKind ReferenceKind => _referenceKind.Value;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -94,7 +98,7 @@ namespace LightweightMetadata.TypeWrappers
         /// <param name="typeWrapper">The type of the parameter.</param>
         /// <param name="module">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, CompilationModule module)
+        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata module)
         {
             if (handle.IsNil)
             {
@@ -104,9 +108,35 @@ namespace LightweightMetadata.TypeWrappers
             return new ParameterWrapper(handle, typeWrapper, module);
         }
 
-        private static Parameter Resolve(ParameterHandle handle, CompilationModule compilation)
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return FullName;
+        }
+
+        private static Parameter Resolve(ParameterHandle handle, AssemblyMetadata compilation)
         {
             return compilation.MetadataReader.GetParameter(handle);
+        }
+
+        private ParameterReferenceKind GetReferenceKind()
+        {
+            if ((Definition.Attributes & ParameterAttributes.Out) != 0)
+            {
+                return ParameterReferenceKind.Out;
+            }
+
+            if (Attributes.HasKnownAttribute(KnownAttribute.IsReadOnly))
+            {
+                return ParameterReferenceKind.In;
+            }
+
+            if (ParameterType is ByReferenceWrapper)
+            {
+                return ParameterReferenceKind.Ref;
+            }
+
+            return ParameterReferenceKind.None;
         }
     }
 }
