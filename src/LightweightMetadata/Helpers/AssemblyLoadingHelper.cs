@@ -14,6 +14,8 @@ namespace LightweightMetadata.Helpers
 {
     internal static class AssemblyLoadingHelper
     {
+        private static readonly ConcurrentDictionary<string, AssemblyMetadata> _fileNameToModule = new ConcurrentDictionary<string, AssemblyMetadata>(StringComparer.InvariantCultureIgnoreCase);
+
         private static readonly ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata> _nameToModule
             = new ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata>();
 
@@ -34,7 +36,7 @@ namespace LightweightMetadata.Helpers
                             return null;
                         }
 
-                        return new AssemblyMetadata(fileName, parent.Compilation, parent.TypeProvider);
+                        return _fileNameToModule.GetOrAdd(fileName, _ => new AssemblyMetadata(fileName, parent.Compilation, parent.TypeProvider));
                     });
         }
 

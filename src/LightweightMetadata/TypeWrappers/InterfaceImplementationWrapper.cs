@@ -16,7 +16,7 @@ namespace LightweightMetadata
     /// </summary>
     public class InterfaceImplementationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<InterfaceImplementationHandle, InterfaceImplementationWrapper>();
+        private static readonly ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata module), InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata module), InterfaceImplementationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _interface;
@@ -93,7 +93,7 @@ namespace LightweightMetadata
                 return null;
             }
 
-            return _registerTypes.GetOrAdd(handle, handleCreate => new InterfaceImplementationWrapper(handleCreate, module));
+            return _registerTypes.GetOrAdd((handle, module), data => new InterfaceImplementationWrapper(data.handle, data.module));
         }
 
         /// <summary>

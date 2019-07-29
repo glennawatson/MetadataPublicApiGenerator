@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using FluentAssertions;
@@ -22,6 +23,7 @@ namespace MetadataPublicApiGenerator.Tests
     public static class RoslynTestHelper
     {
         private static readonly IList<MetadataReference> _assemblyPaths;
+        private static readonly string _rootDirectory = Path.Combine(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.Parent.Parent.FullName, "MetadataPublicApiGenerator.IntegrationTestData");
 
         static RoslynTestHelper()
         {
@@ -38,22 +40,26 @@ namespace MetadataPublicApiGenerator.Tests
         /// <summary>
         /// Checks to make sure tha the specified code produces the expected API.
         /// </summary>
-        /// <param name="code">The code to compile.</param>
-        /// <param name="expectedApi">The API expected to be produced.</param>
-        public static void CheckApi(string code, string expectedApi)
+        /// <param name="filePrefix">The prefix to the code..</param>
+        /// <param name="filePath">The file path to the calling method.</param>
+        public static void CheckApi(string filePrefix, [CallerFilePath] string filePath = null)
         {
-            string filePath = null;
+            string assemblyFilePath = null;
             try
             {
-                filePath = CreateAssembly(code);
+                var codeFilePath = Path.Combine(_rootDirectory, filePrefix + ".cs");
+                var apiFilePath = Path.Combine(_rootDirectory, filePrefix + ".txt");
 
-                var publicApi = MetadataApi.GeneratePublicApi(filePath).Trim();
+                var code = File.ReadAllText(codeFilePath);
+                assemblyFilePath = CreateAssembly(code);
 
+                var publicApi = MetadataApi.GeneratePublicApi(assemblyFilePath).Trim();
+                var expectedApi = File.ReadAllText(apiFilePath);
                 publicApi.Should().Be(expectedApi);
             }
             finally
             {
-                if (filePath != null)
+                if (assemblyFilePath != null)
                 {
                     File.Delete(filePath);
                 }

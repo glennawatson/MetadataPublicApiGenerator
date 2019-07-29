@@ -3,11 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Reflection;
-using MetadataPublicApiGenerator.IntegrationTestData;
-using PublicApiGenerator;
-
-using ReactiveUI;
-
 using Xunit;
 
 namespace MetadataPublicApiGenerator.Tests
@@ -23,7 +18,7 @@ namespace MetadataPublicApiGenerator.Tests
         [Fact]
         public void GeneratesContent()
         {
-            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(ReactiveCommand)));
+            var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
 
             Assert.NotNull(value);
         }
