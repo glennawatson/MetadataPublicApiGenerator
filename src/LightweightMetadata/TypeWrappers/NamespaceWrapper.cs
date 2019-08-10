@@ -9,8 +9,6 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -18,7 +16,7 @@ namespace LightweightMetadata
     /// </summary>
     public class NamespaceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata module), NamespaceWrapper> _registeredNamespaces = new ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata module), NamespaceWrapper>();
+        private static readonly ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata assemblyMetadata), NamespaceWrapper> _registeredNamespaces = new ConcurrentDictionary<(NamespaceDefinitionHandle handle, AssemblyMetadata assemblyMetadata), NamespaceWrapper>();
 
         private readonly Lazy<string> _fullName;
 
@@ -30,31 +28,31 @@ namespace LightweightMetadata
 
         private readonly Lazy<IReadOnlyList<NamespaceWrapper>> _childNamespaces;
 
-        internal NamespaceWrapper(NamespaceDefinition definition, AssemblyMetadata module)
+        internal NamespaceWrapper(NamespaceDefinition definition, AssemblyMetadata assemblyMetadata)
         {
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Definition = definition;
             Handle = default;
 
             _parent = new Lazy<NamespaceWrapper>(() => null);
-            _name = new Lazy<string>(() => GetName(Definition, module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => GetName(Definition, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
-            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, assemblyMetadata)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, assemblyMetadata)).ToList(), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        private NamespaceWrapper(NamespaceDefinitionHandle handle, AssemblyMetadata module)
+        private NamespaceWrapper(NamespaceDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             NamespaceHandle = handle;
             Handle = handle;
-            Definition = Resolve(handle, module);
+            Definition = Resolve(handle, assemblyMetadata);
 
-            _parent = new Lazy<NamespaceWrapper>(() => Create(Definition.Parent, module), LazyThreadSafetyMode.PublicationOnly);
-            _name = new Lazy<string>(() => GetName(Definition, module), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<NamespaceWrapper>(() => Create(Definition.Parent, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => GetName(Definition, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
-            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, module)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _members = new Lazy<IReadOnlyList<TypeWrapper>>(() => Definition.TypeDefinitions.Select(x => TypeWrapper.Create(x, assemblyMetadata)).ToList(), LazyThreadSafetyMode.PublicationOnly);
+            _childNamespaces = new Lazy<IReadOnlyList<NamespaceWrapper>>(() => Definition.NamespaceDefinitions.Select(x => Create(x, assemblyMetadata)).ToList(), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -100,16 +98,16 @@ namespace LightweightMetadata
         /// Creates a new instance of the NamespaceWrapper class given a NamespaceDefinition.
         /// </summary>
         /// <param name="handle">The namespace definition to generate.</param>
-        /// <param name="module">The module hosting the handle.</param>
+        /// <param name="assemblyMetadata">The module hosting the handle.</param>
         /// <returns>A namespace wrapper or null if the handle is nil.</returns>
-        public static NamespaceWrapper Create(NamespaceDefinitionHandle handle, AssemblyMetadata module)
+        public static NamespaceWrapper Create(NamespaceDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registeredNamespaces.GetOrAdd((handle, module), data => new NamespaceWrapper(data.handle, data.module));
+            return _registeredNamespaces.GetOrAdd((handle, assemblyMetadata), data => new NamespaceWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <inheritdoc />
@@ -118,14 +116,14 @@ namespace LightweightMetadata
             return FullName;
         }
 
-        private static NamespaceDefinition Resolve(NamespaceDefinitionHandle handle, AssemblyMetadata compilation)
+        private static NamespaceDefinition Resolve(NamespaceDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            return compilation.MetadataReader.GetNamespaceDefinition(handle);
+            return assemblyMetadata.MetadataReader.GetNamespaceDefinition(handle);
         }
 
-        private static string GetName(NamespaceDefinition handle, AssemblyMetadata compilation)
+        private static string GetName(NamespaceDefinition handle, AssemblyMetadata assemblyMetadata)
         {
-            return handle.Name.GetName(compilation);
+            return handle.Name.GetName(assemblyMetadata);
         }
 
         private string GetFullName()

@@ -5,7 +5,6 @@
 using System.Collections.Generic;
 
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 
@@ -17,21 +16,37 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class FieldSymbolGenerator
     {
-        public static FieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, int level)
+        public static FieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
         {
             if (!(member is FieldWrapper field))
             {
                 return null;
             }
 
-            var variables = new[]
-                                {
-                                    field.IsConst ? VariableDeclarator(field.Name, EqualsValueClause(SyntaxHelper.GetValueExpression(field.FieldType, field.DefaultValue))) : VariableDeclarator(field.Name)
-                                };
+            var modifiers = field.GetModifiers();
 
-            var declaration = VariableDeclaration(field.FieldType.GetTypeSyntax(), variables);
+            field.Attributes.TryGetNullable(out var nullability);
 
-            return FieldDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), field.GetModifiers(), declaration, level);
+            VariableDeclarationSyntax variableDeclaration;
+            if (field.TryGetFixed(out var bufferSize, out var fixedArrayType))
+            {
+                var arrayType = ArrayType(fixedArrayType.GetTypeSyntax(field, currentNullability, nullability), new[] { ArrayRankSpecifier(new int?[] { bufferSize }) });
+
+                var variables = new[] { VariableDeclarator(field.Name, EqualsValueClause(ArrayCreationExpression(arrayType))) };
+                variableDeclaration = VariableDeclaration(arrayType, variables);
+            }
+            else if (field.IsConst)
+            {
+                var variables = new[] { VariableDeclarator(field.Name, EqualsValueClause(SyntaxHelper.GetValueExpression(field.FieldType, field.DefaultValue))) };
+
+                variableDeclaration = VariableDeclaration(field.FieldType.GetTypeSyntax(field, currentNullability, nullability), variables);
+            }
+            else
+            {
+                variableDeclaration = VariableDeclaration(field.FieldType.GetTypeSyntax(field, currentNullability, nullability), new[] { VariableDeclarator(field.Name) });
+            }
+
+            return FieldDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), modifiers, variableDeclaration, level);
         }
     }
 }

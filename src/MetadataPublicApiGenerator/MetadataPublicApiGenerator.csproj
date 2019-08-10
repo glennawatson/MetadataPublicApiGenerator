@@ -7,26 +7,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.2.0" />
-
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Compilation\" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.2.1" />
+    <PackageReference Include="ilmerge" Version="3.0.29" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LightweightMetadata\LightweightMetadata.csproj" />
   </ItemGroup>
 
-  <!--<Target Name="ILRepack" AfterTargets="Build" Condition="$(Configuration) == 'Release'">
+  <Target Name="ILRepack" AfterTargets="Build" Condition="$(Configuration) == 'Release'">
     <PropertyGroup>
       <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)</WorkingDirectory>
-      <MergedFileName>$(WorkingDirectory)\$(AssemblyName).Merged.dll</MergedFileName>
+      <MergeDirectory>$(WorkingDirectory)\merged</MergeDirectory>
     </PropertyGroup>
-
-    --><!-- the ILMergePath property points to the location of ILMerge.exe console application --><!--
-    <Exec Command="$(ILMergeConsolePath) /out:$(MergedFileName) $(WorkingDirectory)\$(AssemblyName).dll $(WorkingDirectory)\LightweightMetadata.dll" />
-    <Move SourceFiles="$(MergedFileName)" DestinationFiles="$(WorkingDirectory)\$(AssemblyName).dll" />
-  </Target>-->
+    <ItemGroup>
+      <MergeFiles Include="$(WorkingDirectory)\**\*.dll" Exclude="$(WorkingDirectory)\**\MetadataPublicApiGenerator.dll;$(WorkingDirectory)\**\System.*.dll;;$(WorkingDirectory)\**\Microsoft.*.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(MergeDirectory)" />
+    <Exec Command="$(ILMergeConsolePath) /out:$(MergeDirectory)\$(AssemblyName).dll $(WorkingDirectory)\MetadataPublicApiGenerator.dll @(MergeFiles, ' ')" />
+    <Move SourceFiles="$(MergeDirectory)\$(AssemblyName).dll" DestinationFiles="$(WorkingDirectory)\$(AssemblyName).dll" />
+    <Move SourceFiles="$(MergeDirectory)\$(AssemblyName).pdb" DestinationFiles="$(WorkingDirectory)\$(AssemblyName).pdb" />
+  </Target>
 </Project>

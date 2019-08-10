@@ -5,7 +5,7 @@
 using System;
 using System.Linq;
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -35,7 +35,7 @@ namespace MetadataPublicApiGenerator.Helpers
             switch (wrapper)
             {
                 case ArrayTypeWrapper arrayTypeWrapper:
-                    return ArrayCreationExpression(ArrayType(IdentifierName(arrayTypeWrapper.ElementType.ReflectionFullName), Array.Empty<ArrayRankSpecifierSyntax>()));
+                    return ArrayCreationExpression(ArrayType(IdentifierName(arrayTypeWrapper.ReflectionFullName), Array.Empty<ArrayRankSpecifierSyntax>()));
                 case TypeWrapper typeWrapper when typeWrapper.IsEnumType:
                     return GetEnumNames(typeWrapper, value);
                 case TypeWrapper typeWrapper:

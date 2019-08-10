@@ -5,10 +5,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection.Metadata;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     internal static class HandleNameExtensions
     {
@@ -99,11 +98,11 @@ namespace LightweightMetadata.Extensions
 
         private static readonly ConcurrentDictionary<AssemblyMetadata, ConcurrentDictionary<StringHandle, string>> _stringHandleNames = new ConcurrentDictionary<AssemblyMetadata, ConcurrentDictionary<StringHandle, string>>();
 
-        public static string GetName(this StringHandle handle, AssemblyMetadata compilation)
+        public static string GetName(this StringHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            var map = _stringHandleNames.GetOrAdd(compilation, _ => new ConcurrentDictionary<StringHandle, string>());
+            var map = _stringHandleNames.GetOrAdd(assemblyMetadata, _ => new ConcurrentDictionary<StringHandle, string>());
 
-            return map.GetOrAdd(handle, stringHandle => compilation.MetadataReader.GetString(stringHandle));
+            return map.GetOrAdd(handle, stringHandle => assemblyMetadata.MetadataReader.GetString(stringHandle));
         }
 
         /// <summary>

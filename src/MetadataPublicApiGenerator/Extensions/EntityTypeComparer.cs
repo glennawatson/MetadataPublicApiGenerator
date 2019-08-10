@@ -35,7 +35,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
             if (x.Handle.Kind == y.Handle.Kind)
             {
-                return string.Compare(x.FullName, y.FullName, StringComparison.InvariantCulture);
+                return CompareTypeName(x, y);
             }
 
             var xWeight = GetTypeWeight(x);
@@ -43,7 +43,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
             if (xWeight == yWeight)
             {
-                return string.Compare(x.FullName, y.FullName, StringComparison.InvariantCulture);
+                return CompareTypeName(x, y);
             }
 
             return xWeight < yWeight ? -1 : 1;
@@ -83,6 +83,23 @@ namespace MetadataPublicApiGenerator.Extensions
             }
 
             return 10;
+        }
+
+        private static int CompareTypeName(IHandleNameWrapper x, IHandleNameWrapper y)
+        {
+            if (!(x is IHandleTypeNamedWrapper typeX) || !(y is IHandleTypeNamedWrapper typeY))
+            {
+                return string.Compare(x.FullName, y.FullName, StringComparison.InvariantCulture);
+            }
+
+            var accessibility = typeX.Accessibility.CompareTo(typeY.Accessibility);
+
+            if (accessibility != 0)
+            {
+                return accessibility;
+            }
+
+            return string.Compare(x.FullName, y.FullName, StringComparison.InvariantCulture);
         }
     }
 }

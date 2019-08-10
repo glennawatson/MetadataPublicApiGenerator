@@ -9,7 +9,6 @@ using System.Linq;
 using LightweightMetadata;
 
 using MetadataPublicApiGenerator.Extensions;
-using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -20,16 +19,17 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// </summary>
     internal static class TypeGeneratorHelpers
     {
-        internal static IReadOnlyCollection<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
+        internal static IReadOnlyCollection<MemberDeclarationSyntax> GenerateMemberDeclaration(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
-            var returnValueList = new List<MemberDeclarationSyntax>(typeWrapper.Events.Count + typeWrapper.Properties.Count + typeWrapper.Methods.Count + typeWrapper.NestedTypes.Count);
-
-            returnValueList.AddRange(typeWrapper.Events.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => EventSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
-            returnValueList.AddRange(typeWrapper.Properties.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => PropertySymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
-            returnValueList.AddRange(typeWrapper.Methods.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => MethodSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, level + 1)));
-            returnValueList.AddRange(typeWrapper.NestedTypes.OrderByAndExclude(excludeMembersAttributes, excludeAttributes).Select(x => GeneratorFactory.Generate(x, excludeMembersAttributes, excludeAttributes, excludeFunc, level + 1)).Where(x => x != null));
-
-            return returnValueList.Where(x => x != null).ToList();
+            return typeWrapper.Fields.Cast<IHandleTypeNamedWrapper>()
+                .Concat(typeWrapper.Events)
+                .Concat(typeWrapper.Properties)
+                .Concat(typeWrapper.Methods)
+                .Concat(typeWrapper.NestedTypes)
+                .OrderByAndExclude(excludeMembersAttributes, excludeAttributes)
+                .Select(x => GeneratorFactory.Generate<MemberDeclarationSyntax>(x, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level + 1))
+                .Where(x => x != null)
+                .ToList();
         }
     }
 }

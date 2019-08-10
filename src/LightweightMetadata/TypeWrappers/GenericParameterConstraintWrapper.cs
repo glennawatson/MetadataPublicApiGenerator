@@ -15,14 +15,14 @@ namespace LightweightMetadata
     /// </summary>
     public class GenericParameterConstraintWrapper : IHandleWrapper
     {
-        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata module), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata module), GenericParameterConstraintWrapper>();
+        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata assemblyMetadata), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata assemblyMetadata), GenericParameterConstraintWrapper>();
 
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
-        private GenericParameterConstraintWrapper(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata module)
+        private GenericParameterConstraintWrapper(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
         {
             GenericParameterConstraintHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Parent = parent;
             Definition = Resolve();
@@ -61,16 +61,16 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="parent">The parent of the constraint.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static GenericParameterConstraintWrapper Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata module)
+        public static GenericParameterConstraintWrapper Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new GenericParameterConstraintWrapper(data.handle, parent, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new GenericParameterConstraintWrapper(data.handle, parent, data.assemblyMetadata));
         }
 
         /// <summary>
@@ -78,16 +78,16 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="collection">The collection to create.</param>
         /// <param name="parent">The parent of the constraint.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<GenericParameterConstraintWrapper> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata module)
+        public static IReadOnlyList<GenericParameterConstraintWrapper> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
         {
             var output = new GenericParameterConstraintWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, parent, module);
+                output[i] = Create(element, parent, assemblyMetadata);
                 i++;
             }
 

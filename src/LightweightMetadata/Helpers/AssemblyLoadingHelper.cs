@@ -10,34 +10,34 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace LightweightMetadata.Helpers
+namespace LightweightMetadata
 {
     internal static class AssemblyLoadingHelper
     {
+        private static readonly string DefaultNuGetDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+
         private static readonly ConcurrentDictionary<string, AssemblyMetadata> _fileNameToModule = new ConcurrentDictionary<string, AssemblyMetadata>(StringComparer.InvariantCultureIgnoreCase);
 
-        private static readonly ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata> _nameToModule
-            = new ConcurrentDictionary<(string name, Version version, string publicKey), AssemblyMetadata>();
+        private static readonly ConcurrentDictionary<string, AssemblyMetadata> _nameToModule
+            = new ConcurrentDictionary<string, AssemblyMetadata>();
 
         public static AssemblyMetadata ResolveCompilationModule(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
-            var key = (name, version, publicKey);
-
             return _nameToModule.GetOrAdd(
-                key,
-                keyValue =>
+                name,
+                _ =>
+                {
+                    var searchDirectories = parent.MetadataRepository.SearchDirectories;
+
+                    var fileName = GetFileName(name, version, parent, searchDirectories, isWindowsRuntime, isRetargetable, publicKey);
+
+                    if (string.IsNullOrWhiteSpace(fileName))
                     {
-                        var searchDirectories = parent.Compilation.SearchDirectories;
+                        return null;
+                    }
 
-                        var fileName = GetFileName(name, version, parent, searchDirectories, isWindowsRuntime, isRetargetable, publicKey);
-
-                        if (string.IsNullOrWhiteSpace(fileName))
-                        {
-                            return null;
-                        }
-
-                        return _fileNameToModule.GetOrAdd(fileName, _ => new AssemblyMetadata(fileName, parent.Compilation, parent.TypeProvider));
-                    });
+                    return _fileNameToModule.GetOrAdd(fileName, __ => new AssemblyMetadata(fileName, parent.MetadataRepository, parent.TypeProvider));
+                });
         }
 
         private static string GetFileName(string name, Version version, AssemblyMetadata baseReader, IEnumerable<string> searchDirectories, bool isWindowsRuntime, bool isRetargetable, string publicKey)
@@ -68,6 +68,13 @@ namespace LightweightMetadata.Helpers
             }
 
             file = SearchDirectories(name, extensions, searchDirectories);
+
+            if (!string.IsNullOrWhiteSpace(file))
+            {
+                return file;
+            }
+
+            file = FindInNuGetDirectory(name, extensions);
 
             if (!string.IsNullOrWhiteSpace(file))
             {
@@ -291,6 +298,35 @@ namespace LightweightMetadata.Helpers
             return null;
         }
 
+        private static string FindInNuGetDirectory(string name, IEnumerable<string> extensions)
+        {
+            if (!Directory.Exists(DefaultNuGetDirectory))
+            {
+                return null;
+            }
+
+            var extensionsArray = extensions as string[] ?? extensions.ToArray();
+
+            foreach (var folder in Directory.EnumerateDirectories(DefaultNuGetDirectory))
+            {
+                var subFolder = new DirectoryInfo(folder)
+                    .EnumerateDirectories()
+                    .Select(d => (version: new Version(RemoveTrailingVersionInfo(d.Name)), fullPath: d))
+                    .Where(v => v.version != null)
+                    .OrderByDescending(v => v.version)
+                    .FirstOrDefault();
+
+                var file = subFolder.fullPath?.EnumerateFiles(name + ".*", SearchOption.AllDirectories).FirstOrDefault(x => extensionsArray.Contains(x.Extension));
+
+                if (file != null)
+                {
+                    return file.FullName;
+                }
+            }
+
+            return null;
+        }
+
         private static string FindClosestVersionDirectory(string basePath, Version version)
         {
             string path = null;
@@ -312,26 +348,26 @@ namespace LightweightMetadata.Helpers
         [SuppressMessage("Design", "CA1031: Modify to catch a more specific exception type, or rethrow the exception.", Justification = "Deliberate usage.")]
         private static (Version, string) ConvertToVersion(string name)
         {
-            string RemoveTrailingVersionInfo()
-            {
-                string shortName = name;
-                int dashIndex = shortName.IndexOf('-');
-                if (dashIndex > 0)
-                {
-                    shortName = shortName.Remove(dashIndex);
-                }
-
-                return shortName;
-            }
-
             try
             {
-                return (new Version(RemoveTrailingVersionInfo()), name);
+                return (new Version(name.RemoveTrailingVersionInfo()), name);
             }
             catch (Exception)
             {
                 return (null, null);
             }
+        }
+
+        private static string RemoveTrailingVersionInfo(this string name)
+        {
+            string shortName = name;
+            int dashIndex = shortName.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                shortName = shortName.Remove(dashIndex);
+            }
+
+            return shortName;
         }
     }
 }

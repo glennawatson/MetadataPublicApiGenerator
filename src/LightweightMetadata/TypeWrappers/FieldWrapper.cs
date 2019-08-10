@@ -9,9 +9,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -27,24 +24,24 @@ namespace LightweightMetadata
         private readonly Lazy<IHandleTypeNamedWrapper> _fieldType;
         private readonly Lazy<ulong> _longEnumValue;
 
-        private FieldWrapper(FieldDefinitionHandle handle, AssemblyMetadata module)
+        private FieldWrapper(FieldDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             FieldDefinitionHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Definition = Resolve();
 
             _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(module));
+            _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(assemblyMetadata));
             IsStatic = (Definition.Attributes & FieldAttributes.Static) != 0;
 
             _longEnumValue = new Lazy<ulong>(() => Convert.ToUInt64(DefaultValue, CultureInfo.InvariantCulture), LazyThreadSafetyMode.PublicationOnly);
 
-            _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
 
             switch (Definition.Attributes & FieldAttributes.FieldAccessMask)
             {
@@ -109,6 +106,9 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public bool IsAbstract => false;
 
+        /// <inheritdoc />
+        public bool IsValueType => FieldType.IsValueType;
+
         /// <summary>
         /// Gets a value indicating whether the field is static.
         /// </summary>
@@ -152,36 +152,56 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static FieldWrapper Create(FieldDefinitionHandle handle, AssemblyMetadata module)
+        public static FieldWrapper Create(FieldDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return new FieldWrapper(handle, module);
+            return new FieldWrapper(handle, assemblyMetadata);
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new FieldWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Determines if the field is fixed.
+        /// </summary>
+        /// <param name="bufferSize">The output buffer size.</param>
+        /// <param name="type">The output type of the fixed buffer.</param>
+        /// <returns>If the field is fixed buffer or not.</returns>
+        public bool TryGetFixed(out int bufferSize, out IHandleTypeNamedWrapper type)
+        {
+            if (Attributes.TryGetKnownAttribute(KnownAttribute.FixedBuffer, out var fixedBuffer))
+            {
+                bufferSize = (int)fixedBuffer.FixedArguments[1].Value;
+                type = (IHandleTypeNamedWrapper)fixedBuffer.FixedArguments[0].Value;
+                return true;
+            }
+
+            bufferSize = 0;
+            type = null;
+            return false;
         }
 
         /// <inheritdoc />

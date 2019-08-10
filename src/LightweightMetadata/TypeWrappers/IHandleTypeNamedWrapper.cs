@@ -7,7 +7,7 @@ namespace LightweightMetadata
     /// <summary>
     /// A type name with a handle.
     /// </summary>
-    public interface IHandleTypeNamedWrapper : ITypeNamedWrapper, IHandleNameWrapper
+    public interface IHandleTypeNamedWrapper : ITypeNamedWrapper, IHandleNameWrapper, IHasAttributes
     {
     }
 }

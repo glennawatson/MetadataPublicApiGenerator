@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     /// <summary>
     /// Extension methods relating to performing a binary search.
@@ -38,8 +38,8 @@ namespace LightweightMetadata.Extensions
             IComparer<TItem> comparer = null)
         {
             var compareFunc = comparer != null
-                                                      ? comparer.Compare
-                                                      : (Func<TItem, TItem, int>)Comparer<TItem>.Default.Compare;
+                ? comparer.Compare
+                : (Func<TItem, TItem, int>)Comparer<TItem>.Default.Compare;
             return BinarySearchIndexOfBy(list, compareFunc, targetValue);
         }
 

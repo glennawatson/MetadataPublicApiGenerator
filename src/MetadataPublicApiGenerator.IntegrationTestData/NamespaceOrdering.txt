@@ -1,0 +1,109 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData.a12345
+{
+    public class Insider
+    {
+        public Insider();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.A12345
+{
+    public class Insider
+    {
+        public Insider();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Blah123
+{
+    public class Insider
+    {
+        public Insider();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Example1Abc
+{
+    public class Insider
+    {
+        public Insider();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.ExampleAbc
+{
+    public class Insider
+    {
+        public Insider();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Examples
+{
+    public class AssemblyMember_Class1
+    {
+        public AssemblyMember_Class1();
+    }
+
+    public class AssemblyMember_Class2
+    {
+        public AssemblyMember_Class2();
+    }
+
+    public class AssemblyMember_Classi
+    {
+        public AssemblyMember_Classi();
+    }
+
+    public class AssemblyMember_ClassI
+    {
+        public AssemblyMember_ClassI();
+    }
+
+    public delegate void AssemblyMember_Delegate1();
+
+    public delegate void AssemblyMember_Delegate2();
+
+    public delegate void AssemblyMember_iDelegate1();
+
+    public delegate void AssemblyMember_IDelegate2();
+
+    public interface IAssemblyMember_interface1
+    {
+    }
+
+    public interface IAssemblyMember_Interface1
+    {
+    }
+
+    public interface IAssemblyMember_interface2
+    {
+    }
+
+    public interface IAssemblyMember_Interface2
+    {
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Examples_AA
+{
+    public class AssemblyOrdering_2
+    {
+        public AssemblyOrdering_2();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Examples_i
+{
+    public class AssemblyOrdering_1
+    {
+        public AssemblyOrdering_1();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Examples_I
+{
+    public class AssemblyOrdering_2
+    {
+        public AssemblyOrdering_2();
+    }
+}
+namespace MetadataPublicApiGenerator.IntegrationTestData.Examples_ZZ
+{
+    public class AssemblyOrdering_1
+    {
+        public AssemblyOrdering_1();
+    }
+}

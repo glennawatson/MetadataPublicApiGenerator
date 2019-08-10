@@ -1,9 +1,11 @@
-﻿namespace MyNamespace
+﻿namespace MetadataPublicApiGenerator.IntegrationTestData
 {
-    public class GenericType<T> : System.Collections.Generic.IEnumerable<T>, System.Collections.IEnumerable
+    public class GenericWithTypeInParams<T> : System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<T>>, System.Collections.IEnumerable
     {
-        public GenericType();
-        public System.Collections.Generic.IEnumerator<T> GetEnumerator();
+        public int X;
+        public int Y;
+        public GenericWithTypeInParams();
+        public System.Collections.Generic.IEnumerator<System.Collections.Generic.IEnumerable<T>> GetEnumerator();
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator();
     }
 }

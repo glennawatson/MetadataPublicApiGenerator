@@ -13,8 +13,6 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -45,12 +43,13 @@ namespace LightweightMetadata
         private readonly Lazy<IReadOnlyList<InterfaceImplementationWrapper>> _interfaceImplementations;
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<KnownTypeCode> _knownTypeCode;
+        private readonly Lazy<bool> _isValueType;
 
         private FieldWrapper _enumMetadataField;
 
-        private TypeWrapper(AssemblyMetadata module, TypeDefinitionHandle typeDefinition)
+        private TypeWrapper(AssemblyMetadata assemblyMetadata, TypeDefinitionHandle typeDefinition)
         {
-            AssemblyMetadata = module ?? throw new ArgumentNullException(nameof(module));
+            AssemblyMetadata = assemblyMetadata ?? throw new ArgumentNullException(nameof(assemblyMetadata));
             TypeDefinitionHandle = typeDefinition;
             Handle = typeDefinition;
             TypeDefinition = AssemblyMetadata.MetadataReader.GetTypeDefinition(typeDefinition);
@@ -64,7 +63,7 @@ namespace LightweightMetadata
             _isEnumType = new Lazy<bool>(IsEnum, LazyThreadSafetyMode.PublicationOnly);
             _typeKind = new Lazy<SymbolTypeKind>(GetTypeKind, LazyThreadSafetyMode.PublicationOnly);
             _isDelegateType = new Lazy<bool>(IsDelegate, LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(TypeDefinition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(TypeDefinition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(TypeDefinition.GetGenericParameters(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _declaringType = new Lazy<TypeWrapper>(() => Create(TypeDefinition.GetDeclaringType(), AssemblyMetadata));
             _methods = new Lazy<IReadOnlyList<MethodWrapper>>(() => MethodWrapper.Create(TypeDefinition.GetMethods(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
@@ -74,6 +73,7 @@ namespace LightweightMetadata
             _nestedTypes = new Lazy<IReadOnlyList<TypeWrapper>>(() => Create(TypeDefinition.GetNestedTypes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _interfaceImplementations = new Lazy<IReadOnlyList<InterfaceImplementationWrapper>>(() => InterfaceImplementationWrapper.Create(TypeDefinition.GetInterfaceImplementations(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
+            _isValueType = new Lazy<bool>(GetIsValueType, LazyThreadSafetyMode.PublicationOnly);
 
             _base = new Lazy<IHandleTypeNamedWrapper>(
                 () =>
@@ -246,41 +246,44 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public string ReflectionFullName => _reflectionFullName.Value;
 
+        /// <inheritdoc />
+        public bool IsValueType => _isValueType.Value;
+
         /// <summary>
         /// Creates a new instance of the type wrapper.
         /// </summary>
         /// <param name="handle">The handle to wrap.</param>
-        /// <param name="module">The module containing the handle.</param>
+        /// <param name="assemblyMetadata">The module containing the handle.</param>
         /// <returns>The wrapped instance if the handle is not nil, otherwise null.</returns>
-        public static TypeWrapper Create(TypeDefinitionHandle handle, AssemblyMetadata module)
+        public static TypeWrapper Create(TypeDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            if (module == null)
+            if (assemblyMetadata == null)
             {
-                throw new ArgumentNullException(nameof(module));
+                throw new ArgumentNullException(nameof(assemblyMetadata));
             }
 
-            return _handleToWrapperDictionary.GetOrAdd((handle, module.FileName), _ => new TypeWrapper(module, handle));
+            return _handleToWrapperDictionary.GetOrAdd((handle, assemblyMetadata.FileName), _ => new TypeWrapper(assemblyMetadata, handle));
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeWrapper> Create(in TypeDefinitionHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<TypeWrapper> Create(in TypeDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new TypeWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
@@ -291,16 +294,16 @@ namespace LightweightMetadata
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeWrapper> Create(in ImmutableArray<TypeDefinitionHandle> collection, AssemblyMetadata module)
+        public static IReadOnlyList<TypeWrapper> Create(in ImmutableArray<TypeDefinitionHandle> collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new TypeWrapper[collection.Length];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
@@ -403,7 +406,7 @@ namespace LightweightMetadata
             return false;
         }
 
-        private bool IsValueType()
+        private bool GetIsValueType()
         {
             var baseType = Base;
             if (baseType == null)
@@ -468,7 +471,7 @@ namespace LightweightMetadata
                 return SymbolTypeKind.Enum;
             }
 
-            if (IsValueType())
+            if (IsValueType)
             {
                 return SymbolTypeKind.Struct;
             }

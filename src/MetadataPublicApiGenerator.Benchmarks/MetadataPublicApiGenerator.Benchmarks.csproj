@@ -17,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MetadataPublicApiGenerator.IntegrationTestData\MetadataPublicApiGenerator.IntegrationTestData.csproj" />
     <ProjectReference Include="..\MetadataPublicApiGenerator\MetadataPublicApiGenerator.csproj" />
   </ItemGroup>
 

@@ -10,14 +10,22 @@ namespace MetadataPublicApiGenerator.IntegrationTestData
     {
         public static readonly int[] Standard = new int[64];
 
-        public fixed int FixedSize[64];
+        public unsafe fixed int FixedSize[64];
 
         public int[][] MultipleDimensions2;
         public int[][][] MultipleDimensions3;
 
         public int[,] Jagged;
 
-        public static void Test(int[] normal, int[,] jagged, int[][] multiple2, int[][][] multiple3)
+        public int[][,] SemiJagged;
+
+        public int[,][] SemiJagged2;
+
+        public const int[] InitializedField = null;
+
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+        public static void Test(int[] normal, int[,] jagged, int[][] multiple2, int[][][] multiple3, int[,][] semiJagged1, int[][,] semiJagged2, int[] x = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
         }
     }

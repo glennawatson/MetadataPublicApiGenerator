@@ -19,7 +19,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
     /// </summary>
     internal static class ParameterSymbolGenerator
     {
-        public static ParameterSyntax Generate(IHandleWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, bool isExtensionMethod)
+        public static ParameterSyntax Generate(IHandleNameWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, bool isExtensionMethod)
         {
             if (!(nameWrapper is ParameterWrapper parameterWrapper))
             {
@@ -32,7 +32,13 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 equals = EqualsValueClause(SyntaxHelper.GetValueExpression(parameterWrapper.ParameterType, parameterWrapper.DefaultValue));
             }
 
-            return Parameter(GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes), parameterWrapper.GetModifiers(isExtensionMethod), parameterWrapper.ParameterType.GetTypeSyntax(false), parameterWrapper.Name, equals);
+            parameterWrapper.Attributes.TryGetNullable(out var nullability);
+
+            var name = parameterWrapper.Name;
+            var attributes = GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes);
+            var modifiers = parameterWrapper.GetModifiers(isExtensionMethod);
+            var parameterType = parameterWrapper.ParameterType.GetTypeSyntax(nameWrapper, currentNullability, nullability, false);
+            return Parameter(attributes, modifiers, parameterType, name, equals);
         }
     }
 }

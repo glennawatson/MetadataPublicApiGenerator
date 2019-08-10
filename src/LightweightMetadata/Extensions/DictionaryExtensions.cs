@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     internal static class DictionaryExtensions
     {

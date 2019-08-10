@@ -8,9 +8,6 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -18,20 +15,20 @@ namespace LightweightMetadata
     /// </summary>
     public class MethodSpecificationWrapper : IHandleWrapper, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata module), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata module), MethodSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata), MethodSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _signature;
         private readonly Lazy<MethodWrapper> _method;
 
-        private MethodSpecificationWrapper(MethodSpecificationHandle handle, AssemblyMetadata module)
+        private MethodSpecificationWrapper(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             MethodSpecificationHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
-            Definition = Resolve(handle, module);
+            Definition = Resolve(handle, assemblyMetadata);
 
-            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)).ToList());
-            _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, module), LazyThreadSafetyMode.PublicationOnly);
+            _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)).ToList());
+            _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -69,16 +66,16 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, AssemblyMetadata module)
+        public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new MethodSpecificationWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new MethodSpecificationWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <inheritdoc />
@@ -87,9 +84,9 @@ namespace LightweightMetadata
             return Method.FullName;
         }
 
-        private static MethodSpecification Resolve(MethodSpecificationHandle handle, AssemblyMetadata compilation)
+        private static MethodSpecification Resolve(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            return compilation.MetadataReader.GetMethodSpecification(handle);
+            return assemblyMetadata.MetadataReader.GetMethodSpecification(handle);
         }
     }
 }

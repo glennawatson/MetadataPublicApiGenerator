@@ -7,9 +7,6 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -27,18 +24,18 @@ namespace LightweightMetadata
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
         private readonly Lazy<EntityAccessibility> _accessibility;
 
-        private PropertyWrapper(PropertyDefinitionHandle handle, AssemblyMetadata module)
+        private PropertyWrapper(PropertyDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             PropertyDefinitionHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Definition = Resolve();
 
-            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _getterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Getter, module), LazyThreadSafetyMode.PublicationOnly);
-            _setterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Setter, module), LazyThreadSafetyMode.PublicationOnly);
+            _getterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Getter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _setterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Setter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _anyAccessor = new Lazy<MethodWrapper>(GetAnyAccessor, LazyThreadSafetyMode.PublicationOnly);
 
@@ -46,7 +43,7 @@ namespace LightweightMetadata
 
             _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
 
-            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -114,36 +111,39 @@ namespace LightweightMetadata
         /// </summary>
         public IHandleTypeNamedWrapper ReturnType => _signature.Value.ReturnType;
 
+        /// <inheritdoc />
+        public bool IsValueType => ReturnType.IsValueType;
+
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static PropertyWrapper Create(PropertyDefinitionHandle handle, AssemblyMetadata module)
+        public static PropertyWrapper Create(PropertyDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return new PropertyWrapper(handle, module);
+            return new PropertyWrapper(handle, assemblyMetadata);
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<PropertyWrapper> Create(in PropertyDefinitionHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<PropertyWrapper> Create(in PropertyDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new PropertyWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 

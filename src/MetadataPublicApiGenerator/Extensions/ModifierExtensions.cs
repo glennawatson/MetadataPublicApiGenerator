@@ -4,9 +4,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+
 using LightweightMetadata;
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
 
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -17,26 +17,21 @@ namespace MetadataPublicApiGenerator.Extensions
     /// </summary>
     internal static class ModifierExtensions
     {
-        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this TypeWrapper typeDefinition)
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this TypeWrapper typeDefinition, MethodWrapper method)
         {
-            var modifierList = new List<SyntaxKind>(AccessibilityToSyntaxKind(typeDefinition.Accessibility));
+            var modifierList = GetModifiersList(typeDefinition);
 
-            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsAbstract && !typeDefinition.IsStatic)
+            if (method.ReturningType is PointerWrapper || method.Parameters.Any(x => x.ParameterType is PointerWrapper))
             {
-                modifierList.Add(SyntaxKind.AbstractKeyword);
-            }
-
-            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.IsStatic)
-            {
-                modifierList.Add(SyntaxKind.StaticKeyword);
-            }
-
-            if (typeDefinition.TypeKind != SymbolTypeKind.Interface && typeDefinition.TypeKind != SymbolTypeKind.Struct && typeDefinition.IsSealed && !typeDefinition.IsStatic && !typeDefinition.IsEnumType && !typeDefinition.IsDelegateType)
-            {
-                modifierList.Add(SyntaxKind.SealedKeyword);
+                modifierList.Add(SyntaxKind.UnsafeKeyword);
             }
 
             return modifierList;
+        }
+
+        public static IReadOnlyCollection<SyntaxKind> GetModifiers(this TypeWrapper typeDefinition)
+        {
+            return GetModifiersList(typeDefinition);
         }
 
         public static IReadOnlyCollection<SyntaxKind> GetModifiers(this MethodWrapper method)
@@ -75,6 +70,11 @@ namespace MetadataPublicApiGenerator.Extensions
                 }
             }
 
+            if (property.ReturnType is PointerWrapper)
+            {
+                modifierList.Add(SyntaxKind.UnsafeKeyword);
+            }
+
             return modifierList;
         }
 
@@ -111,6 +111,17 @@ namespace MetadataPublicApiGenerator.Extensions
                 {
                     modifierList.Add(SyntaxKind.ReadOnlyKeyword);
                 }
+            }
+
+            if (field.FieldType is PointerWrapper)
+            {
+                modifierList.Add(SyntaxKind.UnsafeKeyword);
+            }
+
+            if (field.Attributes.HasKnownAttribute(KnownAttribute.FixedBuffer))
+            {
+                modifierList.Add(SyntaxKind.UnsafeKeyword);
+                modifierList.Add(SyntaxKind.FixedKeyword);
             }
 
             return modifierList;
@@ -153,7 +164,7 @@ namespace MetadataPublicApiGenerator.Extensions
             return modifierList;
         }
 
-        private static IReadOnlyCollection<SyntaxKind> GetModifiersList(MethodWrapper method)
+        private static List<SyntaxKind> GetModifiersList(MethodWrapper method)
         {
             var modifierList = new List<SyntaxKind>(6);
 
@@ -184,6 +195,33 @@ namespace MetadataPublicApiGenerator.Extensions
                 modifierList.Add(SyntaxKind.VirtualKeyword);
             }
 
+            if (method.ReturningType is PointerWrapper || method.Parameters.Any(x => x.ParameterType is PointerWrapper))
+            {
+                modifierList.Add(SyntaxKind.UnsafeKeyword);
+            }
+
+            return modifierList;
+        }
+
+        private static List<SyntaxKind> GetModifiersList(TypeWrapper typeWrapper)
+        {
+            var modifierList = new List<SyntaxKind>(AccessibilityToSyntaxKind(typeWrapper.Accessibility));
+
+            if (typeWrapper.TypeKind != SymbolTypeKind.Interface && typeWrapper.IsAbstract && !typeWrapper.IsStatic)
+            {
+                modifierList.Add(SyntaxKind.AbstractKeyword);
+            }
+
+            if (typeWrapper.TypeKind != SymbolTypeKind.Interface && typeWrapper.IsStatic)
+            {
+                modifierList.Add(SyntaxKind.StaticKeyword);
+            }
+
+            if (typeWrapper.TypeKind != SymbolTypeKind.Interface && typeWrapper.TypeKind != SymbolTypeKind.Struct && typeWrapper.IsSealed && !typeWrapper.IsStatic && !typeWrapper.IsEnumType && !typeWrapper.IsDelegateType)
+            {
+                modifierList.Add(SyntaxKind.SealedKeyword);
+            }
+
             return modifierList;
         }
 
@@ -196,7 +234,7 @@ namespace MetadataPublicApiGenerator.Extensions
                 case EntityAccessibility.Private:
                     return new[] { SyntaxKind.PrivateKeyword };
                 case EntityAccessibility.PrivateProtected:
-                    return new[] { SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword };
+                    return new[] { SyntaxKind.ProtectedKeyword, SyntaxKind.PrivateKeyword };
                 case EntityAccessibility.Protected:
                     return new[] { SyntaxKind.ProtectedKeyword };
                 case EntityAccessibility.ProtectedInternal:

@@ -8,8 +8,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -27,27 +25,27 @@ namespace LightweightMetadata
         /// <summary>
         /// Initializes a new instance of the <see cref="AssemblyWrapper"/> class.
         /// </summary>
-        /// <param name="module">The module containing the definition.</param>
-        internal AssemblyWrapper(AssemblyMetadata module)
-            : this(module.MetadataReader.GetAssemblyDefinition(), module)
+        /// <param name="assemblyMetadata">The module containing the definition.</param>
+        internal AssemblyWrapper(AssemblyMetadata assemblyMetadata)
+            : this(assemblyMetadata.MetadataReader.GetAssemblyDefinition(), assemblyMetadata)
         {
         }
 
-        internal AssemblyWrapper(AssemblyDefinition reference, AssemblyMetadata module)
+        internal AssemblyWrapper(AssemblyDefinition reference, AssemblyMetadata assemblyMetadata)
         {
             Definition = reference;
-            _name = new Lazy<string>(() => module.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => assemblyMetadata.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
             _culture = new Lazy<string>(GetCulture, LazyThreadSafetyMode.PublicationOnly);
             Version = Definition.Version;
             _assemblyName = new Lazy<AssemblyName>(() => Definition.GetAssemblyName(), LazyThreadSafetyMode.PublicationOnly);
 
             HashAlgorithm = Definition.HashAlgorithm;
 
-            _publicKey = new Lazy<string>(() => Definition.PublicKey.CalculatePublicKeyToken(module, HashAlgorithm), LazyThreadSafetyMode.PublicationOnly);
+            _publicKey = new Lazy<string>(() => Definition.PublicKey.CalculatePublicKeyToken(assemblyMetadata, HashAlgorithm), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -89,7 +87,7 @@ namespace LightweightMetadata
         public AssemblyHashAlgorithm HashAlgorithm { get; }
 
         /// <summary>
-        /// Gets the compilation module that holds the assembly.
+        /// Gets the MetadataRepository module that holds the assembly.
         /// </summary>
         public AssemblyMetadata CompilationModule { get; }
 

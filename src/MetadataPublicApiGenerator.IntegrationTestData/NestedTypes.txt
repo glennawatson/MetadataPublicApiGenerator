@@ -1,0 +1,74 @@
+﻿namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class ClassWithDeeplyNestedClasses
+    {
+        public ClassWithDeeplyNestedClasses();
+        public void Method3();
+        public class ClassWithOneNestedClass
+        {
+            public ClassWithOneNestedClass();
+            public void Method2();
+            public class InnerNestedClass
+            {
+                public InnerNestedClass();
+                public void Method1();
+            }
+        }
+    }
+
+    public class ClassWithDeeplyNestedStructs
+    {
+        public ClassWithDeeplyNestedStructs();
+        public void Method3();
+        public class ClassNestedAlongsideStruct
+        {
+            public ClassNestedAlongsideStruct();
+            public void Method4();
+        }
+        public struct StructWithOneNestedStruct
+        {
+            public void Method2();
+            public struct InnerNestedStruct
+            {
+                public void Method1();
+            }
+        }
+    }
+
+    public class ClassWithNestedClass
+    {
+        public ClassWithNestedClass();
+        public void Method();
+        public class NestedClass
+        {
+            public NestedClass();
+            public void Method();
+        }
+    }
+
+    public class ClassWithPrivateNestedClass
+    {
+        public ClassWithPrivateNestedClass();
+        public void Method();
+    }
+
+    public class ClassWithProtectedNestedClass
+    {
+        public ClassWithProtectedNestedClass();
+        public void Method();
+        protected class NestedClass
+        {
+            public NestedClass();
+            public void Method();
+        }
+    }
+
+    public struct StructWithNestedStruct
+    {
+        public void Method();
+        public struct NestedStruct
+        {
+            public void Method();
+        }
+    }
+}

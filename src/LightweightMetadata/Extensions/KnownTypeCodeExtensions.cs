@@ -3,12 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
-using LightweightMetadata.TypeWrappers;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     /// <summary>
     /// Extension methods associated with the <see cref="KnownTypeCode"/>.
@@ -94,17 +92,17 @@ namespace LightweightMetadata.Extensions
         /// Converts a KnownTypeCode to a Type.
         /// </summary>
         /// <param name="knownTypeCode">The known type code to convert.</param>
-        /// <param name="compilation">The compilation of all known modules.</param>
+        /// <param name="metadataRepository">The MetadataRepository of all known modules.</param>
         /// <returns>The type wrapper if its available, null otherwise.</returns>
-        internal static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, IMetadataRepository compilation)
+        internal static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, MetadataRepository metadataRepository)
         {
-            if (compilation == null)
+            if (metadataRepository == null)
             {
-                throw new ArgumentNullException(nameof(compilation));
+                throw new ArgumentNullException(nameof(metadataRepository));
             }
 
             var name = ToTypeName(knownTypeCode);
-            return compilation.GetTypeByName(name);
+            return metadataRepository.GetTypeByName(name);
         }
 
         /// <summary>
@@ -122,7 +120,7 @@ namespace LightweightMetadata.Extensions
         /// </summary>
         /// <param name="typeDefinition">The type to check.</param>
         /// <returns>The known type code, None if it's not a known type code.</returns>
-        internal static KnownTypeCode ToKnownTypeCode(this ITypeNamedWrapper typeDefinition)
+        internal static KnownTypeCode ToKnownTypeCode(this IHandleNameWrapper typeDefinition)
         {
             if (typeDefinition == null)
             {

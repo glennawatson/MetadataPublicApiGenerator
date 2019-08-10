@@ -4,14 +4,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-
-using FluentAssertions;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -41,8 +36,7 @@ namespace MetadataPublicApiGenerator.Tests
         /// Checks to make sure tha the specified code produces the expected API.
         /// </summary>
         /// <param name="filePrefix">The prefix to the code..</param>
-        /// <param name="filePath">The file path to the calling method.</param>
-        public static void CheckApi(string filePrefix, [CallerFilePath] string filePath = null)
+        public static void CheckApi([CallerMemberName]string filePrefix = null)
         {
             string assemblyFilePath = null;
             try
@@ -50,18 +44,27 @@ namespace MetadataPublicApiGenerator.Tests
                 var codeFilePath = Path.Combine(_rootDirectory, filePrefix + ".cs");
                 var apiFilePath = Path.Combine(_rootDirectory, filePrefix + ".txt");
 
+                if (!File.Exists(apiFilePath))
+                {
+                    File.Create(apiFilePath).Close();
+                }
+
                 var code = File.ReadAllText(codeFilePath);
                 assemblyFilePath = CreateAssembly(code);
 
-                var publicApi = MetadataApi.GeneratePublicApi(assemblyFilePath).Trim();
+                var publicApi = MetadataApi.GeneratePublicApi(assemblyFilePath);
                 var expectedApi = File.ReadAllText(apiFilePath);
-                publicApi.Should().Be(expectedApi);
+
+                var receivedFileName = filePrefix + ".received.txt";
+                File.WriteAllText(receivedFileName, publicApi);
+
+                TestHelpers.CheckEquals(publicApi, expectedApi, receivedFileName, apiFilePath);
             }
             finally
             {
                 if (assemblyFilePath != null)
                 {
-                    File.Delete(filePath);
+                    File.Delete(assemblyFilePath);
                 }
             }
         }
@@ -73,10 +76,11 @@ namespace MetadataPublicApiGenerator.Tests
         /// <returns>The compiled assembly path.</returns>
         private static string CreateAssembly(string code)
         {
-            // create the syntax tree
-            SyntaxTree syntaxTree = SyntaxFactory.ParseSyntaxTree(code);
+            var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
 
-            var sourceLanguage = CSharpCompilation.Create("Test", new[] { syntaxTree }, _assemblyPaths, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, deterministic: true));
+            var syntaxTree = SyntaxFactory.ParseSyntaxTree(code, parseOptions);
+
+            var sourceLanguage = CSharpCompilation.Create("Test", new[] { syntaxTree }, _assemblyPaths, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, deterministic: true, allowUnsafe: true));
 
             var assemblyPath = Path.GetTempFileName();
 

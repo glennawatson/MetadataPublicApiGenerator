@@ -4,39 +4,30 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
-namespace LightweightMetadata.TypeWrappers
+namespace LightweightMetadata
 {
     internal class GenericContext
     {
-        private readonly AssemblyMetadata _module;
-
-        private readonly IHandleWrapper _handleWrapper;
-
-        internal GenericContext(AssemblyMetadata module)
+        internal GenericContext(AssemblyMetadata assemblyMetadata)
         {
-            ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
-            MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
-            _module = module;
+            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
+            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
         }
 
         internal GenericContext(IHandleWrapper wrapper)
         {
             if (wrapper == null)
             {
-                throw new System.ArgumentNullException(nameof(wrapper));
+                throw new ArgumentNullException(nameof(wrapper));
             }
-
-            _module = wrapper.AssemblyMetadata;
-            _handleWrapper = wrapper;
 
             switch (wrapper)
             {
                 case TypeWrapper typeWrapper:
                     ClassTypeParameters = typeWrapper.GenericParameters;
-                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
+                    MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
                     break;
                 case MethodWrapper methodWrapper:
                     var declaringTypeDefinition = methodWrapper.DeclaringType;
@@ -46,11 +37,14 @@ namespace LightweightMetadata.TypeWrappers
                     break;
                 case PropertyWrapper propertyWrapper:
                     ClassTypeParameters = propertyWrapper.DeclaringType.GenericParameters;
-                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
+                    MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
+                    break;
+                case IHasGenericParameters genericParameters:
+                    ClassTypeParameters = genericParameters.GenericParameters;
                     break;
                 default:
-                    ClassTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
-                    MethodTypeParameters = ImmutableArray<GenericParameterWrapper>.Empty;
+                    ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
+                    MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
                     break;
             }
 
@@ -66,12 +60,12 @@ namespace LightweightMetadata.TypeWrappers
 
         public IHandleTypeNamedWrapper GetClassTypeParameter(int index)
         {
-            return index < ClassTypeParameters.Count ? (IHandleTypeNamedWrapper)ClassTypeParameters[index] : new DummyTypeParameterWrapper(index, "Class", _module);
+            return index < ClassTypeParameters.Count ? ClassTypeParameters[index] : default;
         }
 
         public IHandleTypeNamedWrapper GetMethodTypeParameter(int index)
         {
-            return index < MethodTypeParameters.Count ? (IHandleTypeNamedWrapper)MethodTypeParameters[index] : new DummyTypeParameterWrapper(index, "Method", _module);
+            return index < MethodTypeParameters.Count ? MethodTypeParameters[index] : default;
         }
     }
 }

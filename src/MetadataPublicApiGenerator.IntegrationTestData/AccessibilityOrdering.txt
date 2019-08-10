@@ -1,0 +1,89 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class AccessibilityOrderClass
+    {
+        public AccessibilityOrderClass();
+        public void TestPublic();
+        protected internal void TestProtectedInternal();
+        protected void TestProtected();
+        protected private void TestProtectedPrivate();
+    }
+
+    public class MixedClass
+    {
+        public int TestFieldPublic;
+        protected internal int TestFieldProtectedInternal;
+        protected int TestFieldProtected;
+        protected private int TestFieldProtectedPrivate;
+        public MixedClass();
+        public int TestPropertyPublic { get; }
+        protected internal int TestPropertyProtectedInternal { get; }
+        protected int TestPropertyProtected { get; }
+        protected private int TestPropertyProtectedPrivate { get; }
+        public void TestPublic();
+        protected internal void TestProtectedInternal();
+        protected void TestProtected();
+        protected private void TestProtectedPrivate();
+        public class PublicNestedClass
+        {
+            public PublicNestedClass();
+            public void TestPublic();
+        }
+        public struct PublicNestedStruct
+        {
+            public void TestPublic();
+        }
+        protected internal class ProtectedInternalNestedClass
+        {
+            public ProtectedInternalNestedClass();
+            public void TestPublic();
+        }
+        protected internal struct ProtectedInternalNestedStruct
+        {
+            public void TestPublic();
+        }
+        protected class ProtectedNestedClass
+        {
+            public ProtectedNestedClass();
+            public void TestPublic();
+        }
+        protected struct ProtectedNestedStruct
+        {
+            public void TestPublic();
+        }
+        protected private class PrivateProtectedNestedClass
+        {
+            public PrivateProtectedNestedClass();
+            public void TestPublic();
+        }
+        protected private struct PrivateProtectedNestedStruct
+        {
+            public void TestPublic();
+        }
+    }
+
+    public class NestedClasses
+    {
+        public NestedClasses();
+        public class PublicNested
+        {
+            public PublicNested();
+            public void TestPublic();
+        }
+        protected internal class ProtectedInternalNested
+        {
+            public ProtectedInternalNested();
+            public void TestPublic();
+        }
+        protected class ProtectedNested
+        {
+            public ProtectedNested();
+            public void TestPublic();
+        }
+        protected private class PrivateProtectedNested
+        {
+            public PrivateProtectedNested();
+            public void TestPublic();
+        }
+    }
+}

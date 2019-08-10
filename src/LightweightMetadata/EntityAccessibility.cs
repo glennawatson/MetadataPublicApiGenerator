@@ -2,10 +2,6 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -21,19 +17,9 @@ namespace LightweightMetadata
         None,
 
         /// <summary>
-        /// The entity is only accessible within the same class.
-        /// </summary>
-        Private,
-
-        /// <summary>
         /// The entity is accessible everywhere.
         /// </summary>
         Public,
-
-        /// <summary>
-        /// The entity is only accessible within the same class and in derived classes.
-        /// </summary>
-        Protected,
 
         /// <summary>
         /// The entity is accessible within the same project content.
@@ -47,9 +33,19 @@ namespace LightweightMetadata
         ProtectedInternal,
 
         /// <summary>
+        /// The entity is only accessible within the same class and in derived classes.
+        /// </summary>
+        Protected,
+
+        /// <summary>
         /// The entity is accessible in derived classes within the same project content.
         /// </summary>
         /// <remarks>This corresponds to C# 'private protected'.</remarks>
         PrivateProtected,
+
+        /// <summary>
+        /// The entity is only accessible within the same class.
+        /// </summary>
+        Private,
     }
 }

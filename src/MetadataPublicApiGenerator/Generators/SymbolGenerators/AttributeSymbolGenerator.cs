@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
+
 using MetadataPublicApiGenerator.Helpers;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

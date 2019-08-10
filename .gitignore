@@ -256,3 +256,5 @@ paket-files/
 
 # The generated DB
 repository.db
+
+src/*.Tests/**/*.received.txt

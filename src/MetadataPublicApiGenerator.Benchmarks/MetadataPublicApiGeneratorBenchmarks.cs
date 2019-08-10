@@ -2,11 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Reflection;
-
 using BenchmarkDotNet.Attributes;
-using MetadataPublicApiGenerator.IntegrationTestData;
-using Newtonsoft.Json;
 using PublicApiGenerator;
 
 namespace MetadataPublicApiGenerator.Benchmarks

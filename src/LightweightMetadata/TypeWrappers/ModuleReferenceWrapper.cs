@@ -15,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class ModuleReferenceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata module), ModuleReferenceWrapper> _registerTypes = new ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata module), ModuleReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata), ModuleReferenceWrapper> _registerTypes = new ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata), ModuleReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
@@ -62,7 +62,7 @@ namespace LightweightMetadata
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
 
         /// <summary>
-        /// Gets the parent compilation module.
+        /// Gets the parent MetadataRepository module.
         /// </summary>
         public AssemblyMetadata ParentCompilationModule { get; }
 
@@ -70,16 +70,16 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static ModuleReferenceWrapper Create(ModuleReferenceHandle handle, AssemblyMetadata module)
+        public static ModuleReferenceWrapper Create(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new ModuleReferenceWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new ModuleReferenceWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <inheritdoc />
@@ -95,7 +95,7 @@ namespace LightweightMetadata
 
         private AssemblyMetadata GetDeclaringModule()
         {
-            return ParentCompilationModule.Compilation.GetAssemblyMetadataForName(Name, ParentCompilationModule);
+            return MetadataRepository.GetAssemblyMetadataForName(Name, ParentCompilationModule);
         }
     }
 }

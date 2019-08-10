@@ -1,12 +1,15 @@
 ﻿namespace MetadataPublicApiGenerator.IntegrationTestData
 {
-    public unsafe struct ArrayTypes
+    public struct ArrayTypes
     {
-        public static readonly int[] Standard = new int[64];
-        public fixed int FixedSize[64];
+        public unsafe fixed int[64] FixedSize = new int[64];
+        public const int[] InitializedField = null;
+        public int[,] Jagged;
         public int[][] MultipleDimensions2;
         public int[][][] MultipleDimensions3;
-        public int[,] Jagged;
-        public static void Test(int[] normal, int[,] jagged, int[][] multiple2, int[][][] multiple3);
+        public int[][,] SemiJagged;
+        public int[,][] SemiJagged2;
+        public static readonly int[] Standard;
+        public static void Test(int[] normal, int[,] jagged, int[][] multiple2, int[][][] multiple3, int[,][] semiJagged1, int[][,] semiJagged2, int[] x = null);
     }
 }

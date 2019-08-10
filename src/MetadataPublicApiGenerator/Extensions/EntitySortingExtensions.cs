@@ -18,17 +18,11 @@ namespace MetadataPublicApiGenerator.Extensions
 
         internal static bool ShouldIncludeEntity(this IHandleNameWrapper entity, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
-            if (entity is IHandleTypeNamedWrapper typeNameWrapper)
+            if (entity is IHandleTypeNamedWrapper typeNamedWrapper)
             {
-                switch (typeNameWrapper.Accessibility)
+                if (!typeNamedWrapper.ShouldIncludeEntityAccessibility())
                 {
-                    case EntityAccessibility.PrivateProtected:
-                    case EntityAccessibility.Protected:
-                    case EntityAccessibility.ProtectedInternal:
-                    case EntityAccessibility.Public:
-                        break;
-                    default:
-                        return false;
+                    return false;
                 }
             }
 
@@ -50,6 +44,20 @@ namespace MetadataPublicApiGenerator.Extensions
             }
 
             return true;
+        }
+
+        internal static bool ShouldIncludeEntityAccessibility(this IHandleTypeNamedWrapper entity)
+        {
+            switch (entity.Accessibility)
+            {
+                case EntityAccessibility.PrivateProtected:
+                case EntityAccessibility.Protected:
+                case EntityAccessibility.ProtectedInternal:
+                case EntityAccessibility.Public:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }

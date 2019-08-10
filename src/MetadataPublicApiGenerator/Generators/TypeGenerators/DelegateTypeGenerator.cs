@@ -7,8 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using LightweightMetadata;
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
+
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Generators.SymbolGenerators;
 
@@ -20,25 +19,26 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
     internal static class DelegateTypeGenerator
     {
-        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
+        internal static MemberDeclarationSyntax Generate(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
-            if (excludeFunc(type))
+            if (excludeFunc(typeWrapper))
             {
                 return null;
             }
 
-            return GenerateSyntax(type, excludeMembersAttributes, excludeAttributes, level);
-        }
+            if (typeWrapper.Attributes.TryGetNullableContext(out var nullableContext))
+            {
+                currentNullability = nullableContext;
+            }
 
-        private static MemberDeclarationSyntax GenerateSyntax(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, int level)
-        {
-            var invokeMember = type.GetDelegateInvokeMethod();
+            var invokeMember = typeWrapper.GetDelegateInvokeMethod();
 
-            var parameters = invokeMember.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, false)).Where(x => x != null).ToList();
-
-            var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
-
-            return DelegateDeclaration(GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), invokeMember.ReturningType.GetTypeSyntax(), type.Name, parameters, constraints, typeParameters, level);
+            var parameters = invokeMember.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, currentNullability, false)).Where(x => x != null).ToList();
+            var (constraints, typeParameters) = typeWrapper.GetTypeParameters(excludeMembersAttributes, excludeAttributes, currentNullability);
+            var attributes = GeneratorFactory.Generate(typeWrapper.Attributes, excludeMembersAttributes, excludeAttributes);
+            var modifiers = typeWrapper.GetModifiers(invokeMember);
+            var type = invokeMember.ReturningType.GetTypeSyntax(typeWrapper, currentNullability, Array.Empty<Nullability>());
+            return DelegateDeclaration(attributes, modifiers, type, typeWrapper.Name, parameters, constraints, typeParameters, level);
         }
     }
 }

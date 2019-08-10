@@ -11,9 +11,8 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
-using LightweightMetadata.TypeWrappers;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     /// <summary>
     /// Extension methods that help with various reflection based operations.
@@ -41,6 +40,33 @@ namespace LightweightMetadata.Extensions
                 }
             }
 
+            return false;
+        }
+
+        /// <summary>
+        /// If there is a attribute wrapper matching the known attribute get that wrapper.
+        /// </summary>
+        /// <param name="attributes">The collection of attributes to check.</param>
+        /// <param name="type">The type of attribute we want to find.</param>
+        /// <param name="wrapper">Output value of the attribute if found.</param>
+        /// <returns>If the attribute was found or not.</returns>
+        public static bool TryGetKnownAttribute(this IEnumerable<AttributeWrapper> attributes, KnownAttribute type, out AttributeWrapper wrapper)
+        {
+            if (attributes == null)
+            {
+                throw new ArgumentNullException(nameof(attributes));
+            }
+
+            foreach (var customAttribute in attributes)
+            {
+                if (customAttribute.KnownAttributeType == type)
+                {
+                    wrapper = customAttribute;
+                    return true;
+                }
+            }
+
+            wrapper = null;
             return false;
         }
 
@@ -85,14 +111,14 @@ namespace LightweightMetadata.Extensions
             }
         }
 
-        internal static string CalculatePublicKeyToken(this BlobHandle publicKeyBlob, AssemblyMetadata module, AssemblyHashAlgorithm assemblyHashAlgorithm)
+        internal static string CalculatePublicKeyToken(this BlobHandle publicKeyBlob, AssemblyMetadata assemblyMetadata, AssemblyHashAlgorithm assemblyHashAlgorithm)
         {
             if (publicKeyBlob.IsNil)
             {
                 return "null";
             }
 
-            var reader = module.MetadataReader;
+            var reader = assemblyMetadata.MetadataReader;
             using (var hashAlgorithm = assemblyHashAlgorithm.GetHashAlgorithm())
             {
                 // Calculate public key token:
@@ -113,15 +139,15 @@ namespace LightweightMetadata.Extensions
             }
         }
 
-        internal static object ReadConstant(this ConstantHandle constantHandle, AssemblyMetadata module)
+        internal static object ReadConstant(this ConstantHandle constantHandle, AssemblyMetadata assemblyMetadata)
         {
             if (constantHandle.IsNil)
             {
                 return null;
             }
 
-            var constant = module.MetadataReader.GetConstant(constantHandle);
-            var blobReader = module.MetadataReader.GetBlobReader(constant.Value);
+            var constant = assemblyMetadata.MetadataReader.GetConstant(constantHandle);
+            var blobReader = assemblyMetadata.MetadataReader.GetBlobReader(constant.Value);
             try
             {
                 return blobReader.ReadConstant(constant.TypeCode);

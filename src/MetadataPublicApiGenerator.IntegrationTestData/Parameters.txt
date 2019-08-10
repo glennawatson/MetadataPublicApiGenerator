@@ -1,0 +1,33 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class Parameters
+    {
+        public Parameters();
+        public void DefaultsWithParamsInstance(string noDefault, string defaultText = "test", int intDefault = 42, params int[] test);
+        public string DistanceString();
+        public void NoParameters();
+        public void SingleParameter(int testValue);
+        public void WithGeneric<T>(T test);
+        public void WithGenericClassConstraint<T>(T test)
+            where T : class;
+        public void WithGenericComplexClassMultipleTypes<TValue, TNext>(TValue test)
+            where TValue : System.Tuple<int>
+            where TNext : class;
+        public void WithGenericComplexClassNewConstraint<T>(T test)
+            where T : class, System.Collections.Generic.IEnumerable<T>, new();
+        public void WithGenericComplexConstraint<T>(T test)
+            where T : System.Collections.Generic.IEnumerable<T>;
+        public void WithGenericNewConstraint<T>(T test)
+            where T : new();
+        public void WithGenericOutParameter(out System.Collections.Generic.IEnumerable<string> value);
+        public int WithGenericParameter(System.Collections.Generic.IEnumerable<int> test);
+        public void WithGenericValueConstraint<T>(T test)
+            where T : struct, new();
+        public void WithNestedContraints<TValue>(TValue test)
+            where TValue : System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<System.Tuple<int>>>>>;
+        public void WithOutParameter(out string value);
+        public void WithParamsInstance(string text1, int int2, params string[] test);
+        public static void WithParamsStatic(string test1, int test2, params string[] test);
+        public void WithRefParameter(ref string test);
+    }
+}

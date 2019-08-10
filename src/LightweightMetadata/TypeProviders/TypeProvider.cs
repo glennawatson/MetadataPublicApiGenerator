@@ -4,9 +4,8 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Reflection.Metadata;
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
 
 namespace LightweightMetadata
 {
@@ -18,18 +17,18 @@ namespace LightweightMetadata
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeProvider"/> class.
         /// </summary>
-        /// <param name="compilation">The compilation to use to determine types.</param>
-        public TypeProvider(IMetadataRepository compilation)
+        /// <param name="metadataRepository">The MetadataRepository to use to determine types.</param>
+        public TypeProvider(MetadataRepository metadataRepository)
         {
-            Compilation = compilation;
+            MetadataRepository = metadataRepository;
         }
 
-        protected IMetadataRepository Compilation { get; }
+        protected MetadataRepository MetadataRepository { get; }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetPrimitiveType(PrimitiveTypeCode typeCode)
         {
-            var element = typeCode.ToKnownTypeCode().ToTypeWrapper(Compilation);
+            var element = typeCode.ToKnownTypeCode().ToTypeWrapper(MetadataRepository);
 
             if (element == null)
             {
@@ -42,34 +41,38 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
         {
-            var module = Compilation.GetAssemblyMetadataForReader(reader);
-            return TypeWrapper.Create(handle, module);
+            var assemblyMetadata = MetadataRepository.GetAssemblyMetadataForReader(reader);
+            return TypeWrapper.Create(handle, assemblyMetadata);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
         {
-            var module = Compilation.GetAssemblyMetadataForReader(reader);
-
-            return WrapperFactory.Create(handle, module);
+            var assemblyMetadata = MetadataRepository.GetAssemblyMetadataForReader(reader);
+            return WrapperFactory.Create(handle, assemblyMetadata);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetSZArrayType(IHandleTypeNamedWrapper elementType)
         {
-            return new ArrayTypeWrapper(Compilation, elementType, null);
+            return new ArrayTypeWrapper(elementType, null);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetGenericInstantiation(IHandleTypeNamedWrapper genericType, ImmutableArray<IHandleTypeNamedWrapper> typeArguments)
         {
+            if (typeArguments.Any(x => x == null))
+            {
+                return MetadataRepository.GetTypeByName(genericType.FullName);
+            }
+
             return new ParameterizedTypeWrapper(genericType, typeArguments);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetArrayType(IHandleTypeNamedWrapper elementType, ArrayShape shape)
         {
-            return new ArrayTypeWrapper(Compilation, elementType, new ArrayShapeData(shape.Rank, shape.Sizes, shape.LowerBounds));
+            return new ArrayTypeWrapper(elementType, new ArrayShapeData(shape.Rank, shape.Sizes, shape.LowerBounds));
         }
 
         /// <inheritdoc />
@@ -87,26 +90,25 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetFunctionPointerType(MethodSignature<IHandleTypeNamedWrapper> signature)
         {
-            var element = KnownTypeCode.IntPtr.ToTypeWrapper(Compilation);
-            return element;
+            return KnownTypeCode.IntPtr.ToTypeWrapper(MetadataRepository);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetGenericMethodParameter(GenericContext genericContext, int index)
         {
-            return genericContext.GetMethodTypeParameter(index);
+            return genericContext?.GetMethodTypeParameter(index);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetGenericTypeParameter(GenericContext genericContext, int index)
         {
-            return genericContext.GetClassTypeParameter(index);
+            return genericContext?.GetClassTypeParameter(index);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetModifiedType(IHandleTypeNamedWrapper modifier, IHandleTypeNamedWrapper unmodifiedType, bool isRequired)
         {
-            return new ModifiedTypeWrapper(modifier.AssemblyMetadata, modifier, unmodifiedType, isRequired);
+            return new ModifiedTypeWrapper(modifier, unmodifiedType, isRequired);
         }
 
         /// <inheritdoc />
@@ -118,13 +120,13 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromSpecification(MetadataReader reader, GenericContext genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
         {
-            return reader.GetTypeSpecification(handle).DecodeSignature(new TypeSpecificationSignatureDecoder(Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
+            return reader.GetTypeSpecification(handle).DecodeSignature(this, genericContext);
         }
 
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetSystemType()
         {
-            return Compilation.GetTypeByName("System.Type");
+            return MetadataRepository.GetTypeByName("System.Type");
         }
 
         /// <inheritdoc />
@@ -136,7 +138,14 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IHandleTypeNamedWrapper GetTypeFromSerializedName(string name)
         {
-            return Compilation.GetTypeByName(name);
+            int index = name.IndexOf(',');
+
+            if (index >= 0)
+            {
+                name = name.Substring(0, index);
+            }
+
+            return MetadataRepository.GetTypeByName(name);
         }
 
         /// <inheritdoc />
@@ -194,7 +203,7 @@ namespace LightweightMetadata
                 case KnownTypeCode.Void:
                     return PrimitiveTypeCode.Void;
                 default:
-                    throw new Exception("Unsupported known type code: " + knownType.ToString());
+                    throw new Exception("Unsupported known type code: " + knownType);
             }
         }
     }

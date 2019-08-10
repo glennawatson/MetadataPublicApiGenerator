@@ -5,7 +5,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace LightweightMetadata.Extensions
+namespace LightweightMetadata
 {
     internal static class ImmutableExtensions
     {

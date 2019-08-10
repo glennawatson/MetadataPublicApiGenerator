@@ -21,23 +21,25 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// </summary>
     internal static class ClassDefinitionGenerator
     {
-        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
+        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
             if (excludeFunc(type))
             {
                 return null;
             }
 
-            var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
+            if (type.Attributes.TryGetNullableContext(out var nullableContext))
+            {
+                currentNullability = nullableContext;
+            }
 
-            var baseTypes = type.GetBaseTypes();
-
-            return GenerateSyntax(type, GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes), type.GetModifiers(), TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, level), constraints, typeParameters, baseTypes, level);
-        }
-
-        private static TypeDeclarationSyntax GenerateSyntax(TypeWrapper typeDefinition, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level)
-        {
-            return ClassDeclaration(typeDefinition.Name, attributes, modifiers, members, typeParameterConstraintClauses, typeParameters, bases, level);
+            var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes, currentNullability);
+            var name = type.Name;
+            var baseTypes = type.GetBaseTypes(currentNullability);
+            var members = TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
+            var attributes = GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes);
+            var modifiers = type.GetModifiers();
+            return ClassDeclaration(name, attributes, modifiers, members, constraints, typeParameters, baseTypes, level);
         }
     }
 }

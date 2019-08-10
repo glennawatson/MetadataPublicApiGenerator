@@ -8,8 +8,6 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -17,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class TypeReferenceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata module), TypeReferenceWrapper> _registerTypes = new ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata module), TypeReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata), TypeReferenceWrapper> _registerTypes = new ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata), TypeReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _fullName;
@@ -25,15 +23,15 @@ namespace LightweightMetadata
         private readonly Lazy<AssemblyMetadata> _declaringModule;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
-        private TypeReferenceWrapper(TypeReferenceHandle handle, AssemblyMetadata module)
+        private TypeReferenceWrapper(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             TypeReferenceHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Definition = Resolve();
             _type = new Lazy<IHandleTypeNamedWrapper>(GetDeclaringType, LazyThreadSafetyMode.PublicationOnly);
-            _namespace = new Lazy<string>(() => Definition.Namespace.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
+            _namespace = new Lazy<string>(() => Definition.Namespace.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _declaringModule = new Lazy<AssemblyMetadata>(GetDeclaringModule, LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
         }
@@ -81,32 +79,32 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeReferenceWrapper Create(TypeReferenceHandle handle, AssemblyMetadata module)
+        public static TypeReferenceWrapper Create(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new TypeReferenceWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeReferenceWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeReferenceWrapper> Create(in TypeReferenceHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<TypeReferenceWrapper> Create(in TypeReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new TypeReferenceWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
@@ -132,7 +130,7 @@ namespace LightweightMetadata
                         break;
                     case HandleKind.AssemblyReference:
                         var assemblyReference = AssemblyReferenceWrapper.Create((AssemblyReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
-                        return current.AssemblyMetadata.Compilation.GetAssemblyMetadataForAssemblyReference(assemblyReference);
+                        return MetadataRepository.GetAssemblyMetadataForAssemblyReference(assemblyReference);
                     case HandleKind.ModuleReference:
                         var assemblyModuleReference = ModuleReferenceWrapper.Create((ModuleReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
                         return assemblyModuleReference.AssemblyMetadata;

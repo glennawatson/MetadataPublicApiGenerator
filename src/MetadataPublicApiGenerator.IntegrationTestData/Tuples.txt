@@ -1,0 +1,10 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class Tuples
+    {
+        public Tuples();
+        public (int x, int y) PropertyTuple { get; }
+        public (int x, int y) Deconstruct(out int x, out int y);
+        public void TestTupleInput((int x, int y) input);
+    }
+}

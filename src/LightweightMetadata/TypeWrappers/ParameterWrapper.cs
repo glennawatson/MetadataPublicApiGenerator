@@ -8,8 +8,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -22,22 +20,22 @@ namespace LightweightMetadata
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<ParameterReferenceKind> _referenceKind;
 
-        private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata module)
+        private ParameterWrapper(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata assemblyMetadata)
         {
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             ParameterHandle = handle;
             Handle = handle;
-            Definition = Resolve(handle, module);
+            Definition = Resolve(handle, assemblyMetadata);
 
-            _name = new Lazy<string>(() => Definition.Name.GetName(module).GetKeywordSafeName(), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata).GetKeywordSafeName(), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             ParameterType = typeWrapper;
 
             Optional = (Definition.Attributes & ParameterAttributes.Optional) != 0;
             HasDefaultValue = (Definition.Attributes & ParameterAttributes.HasDefault) != 0;
 
-            _defaultValue = new Lazy<object>(() => !HasDefaultValue ? null : Definition.GetDefaultValue().ReadConstant(module), LazyThreadSafetyMode.PublicationOnly);
+            _defaultValue = new Lazy<object>(() => !HasDefaultValue ? null : Definition.GetDefaultValue().ReadConstant(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _referenceKind = new Lazy<ParameterReferenceKind>(GetReferenceKind, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -96,16 +94,16 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="typeWrapper">The type of the parameter.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata module)
+        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return new ParameterWrapper(handle, typeWrapper, module);
+            return new ParameterWrapper(handle, typeWrapper, assemblyMetadata);
         }
 
         /// <inheritdoc />
@@ -114,9 +112,9 @@ namespace LightweightMetadata
             return FullName;
         }
 
-        private static Parameter Resolve(ParameterHandle handle, AssemblyMetadata compilation)
+        private static Parameter Resolve(ParameterHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            return compilation.MetadataReader.GetParameter(handle);
+            return assemblyMetadata.MetadataReader.GetParameter(handle);
         }
 
         private ParameterReferenceKind GetReferenceKind()

@@ -1,0 +1,12 @@
+﻿namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class Unsafe
+    {
+        public unsafe int* member;
+        public Unsafe();
+        public unsafe unsafe int* MemberProperty { get; }
+        public unsafe void* GenerateData();
+        public unsafe void GenerateData(int* data);
+        public unsafe delegate void* DoStuff(void* buffer);
+    }
+}

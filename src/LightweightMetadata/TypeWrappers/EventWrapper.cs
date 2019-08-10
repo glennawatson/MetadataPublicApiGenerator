@@ -8,8 +8,6 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -17,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class EventWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly ConcurrentDictionary<(EventDefinitionHandle handle, AssemblyMetadata module), EventWrapper> _registerTypes = new ConcurrentDictionary<(EventDefinitionHandle handle, AssemblyMetadata module), EventWrapper>();
+        private static readonly ConcurrentDictionary<(EventDefinitionHandle handle, AssemblyMetadata assemblyMetadata), EventWrapper> _registerTypes = new ConcurrentDictionary<(EventDefinitionHandle handle, AssemblyMetadata assemblyMetadata), EventWrapper>();
 
         private readonly Lazy<string> _name;
 
@@ -28,17 +26,17 @@ namespace LightweightMetadata
         private readonly Lazy<MethodWrapper> _anyAccessor;
         private readonly Lazy<IHandleTypeNamedWrapper> _eventType;
 
-        private EventWrapper(EventDefinitionHandle handle, AssemblyMetadata module)
+        private EventWrapper(EventDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             EventDefinitionHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Definition = Resolve();
 
-            _name = new Lazy<string>(() => Definition.Name.GetName(module), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _eventType = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, module), LazyThreadSafetyMode.PublicationOnly);
+            _eventType = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _adderAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Adder, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _removerAccessor = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Remover, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
@@ -79,7 +77,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the event type.
         /// </summary>
-        public ITypeNamedWrapper EventType => _eventType.Value;
+        public IHandleTypeNamedWrapper EventType => _eventType.Value;
 
         /// <inheritdoc />
         public string ReflectionFullName => AnyAccessor.DeclaringType?.ReflectionFullName;
@@ -92,6 +90,9 @@ namespace LightweightMetadata
 
         /// <inheritdoc />
         public bool IsAbstract => AnyAccessor.IsAbstract;
+
+        /// <inheritdoc />
+        public bool IsValueType => EventType.IsValueType;
 
         /// <summary>
         /// Gets the method that raises the event.
@@ -120,32 +121,32 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static EventWrapper Create(EventDefinitionHandle handle, AssemblyMetadata module)
+        public static EventWrapper Create(EventDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new EventWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new EventWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<EventWrapper> Create(in EventDefinitionHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<EventWrapper> Create(in EventDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new EventWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 

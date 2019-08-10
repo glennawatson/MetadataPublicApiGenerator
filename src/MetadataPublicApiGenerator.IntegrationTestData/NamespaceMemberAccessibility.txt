@@ -1,0 +1,32 @@
+namespace ExampleInternalPublicClasses
+{
+    public class DummyPublic
+    {
+        public DummyPublic();
+    }
+}
+namespace ExampleInternalPublicStructs
+{
+    public struct DummyPublic
+    {
+    }
+}
+namespace ExampleInternalPublicStructsClasses
+{
+    public class DummyPublicClass
+    {
+        public DummyPublicClass();
+    }
+
+    public struct DummyPublicStruct
+    {
+    }
+}
+namespace ExamplePublicEnum
+{
+    public enum Test
+    {
+        A = 0,
+        B = 255
+    }
+}

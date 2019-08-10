@@ -9,17 +9,14 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
     /// Wraps a AttributeDefinition and represents a .NET attribute.
     /// </summary>
-    public class AttributeWrapper : IHandleTypeNamedWrapper
+    public class AttributeWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata module), AttributeWrapper> _registeredTypes = new ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata module), AttributeWrapper>();
+        private static readonly ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata assemblyMetadata), AttributeWrapper> _registeredTypes = new ConcurrentDictionary<(CustomAttributeHandle handle, AssemblyMetadata assemblyMetadata), AttributeWrapper>();
 
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _methodSignature;
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
@@ -29,12 +26,12 @@ namespace LightweightMetadata
         private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _parameterTypes;
 
-        private AttributeWrapper(CustomAttributeHandle handle, AssemblyMetadata module)
+        private AttributeWrapper(CustomAttributeHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             AttributeHandle = handle;
             Handle = handle;
-            Definition = Resolve(handle, module);
+            Definition = Resolve(handle, assemblyMetadata);
 
             _methodSignature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(GetMethodSignature, LazyThreadSafetyMode.PublicationOnly);
 
@@ -85,22 +82,10 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public string FullName => AttributeType?.FullName;
 
-        /// <inheritdoc />
-        public string ReflectionFullName => AttributeType?.ReflectionFullName;
-
-        /// <inheritdoc />
-        public string TypeNamespace => AttributeType?.TypeNamespace;
-
-        /// <inheritdoc />
-        public EntityAccessibility Accessibility => AttributeType?.Accessibility ?? EntityAccessibility.None;
-
-        /// <inheritdoc />
-        public bool IsAbstract => AttributeType?.IsAbstract ?? false;
-
         /// <summary>
-        /// Gets the known type. This indicates if the attribute is a known type.
+        /// Gets the reflection type name.
         /// </summary>
-        public KnownTypeCode KnownType => _knownTypeCode.Value;
+        public string ReflectionFullName => AttributeType?.ReflectionFullName;
 
         /// <summary>
         /// Gets a list of the fixed arguments.
@@ -124,32 +109,32 @@ namespace LightweightMetadata
         /// Creates a new instance of the AttributeWrapper class.
         /// </summary>
         /// <param name="handle">The handle to the attribute.</param>
-        /// <param name="module">The module that contains the attribute.</param>
+        /// <param name="assemblyMetadata">The module that contains the attribute.</param>
         /// <returns>The new attribute if the handle is not nil, otherwise null.</returns>
-        public static AttributeWrapper Create(CustomAttributeHandle handle, AssemblyMetadata module)
+        public static AttributeWrapper Create(CustomAttributeHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registeredTypes.GetOrAdd((handle, module), data => new AttributeWrapper(data.handle, data.module));
+            return _registeredTypes.GetOrAdd((handle, assemblyMetadata), data => new AttributeWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<AttributeWrapper> Create(in CustomAttributeHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<AttributeWrapper> Create(in CustomAttributeHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new AttributeWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
@@ -162,9 +147,9 @@ namespace LightweightMetadata
             return FullName;
         }
 
-        private static CustomAttribute Resolve(CustomAttributeHandle handle, AssemblyMetadata compilation)
+        private static CustomAttribute Resolve(CustomAttributeHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            return compilation.MetadataReader.GetCustomAttribute(handle);
+            return assemblyMetadata.MetadataReader.GetCustomAttribute(handle);
         }
 
         private MethodSignature<IHandleTypeNamedWrapper> GetMethodSignature()
@@ -175,14 +160,14 @@ namespace LightweightMetadata
                 case HandleKind.MethodDefinition:
                     var methodDefinition = AssemblyMetadata.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
 
-                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.Compilation), new GenericContext(AssemblyMetadata));
+                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
                     break;
 
                 case HandleKind.MemberReference:
                     var memberReference = AssemblyMetadata.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
 
                     // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.Compilation), new GenericContext(AssemblyMetadata));
+                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
                     break;
                 default:
                     throw new Exception("Unknown method type");
@@ -210,7 +195,7 @@ namespace LightweightMetadata
 
         private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()
         {
-            var wrapper = Definition.DecodeValue(new TypeProvider(AssemblyMetadata.Compilation));
+            var wrapper = Definition.DecodeValue(AssemblyMetadata.TypeProvider);
 
             var fixedArgumentsList = wrapper.FixedArguments.ToArray();
 
@@ -222,7 +207,7 @@ namespace LightweightMetadata
         private KnownAttribute GetKnownAttributeType()
         {
             var fullName = AttributeType.FullName;
-            var index = Array.IndexOf(KnownTypeCodeNames.TypeNames, fullName);
+            var index = Array.IndexOf(KnownAttributeNames.TypeNames, fullName);
             if (index < 0)
             {
                 return KnownAttribute.None;

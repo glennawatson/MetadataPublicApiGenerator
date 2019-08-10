@@ -9,15 +9,12 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
     /// A wrapper around the MethodDefinition.
     /// </summary>
-    public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
+    public sealed class MethodWrapper : IHandleTypeNamedWrapper, IHasGenericParameters, IHasReturnAttributes
     {
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _nameWithFullType;
@@ -31,13 +28,14 @@ namespace LightweightMetadata
         private readonly Lazy<bool> _isExtensionMethod;
         private readonly Lazy<EntityAccessibility> _accessibility;
         private readonly Lazy<IHandleTypeNamedWrapper> _explicitType;
+        private readonly Lazy<IReadOnlyList<AttributeWrapper>> _returnAttributes;
 
-        private MethodWrapper(MethodDefinitionHandle handle, AssemblyMetadata module)
+        private MethodWrapper(MethodDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             MethodDefinitionHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
-            Definition = Resolve(handle, module);
+            Definition = Resolve(handle, assemblyMetadata);
 
             IsAbstract = (Definition.Attributes & MethodAttributes.Abstract) != 0;
             IsStatic = (Definition.Attributes & MethodAttributes.Static) != 0;
@@ -47,8 +45,8 @@ namespace LightweightMetadata
             IsOverride = (Definition.Attributes & (MethodAttributes.NewSlot | MethodAttributes.Virtual)) == MethodAttributes.Virtual;
             IsVirtual = (Definition.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual | MethodAttributes.NewSlot | MethodAttributes.Final)) == (MethodAttributes.Virtual | MethodAttributes.NewSlot);
 
-            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), module), LazyThreadSafetyMode.PublicationOnly);
-            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(module.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _signature = new Lazy<MethodSignature<IHandleTypeNamedWrapper>>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
             _nameWithFullType = new Lazy<string>(GetNameWithFullType, LazyThreadSafetyMode.PublicationOnly);
             _genericParameters = new Lazy<IReadOnlyList<GenericParameterWrapper>>(() => GenericParameterWrapper.Create(Definition.GetGenericParameters(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _semanticData = new Lazy<(ITypeNamedWrapper owner, SymbolMethodKind symbolKind)>(GetMethodSymbolKind, LazyThreadSafetyMode.PublicationOnly);
@@ -58,6 +56,7 @@ namespace LightweightMetadata
             _isExtensionMethod = new Lazy<bool>(() => IsStatic & Attributes.HasKnownAttribute(KnownAttribute.Extension), LazyThreadSafetyMode.PublicationOnly);
             _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
             _explicitType = new Lazy<IHandleTypeNamedWrapper>(GetExplicitType, LazyThreadSafetyMode.PublicationOnly);
+            _returnAttributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => Definition.GetParameters().GetReturnAttributes(AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(GetName, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -87,7 +86,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the type that this method returns.
         /// </summary>
-        public ITypeNamedWrapper ReturningType => _signature.Value.ReturnType;
+        public IHandleTypeNamedWrapper ReturningType => _signature.Value.ReturnType;
 
         /// <summary>
         /// Gets the method kind.
@@ -147,6 +146,9 @@ namespace LightweightMetadata
         /// </summary>
         public bool IsExtensionMethod => _isExtensionMethod.Value;
 
+        /// <inheritdoc />
+        public bool IsValueType => true;
+
         /// <summary>
         /// Gets the parameters of the method.
         /// </summary>
@@ -156,6 +158,11 @@ namespace LightweightMetadata
         /// Gets the parameter types for generic orientated methods.
         /// </summary>
         public IReadOnlyList<ITypeNamedWrapper> ParameterTypes => _signature.Value.ParameterTypes.ToArray();
+
+        /// <summary>
+        /// Gets any attributes which are prefixed with the return specifier.
+        /// </summary>
+        public IReadOnlyList<AttributeWrapper> ReturnAttributes => _returnAttributes.Value;
 
         /// <summary>
         /// Gets the number of generic parameters for the method.
@@ -197,32 +204,32 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MethodWrapper Create(MethodDefinitionHandle handle, AssemblyMetadata module)
+        public static MethodWrapper Create(MethodDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return new MethodWrapper(handle, module);
+            return new MethodWrapper(handle, assemblyMetadata);
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<MethodWrapper> Create(in MethodDefinitionHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<MethodWrapper> Create(in MethodDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new MethodWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 
@@ -235,9 +242,9 @@ namespace LightweightMetadata
             return FullName;
         }
 
-        private static MethodDefinition Resolve(MethodDefinitionHandle handle, AssemblyMetadata compilation)
+        private static MethodDefinition Resolve(MethodDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
-            return compilation.MetadataReader.GetMethodDefinition(handle);
+            return assemblyMetadata.MetadataReader.GetMethodDefinition(handle);
         }
 
         private string GetNameWithFullType()
@@ -321,16 +328,19 @@ namespace LightweightMetadata
             {
                 var parameterInstance = AssemblyMetadata.MetadataReader.GetParameter(parameterHandle);
 
-                if (parameterInstance.SequenceNumber > 0 && i < _signature.Value.RequiredParameterCount)
+                if (parameterInstance.SequenceNumber > 0)
                 {
-                    var parameterType = _signature.Value.ParameterTypes[parameterInstance.SequenceNumber - 1];
+                    if (parameterInstance.SequenceNumber > 0 && i < _signature.Value.RequiredParameterCount)
+                    {
+                        var parameterType = _signature.Value.ParameterTypes[i];
 
-                    var parameter = ParameterWrapper.Create(parameterHandle, parameterType, AssemblyMetadata);
+                        var parameter = ParameterWrapper.Create(parameterHandle, parameterType, AssemblyMetadata);
 
-                    parameterList.Add(parameter);
+                        parameterList.Add(parameter);
+                    }
+
+                    i++;
                 }
-
-                i++;
             }
 
             return parameterList;
@@ -369,7 +379,7 @@ namespace LightweightMetadata
             {
                 var typeName = NameWithFullType.Substring(0, lastDot);
 
-                return AssemblyMetadata.Compilation.GetTypeByName(typeName);
+                return AssemblyMetadata.MetadataRepository.GetTypeByName(typeName);
             }
 
             return null;

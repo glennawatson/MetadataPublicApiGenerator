@@ -7,8 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
-using LightweightMetadata.Helpers;
-using LightweightMetadata.TypeWrappers;
 
 namespace LightweightMetadata
 {
@@ -17,11 +15,11 @@ namespace LightweightMetadata
     /// This has been changed to allow searching through reference types.
     /// </summary>
     /// <summary>
-    /// Simple compilation implementation.
+    /// Simple MetadataRepository implementation.
     /// </summary>
-    public sealed class MetadataRepository : IMetadataRepository, IDisposable
+    public sealed class MetadataRepository : IDisposable
     {
-        private readonly Lazy<TypeProvider> _typeProvider;
+        private readonly Lazy<IReadOnlyList<AssemblyMetadata>> _referenceAssemblies;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MetadataRepository"/> class.
@@ -40,16 +38,24 @@ namespace LightweightMetadata
                 throw new ArgumentNullException(nameof(mainModulePath));
             }
 
-            _typeProvider = new Lazy<TypeProvider>(() => new TypeProvider(this), LazyThreadSafetyMode.PublicationOnly);
-            MainModule = new AssemblyMetadata(mainModulePath, this, TypeProvider);
+            TypeProvider = new TypeProvider(this);
+            MainAssemblyMetadata = new AssemblyMetadata(mainModulePath, this, TypeProvider);
             SearchDirectories = searchDirectories.ToList();
+
+            RootNamespace = new NamespaceWrapper(MainAssemblyMetadata.MetadataReader.GetNamespaceDefinitionRoot(), MainAssemblyMetadata);
+
+            _referenceAssemblies = new Lazy<IReadOnlyList<AssemblyMetadata>>(GetReferenceAssemblies, LazyThreadSafetyMode.PublicationOnly);
         }
 
-        /// <inheritdoc />
-        public AssemblyMetadata MainModule { get; }
+        /// <summary>
+        /// Gets the main module.
+        /// </summary>
+        public AssemblyMetadata MainAssemblyMetadata { get; }
 
-        /// <inheritdoc />
-        public NamespaceWrapper RootNamespace => new NamespaceWrapper(MainModule.MetadataReader.GetNamespaceDefinitionRoot(), MainModule);
+        /// <summary>
+        /// Gets the main namespace.
+        /// </summary>
+        public NamespaceWrapper RootNamespace { get; }
 
         /// <summary>
         /// Gets the search directories.
@@ -57,23 +63,26 @@ namespace LightweightMetadata
         public IReadOnlyList<string> SearchDirectories { get; }
 
         /// <summary>
+        /// Gets all the reference assemblies referenced by the main assembly metadata.
+        /// </summary>
+        public IReadOnlyList<AssemblyMetadata> ReferenceAssemblies => _referenceAssemblies.Value;
+
+        /// <summary>
         /// Gets the type provider which is used by the reflection metadata classes.
         /// </summary>
-        internal TypeProvider TypeProvider => _typeProvider.Value;
+        internal TypeProvider TypeProvider { get; }
 
-        /// <inheritdoc />
-        public AssemblyMetadata GetAssemblyMetadataForReader(MetadataReader reader)
-        {
-            if (MainModule.MetadataReader == reader)
-            {
-                return MainModule;
-            }
-
-            return null;
-        }
-
-        /// <inheritdoc />
-        public AssemblyMetadata GetAssemblyMetadataForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        /// <summary>
+        /// Gets the MetadataRepository module for the specified name.
+        /// </summary>
+        /// <param name="name">The name to fetch.</param>
+        /// <param name="parent">The parent of the MetadataRepository module.</param>
+        /// <param name="version">The version to fetch for.</param>
+        /// <param name="isWindowsRuntime">If the assembly is a windows runtime.</param>
+        /// <param name="isRetargetable">If the assembly can be targeting another assembly.</param>
+        /// <param name="publicKey">The optional public key.</param>
+        /// <returns>The MetadataRepository module.</returns>
+        public static AssemblyMetadata GetAssemblyMetadataForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
         {
             if (parent == null)
             {
@@ -83,8 +92,12 @@ namespace LightweightMetadata
             return AssemblyLoadingHelper.ResolveCompilationModule(name, parent, version, isWindowsRuntime, isRetargetable, publicKey);
         }
 
-        /// <inheritdoc />
-        public AssemblyMetadata GetAssemblyMetadataForAssemblyReference(AssemblyReferenceWrapper wrapper)
+        /// <summary>
+        /// Gets the MetadataRepository module for the specified assembly reference.
+        /// </summary>
+        /// <param name="wrapper">The wrapper to get for.</param>
+        /// <returns>The MetadataRepository module.</returns>
+        public static AssemblyMetadata GetAssemblyMetadataForAssemblyReference(AssemblyReferenceWrapper wrapper)
         {
             if (wrapper == null)
             {
@@ -94,16 +107,88 @@ namespace LightweightMetadata
             return GetAssemblyMetadataForName(wrapper.Name, wrapper.ParentCompilationModule, wrapper.Version, wrapper.IsWindowsRuntime, wrapper.IsRetargetable, wrapper.PublicKey);
         }
 
-        /// <inheritdoc />
-        public IHandleTypeNamedWrapper GetTypeByName(string fullName)
+        /// <summary>
+        /// Gets the MetadataRepository module for a reader.
+        /// </summary>
+        /// <param name="reader">The reader to use.</param>
+        /// <returns>The MetadataRepository module.</returns>
+        public AssemblyMetadata GetAssemblyMetadataForReader(MetadataReader reader)
         {
-            return MainModule.GetTypeByName(fullName);
+            if (MainAssemblyMetadata.MetadataReader == reader)
+            {
+                return MainAssemblyMetadata;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Gets a type by the full name.
+        /// </summary>
+        /// <param name="fullName">The full name.</param>
+        /// <returns>The type wrapper.</returns>
+        public TypeWrapper GetTypeByName(string fullName)
+        {
+            var type = MainAssemblyMetadata.GetTypeByName(fullName, false);
+
+            if (type != null)
+            {
+                return type;
+            }
+
+            foreach (var referenceAssembly in ReferenceAssemblies)
+            {
+                type = referenceAssembly.GetTypeByName(fullName, false);
+
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
+            return null;
         }
 
         /// <inheritdoc />
         public void Dispose()
         {
-            MainModule?.Dispose();
+            MainAssemblyMetadata?.Dispose();
+        }
+
+        private IReadOnlyList<AssemblyMetadata> GetReferenceAssemblies()
+        {
+            var assemblies = new List<AssemblyMetadata>(1024);
+
+            var assembliesVisited = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+
+            var referenceModulesToProcess = new Stack<(AssemblyMetadata parent, AssemblyReferenceWrapper assemblyReference)>(MainAssemblyMetadata.AssemblyReferences.Select(x => (MainModule: MainAssemblyMetadata, x)));
+
+            while (referenceModulesToProcess.Count > 0)
+            {
+                var (parent, current) = referenceModulesToProcess.Pop();
+                if (assembliesVisited.Contains(current.Name))
+                {
+                    continue;
+                }
+
+                assembliesVisited.Add(current.Name);
+
+                var assemblyMetadata = AssemblyLoadingHelper.ResolveCompilationModule(current.Name, parent, current.Version, current.IsWindowsRuntime, current.IsRetargetable, current.PublicKey);
+
+                if (assemblyMetadata == null)
+                {
+                    continue;
+                }
+
+                assemblies.Add(assemblyMetadata);
+
+                foreach (var child in assemblyMetadata.AssemblyReferences)
+                {
+                    referenceModulesToProcess.Push((assemblyMetadata, child));
+                }
+            }
+
+            return assemblies;
         }
     }
 }

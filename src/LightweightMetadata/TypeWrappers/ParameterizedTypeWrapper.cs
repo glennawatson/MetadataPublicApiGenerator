@@ -5,9 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading;
 
 namespace LightweightMetadata
 {
@@ -20,17 +17,15 @@ namespace LightweightMetadata
     /// type parameters in the signatures of the members are replaced with
     /// the type arguments.
     /// </remarks>
-    public class ParameterizedTypeWrapper : IHandleTypeNamedWrapper
+    public class ParameterizedTypeWrapper : AbstractEnclosedTypeWrapper, IHasTypeArguments
     {
-        private readonly Lazy<string> _name;
-        private readonly Lazy<string> _reflectionName;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ParameterizedTypeWrapper"/> class.
         /// </summary>
         /// <param name="genericType">The type that is generic.</param>
         /// <param name="typeArguments">The type arguments provided to the class.</param>
         public ParameterizedTypeWrapper(IHandleTypeNamedWrapper genericType, IReadOnlyList<IHandleTypeNamedWrapper> typeArguments)
+            : base(genericType)
         {
             if (typeArguments == null)
             {
@@ -42,74 +37,12 @@ namespace LightweightMetadata
                 throw new ArgumentNullException(nameof(typeArguments));
             }
 
-            GenericType = genericType ?? throw new ArgumentNullException(nameof(genericType));
             TypeArguments = typeArguments.ToList();
-            AssemblyMetadata = genericType.AssemblyMetadata;
-
-            _name = new Lazy<string>(() => GenericType.Name, LazyThreadSafetyMode.PublicationOnly);
-            _reflectionName = new Lazy<string>(GetReflectionName, LazyThreadSafetyMode.PublicationOnly);
-
-            Accessibility = genericType.Accessibility;
-            IsAbstract = genericType.IsAbstract;
         }
-
-        /// <summary>
-        /// Gets the main type.
-        /// </summary>
-        public IHandleTypeNamedWrapper GenericType { get; }
 
         /// <summary>
         /// Gets the type arguments.
         /// </summary>
-        public IReadOnlyList<IHandleTypeNamedWrapper> TypeArguments { get; }
-
-        /// <inheritdoc />
-        public string FullName => GenericType.FullName;
-
-        /// <inheritdoc />
-        public string ReflectionFullName => _reflectionName.Value;
-
-        /// <inheritdoc />
-        public string TypeNamespace => GenericType.TypeNamespace;
-
-        /// <inheritdoc />
-        public EntityAccessibility Accessibility { get; }
-
-        /// <inheritdoc />
-        public bool IsAbstract { get; }
-
-        /// <inheritdoc />
-        public KnownTypeCode KnownType => KnownTypeCode.None;
-
-        /// <inheritdoc />
-        public AssemblyMetadata AssemblyMetadata { get; }
-
-        /// <inheritdoc />
-        public string Name => _name.Value;
-
-        /// <inheritdoc />
-        public Handle Handle => GenericType.Handle;
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return FullName;
-        }
-
-        private string GetReflectionName()
-        {
-            string strippedName = GenericType.ReflectionFullName;
-
-            var sb = new StringBuilder(strippedName);
-
-            if (TypeArguments.Count > 0)
-            {
-                sb.Append("<")
-                    .Append(string.Join(", ", TypeArguments.Select(x => x.ReflectionFullName)))
-                    .Append(">");
-            }
-
-            return sb.ToString();
-        }
+        public override IReadOnlyList<IHandleTypeNamedWrapper> TypeArguments { get; }
     }
 }

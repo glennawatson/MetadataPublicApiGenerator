@@ -2,11 +2,9 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
+
 using MetadataPublicApiGenerator.Extensions;
 using MetadataPublicApiGenerator.Helpers;
 
@@ -18,17 +16,25 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class MethodSymbolGenerator
     {
-        public static BaseMethodDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, int level)
+        public static BaseMethodDeclarationSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
         {
             if (!(handle is MethodWrapper method))
             {
                 return null;
             }
 
+            if (method.Attributes.TryGetNullableContext(out var nullableContext))
+            {
+                currentNullability = nullableContext;
+            }
+
             var attributes = GeneratorFactory.Generate(method.Attributes, excludeMembersAttributes, excludeAttributes);
             var modifiers = method.GetModifiers();
-            var parameters = GetParameters(method, excludeMembersAttributes, excludeAttributes);
-            var (constraints, typeParameters) = method.GetTypeParameters(excludeMembersAttributes, excludeAttributes);
+            var parameters = GetParameters(method, excludeMembersAttributes, excludeAttributes, currentNullability);
+            var (constraints, typeParameters) = method.GetTypeParameters(excludeMembersAttributes, excludeAttributes, currentNullability);
+            var name = method.Name;
+
+            method.ReturnAttributes.TryGetNullable(out var returnNullability);
 
             switch (method.MethodKind)
             {
@@ -39,18 +45,18 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
                 case SymbolMethodKind.ExplicitInterfaceImplementation:
                     var explicitInterface = ExplicitInterfaceSpecifier(method.ExplicitType.ReflectionFullName);
 
-                    return MethodDeclaration(attributes, default, method.ReturningType.GetTypeSyntax(), explicitInterface, method.Name, parameters, constraints, typeParameters, level);
+                    return MethodDeclaration(attributes, default, method.ReturningType.GetTypeSyntax(method, currentNullability, returnNullability), explicitInterface, name, parameters, constraints, typeParameters, level);
                 case SymbolMethodKind.Ordinary:
-                    return MethodDeclaration(attributes, modifiers, method.ReturningType.GetTypeSyntax(), default, method.Name, parameters, constraints, typeParameters, level);
+                    return MethodDeclaration(attributes, modifiers, method.ReturningType.GetTypeSyntax(method, currentNullability, returnNullability), default, name, parameters, constraints, typeParameters, level);
                 case SymbolMethodKind.BuiltinOperator:
                 case SymbolMethodKind.UserDefinedOperator:
-                    switch (method.Name)
+                    switch (name)
                     {
                         case "op_Implicit":
                         case "op_Explicit":
-                            return ConversionOperatorDeclaration(attributes, modifiers, SyntaxHelper.OperatorNameToToken(method.Name), method.ReturningType.ReflectionFullName, parameters, level);
+                            return ConversionOperatorDeclaration(attributes, modifiers, SyntaxHelper.OperatorNameToToken(name), method.ReturningType.ReflectionFullName, parameters, level);
                         default:
-                            return OperatorDeclaration(attributes, modifiers, parameters, method.ReturningType.GetTypeSyntax(), SyntaxHelper.OperatorNameToToken(method.Name), level);
+                            return OperatorDeclaration(attributes, modifiers, parameters, method.ReturningType.GetTypeSyntax(method, currentNullability, returnNullability), SyntaxHelper.OperatorNameToToken(name), level);
                     }
 
                 default:
@@ -58,7 +64,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             }
         }
 
-        private static IReadOnlyCollection<ParameterSyntax> GetParameters(MethodWrapper method, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
+        private static IReadOnlyCollection<ParameterSyntax> GetParameters(MethodWrapper method, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability nullability)
         {
             var parameters = new List<ParameterSyntax>(method.Parameters.Count);
 
@@ -66,7 +72,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             foreach (var parameter in method.Parameters)
             {
-                var parameterSyntax = ParameterSymbolGenerator.Generate(parameter, excludeMembersAttributes, excludeAttributes, i == 0 && method.IsExtensionMethod);
+                var parameterSyntax = ParameterSymbolGenerator.Generate(parameter, excludeMembersAttributes, excludeAttributes, nullability, i == 0 && method.IsExtensionMethod);
 
                 parameters.Add(parameterSyntax);
                 i++;

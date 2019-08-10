@@ -7,9 +7,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Security.Cryptography;
 using System.Threading;
-
-using LightweightMetadata.Extensions;
 
 namespace LightweightMetadata
 {
@@ -18,7 +17,7 @@ namespace LightweightMetadata
     /// </summary>
     public class AssemblyReferenceWrapper : IEquatable<AssemblyReferenceWrapper>
     {
-        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle handle, AssemblyMetadata module), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, AssemblyMetadata), AssemblyReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, AssemblyMetadata), AssemblyReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _culture;
@@ -27,24 +26,24 @@ namespace LightweightMetadata
         private readonly Lazy<string> _fullName;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
 
-        private AssemblyReferenceWrapper(AssemblyReferenceHandle handle, AssemblyMetadata module)
+        private AssemblyReferenceWrapper(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             AssemblyReferenceHandle = handle;
-            ParentCompilationModule = module;
+            ParentCompilationModule = assemblyMetadata;
             Handle = handle;
-            Definition = module.MetadataReader.GetAssemblyReference(handle);
+            Definition = assemblyMetadata.MetadataReader.GetAssemblyReference(handle);
 
-            _name = new Lazy<string>(() => module.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => assemblyMetadata.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
             _culture = new Lazy<string>(GetCulture, LazyThreadSafetyMode.PublicationOnly);
             Version = Definition.Version;
             _assemblyName = new Lazy<AssemblyName>(() => Definition.GetAssemblyName(), LazyThreadSafetyMode.PublicationOnly);
 
-            _publicKey = new Lazy<string>(() => Definition.PublicKeyOrToken.CalculatePublicKeyToken(module, HashAlgorithm), LazyThreadSafetyMode.PublicationOnly);
+            _publicKey = new Lazy<string>(() => Definition.PublicKeyOrToken.CalculatePublicKeyToken(assemblyMetadata, AssemblyHashAlgorithm.None), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
             IsRetargetable = (Definition.Flags & AssemblyFlags.Retargetable) != 0;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -68,7 +67,7 @@ namespace LightweightMetadata
         public AssemblyReferenceHandle AssemblyReferenceHandle { get; }
 
         /// <summary>
-        /// Gets the parent's compilation module.
+        /// Gets the parent's MetadataRepository module.
         /// </summary>
         public AssemblyMetadata ParentCompilationModule { get; }
 
@@ -96,11 +95,6 @@ namespace LightweightMetadata
         /// Gets the assembly name of the assembly.
         /// </summary>
         public AssemblyName AssemblyName => _assemblyName.Value;
-
-        /// <summary>
-        /// Gets the hash algorithm used to sign the assembly.
-        /// </summary>
-        public AssemblyHashAlgorithm HashAlgorithm { get; }
 
         /// <summary>
         /// Gets a string representation of the public token.
@@ -143,32 +137,32 @@ namespace LightweightMetadata
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, AssemblyMetadata module)
+        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new AssemblyReferenceWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new AssemblyReferenceWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <summary>
         /// Creates a array instances of a type.
         /// </summary>
         /// <param name="collection">The collection to create.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, AssemblyMetadata module)
+        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
             var output = new AssemblyReferenceWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, module);
+                output[i] = Create(element, assemblyMetadata);
                 i++;
             }
 

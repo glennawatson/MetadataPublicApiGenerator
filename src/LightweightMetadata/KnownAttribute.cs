@@ -208,5 +208,15 @@ namespace LightweightMetadata
         /// A set of permissions needed.
         /// </summary>
         PermissionSet,
+
+        /// <summary>
+        /// The nullable context of the item.
+        /// </summary>
+        NullableContext,
+
+        /// <summary>
+        /// The nullable of the item.
+        /// </summary>
+        Nullable,
     }
 }

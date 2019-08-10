@@ -9,8 +9,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.Extensions;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -20,21 +18,21 @@ namespace LightweightMetadata
     {
         private readonly Lazy<IReadOnlyList<GenericParameterConstraintWrapper>> _constraints;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-
+        private readonly Lazy<IHandleTypeNamedWrapper> _parent;
+        private readonly Lazy<string> _name;
         private readonly GenericParameterAttributes _genericParameterAttribute;
 
-        private GenericParameterWrapper(AssemblyMetadata module, IHandleTypeNamedWrapper owner, int index, string name, GenericParameterHandle handle, GenericParameterAttributes genericParameterAttribute)
+        private GenericParameterWrapper(AssemblyMetadata assemblyMetadata, IHandleTypeNamedWrapper owner, GenericParameterHandle handle, GenericParameterAttributes genericParameterAttribute)
         {
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Owner = owner;
             Handle = handle;
-            Name = name;
-            Index = index;
             _genericParameterAttribute = genericParameterAttribute;
-            GenericParameter = module.MetadataReader.GetGenericParameter(handle);
+            GenericParameter = assemblyMetadata.MetadataReader.GetGenericParameter(handle);
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(GenericParameter.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
-
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(GenericParameter.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(GenericParameter.Parent, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _name = new Lazy<string>(() => GenericParameter.Name.GetName(assemblyMetadata));
             switch (genericParameterAttribute & GenericParameterAttributes.VarianceMask)
             {
                 case GenericParameterAttributes.Contravariant:
@@ -50,6 +48,11 @@ namespace LightweightMetadata
 
             _constraints = new Lazy<IReadOnlyList<GenericParameterConstraintWrapper>>(() => GenericParameterConstraintWrapper.Create(GenericParameter.GetConstraints(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
+
+        /// <summary>
+        /// Gets the parent of the parameter.
+        /// </summary>
+        public IHandleTypeNamedWrapper Parent => _parent.Value;
 
         /// <summary>
         /// Gets the handle to the owner.
@@ -87,10 +90,10 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the ordering index of the parameter.
         /// </summary>
-        public int Index { get; }
+        public int Index => GenericParameter.Index;
 
         /// <inheritdoc />
-        public string Name { get; }
+        public string Name => _name.Value;
 
         /// <inheritdoc />
         public string FullName => Owner.FullName + "." + Name;
@@ -103,6 +106,9 @@ namespace LightweightMetadata
 
         /// <inheritdoc />
         public EntityAccessibility Accessibility => EntityAccessibility.Public;
+
+        /// <inheritdoc />
+        public bool IsValueType => true;
 
         /// <inheritdoc />
         public bool IsAbstract => false;
@@ -130,16 +136,16 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="collection">The collection to create.</param>
         /// <param name="owner">The owner of the generic property.</param>
-        /// <param name="module">The module to use in creation.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<GenericParameterWrapper> Create(in GenericParameterHandleCollection collection, IHandleTypeNamedWrapper owner, AssemblyMetadata module)
+        public static IReadOnlyList<GenericParameterWrapper> Create(in GenericParameterHandleCollection collection, IHandleTypeNamedWrapper owner, AssemblyMetadata assemblyMetadata)
         {
             var output = new GenericParameterWrapper[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
             {
-                output[i] = Create(element, owner, i, module);
+                output[i] = Create(element, owner, i, assemblyMetadata);
                 i++;
             }
 
@@ -152,19 +158,19 @@ namespace LightweightMetadata
         /// <param name="handle">The type parameter handle to wrap.</param>
         /// <param name="owner">The owner of the type parameter.</param>
         /// <param name="index">The index of the type parameter.</param>
-        /// <param name="module">The module that owns the type.</param>
+        /// <param name="assemblyMetadata">The module that owns the type.</param>
         /// <returns>A <see cref="GenericParameterWrapper"/>.</returns>
-        public static GenericParameterWrapper Create(GenericParameterHandle handle, IHandleTypeNamedWrapper owner, int index, AssemblyMetadata module)
+        public static GenericParameterWrapper Create(GenericParameterHandle handle, IHandleTypeNamedWrapper owner, int index, AssemblyMetadata assemblyMetadata)
         {
-            if (module == null)
+            if (assemblyMetadata == null)
             {
-                throw new ArgumentNullException(nameof(module));
+                throw new ArgumentNullException(nameof(assemblyMetadata));
             }
 
-            var genericParameter = module.MetadataReader.GetGenericParameter(handle);
-            var name = genericParameter.Name.GetName(module);
+            var genericParameter = assemblyMetadata.MetadataReader.GetGenericParameter(handle);
+            var name = genericParameter.Name.GetName(assemblyMetadata);
             Debug.Assert(genericParameter.Index == index, "The index must match on the generic parameter: " + name);
-            return new GenericParameterWrapper(module, owner, index, name, handle, genericParameter.Attributes);
+            return new GenericParameterWrapper(assemblyMetadata, owner, handle, genericParameter.Attributes);
         }
 
         /// <inheritdoc />

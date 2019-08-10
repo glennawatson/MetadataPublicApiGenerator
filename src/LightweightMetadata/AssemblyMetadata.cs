@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Threading;
-using LightweightMetadata.TypeWrappers;
 
 namespace LightweightMetadata
 {
@@ -21,32 +20,34 @@ namespace LightweightMetadata
         private readonly Lazy<IReadOnlyDictionary<string, TypeWrapper>> _namesToTypes;
         private readonly Lazy<IReadOnlyList<TypeWrapper>> _types;
         private readonly Lazy<IReadOnlyList<TypeReferenceWrapper>> _typeReferences;
-        private readonly Lazy<IReadOnlyList<AssemblyMetadata>> _assemblyReferences;
+        private readonly Lazy<IReadOnlyList<AssemblyReferenceWrapper>> _assemblyReferences;
         private readonly Lazy<AssemblyWrapper> _mainAssembly;
         private readonly Lazy<MethodSemanticsLookup> _methodSemanticsLookup;
+        private readonly Lazy<ModuleDefinitionWrapper> _moduleDefinition;
         private readonly PEReader _reader;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AssemblyMetadata"/> class.
         /// </summary>
         /// <param name="fileName">The file name to the module.</param>
-        /// <param name="compilation">The compilation unit that holds the module.</param>
+        /// <param name="metadataRepository">The MetadataRepository unit that holds the module.</param>
         /// <param name="typeProvider">A type provider for decoding signatures.</param>
-        internal AssemblyMetadata(string fileName, IMetadataRepository compilation, TypeProvider typeProvider)
+        internal AssemblyMetadata(string fileName, MetadataRepository metadataRepository, TypeProvider typeProvider)
         {
             FileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
-            Compilation = compilation ?? throw new ArgumentNullException(nameof(compilation));
+            MetadataRepository = metadataRepository ?? throw new ArgumentNullException(nameof(metadataRepository));
             TypeProvider = typeProvider;
 
-            _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read), PEStreamOptions.PrefetchMetadata);
+            _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
 
             _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
             _namesToTypes = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => Types.ToDictionary(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
             _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
-            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyMetadata>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this).Select(x => Compilation.GetAssemblyMetadataForAssemblyReference(x)).ToList(), LazyThreadSafetyMode.PublicationOnly);
-            _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader));
+            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyReferenceWrapper>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this), LazyThreadSafetyMode.PublicationOnly);
+            _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader), LazyThreadSafetyMode.PublicationOnly);
             _mainAssembly = new Lazy<AssemblyWrapper>(() => new AssemblyWrapper(this), LazyThreadSafetyMode.PublicationOnly);
+            _moduleDefinition = new Lazy<ModuleDefinitionWrapper>(() => ModuleDefinitionWrapper.Create(MetadataReader.GetModuleDefinition(), this), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -55,9 +56,9 @@ namespace LightweightMetadata
         public MetadataReader MetadataReader { get; }
 
         /// <summary>
-        /// Gets the compilation that this module belongs to.
+        /// Gets the MetadataRepository that this module belongs to.
         /// </summary>
-        public IMetadataRepository Compilation { get; }
+        public MetadataRepository MetadataRepository { get; }
 
         /// <summary>
         /// Gets all the types.
@@ -72,7 +73,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets a list of assembly references.
         /// </summary>
-        public IReadOnlyList<AssemblyMetadata> AssemblyReferences => _assemblyReferences.Value;
+        public IReadOnlyList<AssemblyReferenceWrapper> AssemblyReferences => _assemblyReferences.Value;
 
         /// <summary>
         /// Gets the main assembly reference inside this module.
@@ -83,6 +84,11 @@ namespace LightweightMetadata
         /// Gets the file name.
         /// </summary>
         public string FileName { get; }
+
+        /// <summary>
+        /// Gets the module definition.
+        /// </summary>
+        public ModuleDefinitionWrapper ModuleDefinition => _moduleDefinition.Value;
 
         /// <summary>
         /// Gets details about methods.
@@ -120,15 +126,16 @@ namespace LightweightMetadata
         /// Gets the type by a name if available.
         /// </summary>
         /// <param name="name">The name to check.</param>
+        /// <param name="checkRepository">If we should check repository on fail.</param>
         /// <returns>The wrapper if available, null otherwise.</returns>
-        public TypeWrapper GetTypeByName(string name)
+        public TypeWrapper GetTypeByName(string name, bool checkRepository = true)
         {
             if (_namesToTypes.Value.TryGetValue(name, out var item))
             {
                 return item;
             }
 
-            return AssemblyReferences.Select(subAssembly => subAssembly.GetTypeByName(name)).FirstOrDefault(subType => subType != null);
+            return checkRepository ? MetadataRepository.GetTypeByName(name) : null;
         }
 
         /// <inheritdoc />

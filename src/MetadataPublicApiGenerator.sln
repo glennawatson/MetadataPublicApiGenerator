@@ -9,6 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetadataPublicApiGenerator.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Items", "Items", "{B7B5039D-4D6F-496F-8CE7-1F339B5A5011}"
 	ProjectSection(SolutionItems) = preProject
+		..\.gitignore = ..\.gitignore
 		Analyzers.ruleset = Analyzers.ruleset
 		Directory.Build.props = Directory.Build.props
 		global.json = global.json

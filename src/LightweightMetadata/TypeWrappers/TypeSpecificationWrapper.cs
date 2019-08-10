@@ -8,8 +8,6 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading;
 
-using LightweightMetadata.TypeWrappers;
-
 namespace LightweightMetadata
 {
     /// <summary>
@@ -17,19 +15,19 @@ namespace LightweightMetadata
     /// </summary>
     public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata module), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata module), TypeSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata), TypeSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
-        private TypeSpecificationWrapper(TypeSpecificationHandle handle, AssemblyMetadata module)
+        private TypeSpecificationWrapper(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             TypeSpecificationHandle = handle;
-            AssemblyMetadata = module;
+            AssemblyMetadata = assemblyMetadata;
             Handle = handle;
             Definition = Resolve();
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), module), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _type = new Lazy<IHandleTypeNamedWrapper>(GetHandleType, LazyThreadSafetyMode.PublicationOnly);
         }
@@ -82,20 +80,23 @@ namespace LightweightMetadata
         /// <inheritdoc />
         public IReadOnlyList<GenericParameterWrapper> GenericParameters => Type is IHasGenericParameters parameters ? parameters.GenericParameters : Array.Empty<GenericParameterWrapper>();
 
+        /// <inheritdoc />
+        public bool IsValueType => Type.IsValueType;
+
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
-        /// <param name="module">The module that contains the instance.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, AssemblyMetadata module)
+        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, module), data => new TypeSpecificationWrapper(data.handle, data.module));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeSpecificationWrapper(data.handle, data.assemblyMetadata));
         }
 
         /// <inheritdoc />
@@ -111,7 +112,7 @@ namespace LightweightMetadata
 
         private IHandleTypeNamedWrapper GetHandleType()
         {
-            return Definition.DecodeSignature(new TypeSpecificationSignatureDecoder(AssemblyMetadata.Compilation), TypeSpecificationSignatureDecoder.Unit.Default);
+            return Definition.DecodeSignature(AssemblyMetadata.TypeProvider, null);
         }
     }
 }

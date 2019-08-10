@@ -33,5 +33,10 @@ namespace LightweightMetadata
         /// Gets the known type code of this entity. If it is not known then it will be set to None.
         /// </summary>
         KnownTypeCode KnownType { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the value is a value type.
+        /// </summary>
+        bool IsValueType { get; }
     }
 }

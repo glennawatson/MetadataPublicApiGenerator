@@ -10,7 +10,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 using LightweightMetadata;
-using LightweightMetadata.TypeWrappers;
 
 using MetadataPublicApiGenerator.Generators;
 
@@ -26,18 +25,23 @@ namespace MetadataPublicApiGenerator
         /// </summary>
         private static readonly HashSet<string> DefaultSkipAttributeNames = new HashSet<string>
         {
+            "System.ParamArrayAttribute",
             "System.CodeDom.Compiler.GeneratedCodeAttribute",
             "System.ComponentModel.EditorBrowsableAttribute",
+            "System.Diagnostics.DebuggableAttribute",
+            "System.Diagnostics.DebuggerNonUserCodeAttribute",
+            "System.Diagnostics.DebuggerStepThroughAttribute",
             "System.Runtime.CompilerServices.AsyncStateMachineAttribute",
             "System.Runtime.CompilerServices.CompilerGeneratedAttribute",
             "System.Runtime.CompilerServices.CompilationRelaxationsAttribute",
             "System.Runtime.CompilerServices.ExtensionAttribute",
-            "System.Runtime.CompilerServices.RuntimeCompatibilityAttribute",
+            "System.Runtime.CompilerServices.FixedBufferAttribute",
             "System.Runtime.CompilerServices.IteratorStateMachineAttribute",
+            "System.Runtime.CompilerServices.NullableAttribute",
+            "System.Runtime.CompilerServices.NullableContextAttribute",
+            "System.Runtime.CompilerServices.RuntimeCompatibilityAttribute",
+            "System.Runtime.CompilerServices.TupleElementNamesAttribute",
             "System.Reflection.DefaultMemberAttribute",
-            "System.Diagnostics.DebuggableAttribute",
-            "System.Diagnostics.DebuggerNonUserCodeAttribute",
-            "System.Diagnostics.DebuggerStepThroughAttribute",
             "System.Reflection.AssemblyCompanyAttribute",
             "System.Reflection.AssemblyConfigurationAttribute",
             "System.Reflection.AssemblyCopyrightAttribute",
