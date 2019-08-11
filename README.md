@@ -2,8 +2,6 @@
 
 MetadataPublicApiGeneratorhas no dependencies and simply creates a string the represents the public API. Any approval library can be used to approve the generated public API.
 
-Originally based on [PublicApiGenerator](https://github.com/JakeGinnivan/ApiApprover) but uses System.Metadata.Reflection and Roslyn instead.
-
 ## How do I use it
 
 > Install-package MetadataPublicApiGenerator
