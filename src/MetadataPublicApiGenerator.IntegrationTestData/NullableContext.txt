@@ -1,0 +1,11 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class NullableContext
+    {
+        public NullableContext();
+        public void WithNullInsideContext(string? input);
+        public void WithNullInsideDisable(string? input);
+        public void WithoutNullInsideContext(string input);
+        public void WithoutNullInsideDisable(string input);
+    }
+}

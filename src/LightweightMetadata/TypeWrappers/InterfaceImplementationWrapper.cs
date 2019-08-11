@@ -14,19 +14,22 @@ namespace LightweightMetadata
     /// <summary>
     /// A wrapper around the <see cref="InterfaceImplementation" />.
     /// </summary>
-    public class InterfaceImplementationWrapper : AbstractEnclosedTypeWrapper
+    public class InterfaceImplementationWrapper : IHandleNameWrapper, IHasAttributes
     {
         private static readonly ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata), InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata), InterfaceImplementationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
+        private readonly Lazy<IHandleTypeNamedWrapper> _interfaceType;
 
         private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata)
-            : base(WrapperFactory.Create(Resolve(assemblyMetadata, handle).Interface, assemblyMetadata))
         {
+            AssemblyMetadata = assemblyMetadata;
+            Handle = handle;
             InterfaceImplementationHandle = handle;
             Definition = Resolve(assemblyMetadata, handle);
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _interfaceType = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Interface, assemblyMetadata));
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -42,7 +45,24 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the attributes contained on the interface.
         /// </summary>
-        public IReadOnlyCollection<AttributeWrapper> InterfaceAttributes => _attributes.Value;
+        public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
+
+        /// <summary>
+        /// Gets the type of the interface.
+        /// </summary>
+        public IHandleTypeNamedWrapper InterfaceType => _interfaceType.Value;
+
+        /// <inheritdoc />
+        public Handle Handle { get; }
+
+        /// <inheritdoc />
+        public AssemblyMetadata AssemblyMetadata { get; }
+
+        /// <inheritdoc />
+        public string Name => InterfaceType.Name;
+
+        /// <inheritdoc />
+        public string FullName => InterfaceType.FullName;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.

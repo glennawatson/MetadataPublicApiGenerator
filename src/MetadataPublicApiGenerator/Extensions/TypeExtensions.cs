@@ -47,11 +47,11 @@ namespace MetadataPublicApiGenerator.Extensions
             var bases = new BaseTypeSyntax[interfaces.Count];
 
             int i = 0;
-            foreach (var interfaceType in interfaces)
+            foreach (var interfaceImplementation in interfaces)
             {
-                interfaceType.InterfaceAttributes.TryGetNullable(out var nullability);
+                interfaceImplementation.Attributes.TryGetNullable(out var nullability);
 
-                bases[i] = SimpleBaseType(interfaceType.GetTypeSyntax(type, nullableContext, nullability));
+                bases[i] = SimpleBaseType(interfaceImplementation.InterfaceType.GetTypeSyntax(type, nullableContext, nullability));
                 i++;
             }
 
@@ -221,7 +221,7 @@ namespace MetadataPublicApiGenerator.Extensions
         private static TypeSyntax GetTypeArgument(IHandleTypeNamedWrapper typeArgument, IHandleNameWrapper parent, Nullability nullableContext, Nullability[] nullable, bool includeRef, int nullableIndex)
         {
             var nullability = nullableIndex >= nullable.Length ? nullableContext : nullable[nullableIndex];
-            if (typeArgument is IHasTypeArguments child)
+            if (typeArgument is IHasTypeArguments child && child.TypeArguments.Count > 0)
             {
                 var childItems = new TypeSyntax[child.TypeArguments.Count];
                 for (int i = 0; i < child.TypeArguments.Count; ++i)

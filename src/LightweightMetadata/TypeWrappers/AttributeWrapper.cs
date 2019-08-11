@@ -22,7 +22,6 @@ namespace LightweightMetadata
         private readonly Lazy<ITypeNamedWrapper> _attributeType;
 
         private readonly Lazy<KnownAttribute> _knownAttribute;
-        private readonly Lazy<KnownTypeCode> _knownTypeCode;
         private readonly Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)> _arguments;
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _parameterTypes;
 
@@ -38,7 +37,6 @@ namespace LightweightMetadata
             _attributeType = new Lazy<ITypeNamedWrapper>(GetAttributeType, LazyThreadSafetyMode.PublicationOnly);
             _arguments = new Lazy<(IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments)>(GetArguments, LazyThreadSafetyMode.PublicationOnly);
             _knownAttribute = new Lazy<KnownAttribute>(GetKnownAttributeType, LazyThreadSafetyMode.PublicationOnly);
-            _knownTypeCode = new Lazy<KnownTypeCode>(this.ToKnownTypeCode, LazyThreadSafetyMode.PublicationOnly);
             _parameterTypes = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => _methodSignature.Value.ParameterTypes.ToArray(), LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -160,14 +158,14 @@ namespace LightweightMetadata
                 case HandleKind.MethodDefinition:
                     var methodDefinition = AssemblyMetadata.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
 
-                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
+                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), GenericContext.Default);
                     break;
 
                 case HandleKind.MemberReference:
                     var memberReference = AssemblyMetadata.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
 
                     // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
+                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), GenericContext.Default);
                     break;
                 default:
                     throw new Exception("Unknown method type");
@@ -178,19 +176,25 @@ namespace LightweightMetadata
 
         private ITypeNamedWrapper GetAttributeType()
         {
-            var type = WrapperFactory.Create(Definition.Constructor, AssemblyMetadata);
+            var reader = AssemblyMetadata.MetadataReader;
 
-            if (type is MemberReferenceWrapper memberReference)
+            var ctorHandle = Definition.Constructor;
+
+            EntityHandle attributeTypeHandle;
+
+            switch (Definition.Constructor.Kind)
             {
-                return memberReference.Parent;
+                case HandleKind.MethodDefinition:
+                    attributeTypeHandle = reader.GetMethodDefinition((MethodDefinitionHandle)ctorHandle).GetDeclaringType();
+                    break;
+                case HandleKind.MemberReference:
+                    attributeTypeHandle = reader.GetMemberReference((MemberReferenceHandle)ctorHandle).Parent;
+                    break;
+                default:
+                    throw new InvalidOperationException();
             }
 
-            if (type is MethodWrapper methodWrapper)
-            {
-                return methodWrapper.DeclaringType;
-            }
-
-            return type;
+            return WrapperFactory.Create(attributeTypeHandle, AssemblyMetadata);
         }
 
         private (IReadOnlyList<CustomAttributeTypedArgument<IHandleTypeNamedWrapper>> fixedArguments, IReadOnlyList<CustomAttributeNamedArgument<IHandleTypeNamedWrapper>> namedArguments) GetArguments()

@@ -36,19 +36,5 @@ namespace MetadataPublicApiGenerator.Tests
             var value = MetadataApi.GeneratePublicApi(Assembly.GetAssembly(typeof(string)));
             Assert.IsNotNull(value);
         }
-
-        [TestMethod]
-        public void TestEquals()
-        {
-            var assembly = Assembly.GetAssembly(typeof(RxApp));
-            var oldApi = ApiGenerator.GeneratePublicApi(assembly);
-
-            var newApi = MetadataApi.GeneratePublicApi(assembly);
-
-            File.WriteAllText("old.txt", oldApi);
-            File.WriteAllText("new.txt", newApi);
-
-            TestHelpers.CheckEquals(newApi, oldApi, "new.txt", "old.txt");
-        }
     }
 }

@@ -10,12 +10,6 @@ namespace LightweightMetadata
 {
     internal class GenericContext
     {
-        internal GenericContext(AssemblyMetadata assemblyMetadata)
-        {
-            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
-            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
-        }
-
         internal GenericContext(IHandleWrapper wrapper)
         {
             if (wrapper == null)
@@ -53,6 +47,17 @@ namespace LightweightMetadata
                 throw new ArgumentNullException(nameof(wrapper));
             }
         }
+
+        private GenericContext()
+        {
+            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
+            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
+        }
+
+        /// <summary>
+        /// Gets the default instance.
+        /// </summary>
+        public static GenericContext Default { get; } = new GenericContext();
 
         public IReadOnlyList<GenericParameterWrapper> ClassTypeParameters { get; }
 

@@ -1,0 +1,77 @@
+namespace MetadataPublicApiGenerator.IntegrationTestData
+{
+    public class ReferenceNullable
+    {
+        public int[]? b;
+        public object?[]? c;
+        public System.Collections.Generic.Dictionary<string, object?>? d;
+        public string? s;
+        public ReferenceNullable();
+        public int[]? BProp { get; }
+        public object?[]? CProp { get; }
+        public System.Collections.Generic.Dictionary<string, object?>? DProp { get; }
+        public string? SProp { get; }
+        public System.Collections.Generic.List<string> GetNames1();
+        public System.Collections.Generic.List<string?> GetNames2();
+        public System.Collections.Generic.List<string>? GetNames3();
+        public System.Collections.Generic.List<string?>? GetNames4();
+        public void NullableForgive(string? test);
+        public void NullableForgive2(string? test, string nonNullable, string? test2);
+        public class DerivedNullableBase1 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string?>
+        {
+            public DerivedNullableBase1();
+        }
+        public class DerivedNullableBase2 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string?>?>
+        {
+            public DerivedNullableBase2();
+        }
+        public class DerivedNullableBase3 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string?>>
+        {
+            public DerivedNullableBase3();
+        }
+        public class DerivedNullableBase4 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string>?>
+        {
+            public DerivedNullableBase4();
+        }
+        public class DerivedNullableBase5 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string?>?>?>
+        {
+            public DerivedNullableBase5();
+        }
+        public class DerivedNullableBase6 : MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase<string?>>>
+        {
+            public DerivedNullableBase6();
+        }
+        public class DerivedNullableInterface : System.Collections.Generic.IEnumerable<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase?>, System.Collections.IEnumerable
+        {
+            public DerivedNullableInterface();
+            public System.Collections.Generic.IEnumerator<MetadataPublicApiGenerator.IntegrationTestData.ReferenceNullable.MyBase?> GetEnumerator();
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator();
+        }
+        public class DerivedNullableInterface1 : System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<string?>?>, System.Collections.IEnumerable
+        {
+            public DerivedNullableInterface1();
+            public System.Collections.Generic.IEnumerator<System.Collections.Generic.IEnumerable<string?>?> GetEnumerator();
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator();
+        }
+        public class DerivedNullableInterface2 : System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<string?>>, System.Collections.IEnumerable
+        {
+            public DerivedNullableInterface2();
+            public System.Collections.Generic.IEnumerator<System.Collections.Generic.IEnumerable<string?>> GetEnumerator();
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator();
+        }
+        public class DerivedNullableInterface3 : System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<string>?>, System.Collections.IEnumerable
+        {
+            public DerivedNullableInterface3();
+            public System.Collections.Generic.IEnumerator<System.Collections.Generic.IEnumerable<string>?> GetEnumerator();
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator();
+        }
+        public class MyBase
+        {
+            public MyBase();
+        }
+        public abstract class MyBase<T>
+        {
+            protected MyBase();
+        }
+    }
+}
