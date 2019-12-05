@@ -8,6 +8,6 @@
     <AllowUnsafe>true</AllowUnsafe>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.Reflection.Metadata" Version="1.7.0-preview7.19362.9" />
+    <PackageReference Include="System.Reflection.Metadata" Version="1.8.0" />
   </ItemGroup>
 </Project>
