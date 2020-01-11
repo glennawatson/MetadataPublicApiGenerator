@@ -10,6 +10,12 @@ namespace LightweightMetadata
 {
     internal class GenericContext
     {
+        internal GenericContext(AssemblyMetadata assemblyMetadata)
+        {
+            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
+            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
+        }
+
         internal GenericContext(IHandleWrapper wrapper)
         {
             if (wrapper == null)

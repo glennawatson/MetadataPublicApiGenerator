@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using LightweightMetadata;
@@ -47,11 +48,11 @@ namespace MetadataPublicApiGenerator.Extensions
             var bases = new BaseTypeSyntax[interfaces.Count];
 
             int i = 0;
-            foreach (var interfaceImplementation in interfaces)
+            foreach (var interfaceType in interfaces)
             {
-                interfaceImplementation.Attributes.TryGetNullable(out var nullability);
+                interfaceType.InterfaceAttributes.TryGetNullable(out var nullability);
 
-                bases[i] = SimpleBaseType(interfaceImplementation.InterfaceType.GetTypeSyntax(type, nullableContext, nullability));
+                bases[i] = SimpleBaseType(interfaceType.GetTypeSyntax(type, nullableContext, nullability));
                 i++;
             }
 
@@ -82,7 +83,7 @@ namespace MetadataPublicApiGenerator.Extensions
 
             if (includeRef && wrapper is ByReferenceWrapper byRefWrapper)
             {
-                return RefType(GetTypeSyntax(byRefWrapper, parent, nullableContext, nullable, includeRef), false);
+                return RefType(GetTypeSyntax(byRefWrapper.EnclosedType, parent, nullableContext, nullable, includeRef), false);
             }
 
             if (wrapper is PointerWrapper pointerWrapper)
@@ -93,11 +94,9 @@ namespace MetadataPublicApiGenerator.Extensions
             if (wrapper is TypeWrapper typeWrapper)
             {
                 nullableContext = nullable == null || nullable.Length == 0 ? nullableContext : nullable[0];
-
-                return CreateTypeSyntax(typeWrapper, nullableContext);
             }
 
-            return CreateTypeSyntax(wrapper, nullableContext);
+            return CreateNonGenericTypeSyntax(wrapper, nullableContext);
         }
 
         public static (IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters) GetTypeParameters(this IHasGenericParameters genericParameterContainer, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability nullableContext)
@@ -123,7 +122,15 @@ namespace MetadataPublicApiGenerator.Extensions
                     constraints.Add(ClassOrStructConstraint(SyntaxKind.StructConstraint));
                 }
 
-                constraints.AddRange(genericParameter.Constraints.Where(x => !x.Type.ReflectionFullName.Equals("System.ValueType", StringComparison.InvariantCultureIgnoreCase)).Select(x => TypeConstraint(x.Type.GetTypeSyntax(null, nullableContext, EmptyNullability))));
+                foreach (var constraint in genericParameter.Constraints)
+                {
+                    if (constraint.Type.ReflectionFullName.Equals("System.ValueType", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    constraints.Add(TypeConstraint(constraint.Type.GetTypeSyntax(null, nullableContext, EmptyNullability)));
+                }
 
                 if (genericParameter.HasDefaultConstructorConstraint)
                 {
@@ -136,7 +143,11 @@ namespace MetadataPublicApiGenerator.Extensions
                 }
             }
 
-            var parameters = genericParameterContainer.GenericParameters.Select(x => TypeParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes)).ToList();
+            var parameters = new List<TypeParameterSyntax>(genericParameterContainer.GenericParameters.Count);
+            foreach (var genericParameter in genericParameterContainer.GenericParameters)
+            {
+                parameters.Add(TypeParameterSymbolGenerator.Generate(genericParameter, excludeMembersAttributes, excludeAttributes));
+            }
 
             return (constraintClauses, parameters);
         }
@@ -181,7 +192,7 @@ namespace MetadataPublicApiGenerator.Extensions
         {
             var typeArguments = generics.GenericParameters.Select(x => GetTypeSyntax(x, parent, nullableContext, EmptyNullability, includeRef)).ToList();
 
-            return CreateTypeSyntax(wrapper, typeArguments, nullableContext);
+            return CreateGenericTypeSyntax(wrapper, typeArguments, nullableContext);
         }
 
         private static TypeSyntax GenerateValueTuple(IHasTypeArguments type, IHandleNameWrapper parent, Nullability nullableContext, Nullability[] nullable, bool includeRef)
@@ -215,13 +226,13 @@ namespace MetadataPublicApiGenerator.Extensions
                 typeArguments[i] = GetTypeArgument(parameterizedTypeWrapper.TypeArguments[i], parent, nullableContext, nullable, includeRef, nullableIndex);
             }
 
-            return CreateTypeSyntax(wrapper, typeArguments, nullableContext);
+            return CreateGenericTypeSyntax(wrapper, typeArguments, nullableContext);
         }
 
         private static TypeSyntax GetTypeArgument(IHandleTypeNamedWrapper typeArgument, IHandleNameWrapper parent, Nullability nullableContext, Nullability[] nullable, bool includeRef, int nullableIndex)
         {
             var nullability = nullableIndex >= nullable.Length ? nullableContext : nullable[nullableIndex];
-            if (typeArgument is IHasTypeArguments child && child.TypeArguments.Count > 0)
+            if (typeArgument is IHasTypeArguments child)
             {
                 var childItems = new TypeSyntax[child.TypeArguments.Count];
                 for (int i = 0; i < child.TypeArguments.Count; ++i)
@@ -231,20 +242,40 @@ namespace MetadataPublicApiGenerator.Extensions
                     childItems[i] = GetTypeArgument(childItem, typeArgument, nullability, nullable, includeRef, childNullableIndex);
                 }
 
-                return CreateTypeSyntax(typeArgument, childItems, nullability);
+                return CreateGenericTypeSyntax(typeArgument, childItems, nullability);
             }
 
             return GetTypeSyntax(typeArgument, parent, nullability, EmptyNullability, includeRef);
         }
 
-        private static TypeSyntax CreateTypeSyntax(IHandleTypeNamedWrapper wrapper, Nullability nullableContext)
+        private static TypeSyntax CreateNonGenericTypeSyntax(IHandleTypeNamedWrapper wrapper, Nullability nullableContext)
         {
+            if (wrapper == null)
+            {
+                throw new ArgumentNullException(nameof(wrapper));
+            }
+
             var type = IdentifierName(wrapper.ReflectionFullName);
             return CreateTypeSyntax(wrapper, type, nullableContext);
         }
 
-        private static TypeSyntax CreateTypeSyntax(IHandleTypeNamedWrapper wrapper, IReadOnlyCollection<TypeSyntax> typeArguments, Nullability nullableContext)
+        private static TypeSyntax CreateGenericTypeSyntax(IHandleTypeNamedWrapper wrapper, IReadOnlyCollection<TypeSyntax> typeArguments, Nullability nullableContext)
         {
+            if (wrapper == null)
+            {
+                throw new ArgumentNullException(nameof(wrapper));
+            }
+
+            if (typeArguments == null)
+            {
+                throw new ArgumentNullException(nameof(typeArguments));
+            }
+
+            if (typeArguments.Any(x => x == null))
+            {
+                throw new ArgumentException("Type arguments has a invalid list member.", nameof(typeArguments));
+            }
+
             var type = GenericName(wrapper.ReflectionFullName, typeArguments);
             return CreateTypeSyntax(wrapper, type, nullableContext);
         }

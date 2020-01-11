@@ -158,14 +158,14 @@ namespace LightweightMetadata
                 case HandleKind.MethodDefinition:
                     var methodDefinition = AssemblyMetadata.MetadataReader.GetMethodDefinition((MethodDefinitionHandle)Definition.Constructor);
 
-                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), GenericContext.Default);
+                    methodSignature = methodDefinition.DecodeSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
                     break;
 
                 case HandleKind.MemberReference:
                     var memberReference = AssemblyMetadata.MetadataReader.GetMemberReference((MemberReferenceHandle)Definition.Constructor);
 
                     // Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
-                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), GenericContext.Default);
+                    methodSignature = memberReference.DecodeMethodSignature(new TypeProvider(AssemblyMetadata.MetadataRepository), new GenericContext(AssemblyMetadata));
                     break;
                 default:
                     throw new Exception("Unknown method type");

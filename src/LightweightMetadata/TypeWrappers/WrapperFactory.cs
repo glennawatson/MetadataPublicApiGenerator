@@ -41,6 +41,8 @@ namespace LightweightMetadata
                 case HandleKind.TypeSpecification:
                     var specification = TypeSpecificationWrapper.Create((TypeSpecificationHandle)entity, assemblyMetadata);
                     return specification.Type;
+                case HandleKind.InterfaceImplementation:
+                    return InterfaceImplementationWrapper.Create((InterfaceImplementationHandle)entity, assemblyMetadata);
                 case HandleKind.TypeReference:
                     var typeWrapper = TypeReferenceWrapper.Create((TypeReferenceHandle)entity, assemblyMetadata);
                     return typeWrapper.Type;

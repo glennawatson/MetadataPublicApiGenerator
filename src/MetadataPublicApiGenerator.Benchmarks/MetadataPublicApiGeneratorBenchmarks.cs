@@ -25,6 +25,6 @@ namespace MetadataPublicApiGenerator.Benchmarks
         /// Benchmark for when adding a item to a ReactiveList.
         /// </summary>
         [Benchmark]
-        public void PublicApiGenerator() => ApiGenerator.GeneratePublicApi(typeof(string).Assembly);
+        public void PublicApiGenerator() => ApiGenerator.GeneratePublicApi(typeof(string).Assembly, new ApiGeneratorOptions { });
     }
 }

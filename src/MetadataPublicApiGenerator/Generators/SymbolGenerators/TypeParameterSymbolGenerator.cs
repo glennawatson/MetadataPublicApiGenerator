@@ -4,7 +4,7 @@
 
 using System.Collections.Generic;
 using LightweightMetadata;
-
+using MetadataPublicApiGenerator.Extensions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

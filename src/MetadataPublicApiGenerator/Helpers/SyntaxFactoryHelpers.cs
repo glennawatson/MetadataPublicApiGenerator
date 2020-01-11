@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -237,7 +238,7 @@ namespace MetadataPublicApiGenerator.Helpers
 
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
 
-            return SyntaxFactory.ConversionOperatorDeclaration(attributeList, modifiersList, implicitOrExplicitKeyword, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), typeName, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.ConversionOperatorDeclaration(attributeList, modifiersList, implicitOrExplicitKeyword, SyntaxFactory.Token(SyntaxKind.OperatorKeyword).AddTrialingSpaces().AddLeadingSpaces(), typeName, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,7 +247,7 @@ namespace MetadataPublicApiGenerator.Helpers
             var attributeList = List(GetIndentedNodes(attributes, level, true));
             var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var parametersList = SyntaxFactory.ParameterList(SeparatedList(parameters));
-            return SyntaxFactory.OperatorDeclaration(attributeList, modifiersList, returnType, SyntaxFactory.Token(SyntaxKind.OperatorKeyword), operatorToken, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return SyntaxFactory.OperatorDeclaration(attributeList, modifiersList, returnType, SyntaxFactory.Token(SyntaxKind.OperatorKeyword).AddTrialingSpaces().AddLeadingSpaces(), operatorToken, parametersList, default, default, SyntaxFactory.Token(SyntaxKind.SemicolonToken));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -334,7 +335,7 @@ namespace MetadataPublicApiGenerator.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static GenericNameSyntax GenericName(string name, IReadOnlyCollection<TypeSyntax> types)
         {
-            var typesList = types == null || types.Count == 0 ? default : SyntaxFactory.TypeArgumentList(SeparatedList(types));
+            var typesList = types == null || types.Count == 0 ? SyntaxFactory.TypeArgumentList() : SyntaxFactory.TypeArgumentList(SeparatedList(types));
             return SyntaxFactory.GenericName(Identifier(name), typesList);
         }
 

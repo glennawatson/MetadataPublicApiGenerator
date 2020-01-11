@@ -41,7 +41,7 @@ namespace LightweightMetadata
 
             _longEnumValue = new Lazy<ulong>(() => Convert.ToUInt64(DefaultValue, CultureInfo.InvariantCulture), LazyThreadSafetyMode.PublicationOnly);
 
-            _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)), LazyThreadSafetyMode.PublicationOnly);
+            _fieldType = new Lazy<IHandleTypeNamedWrapper>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(DeclaringType)), LazyThreadSafetyMode.PublicationOnly);
 
             switch (Definition.Attributes & FieldAttributes.FieldAccessMask)
             {
