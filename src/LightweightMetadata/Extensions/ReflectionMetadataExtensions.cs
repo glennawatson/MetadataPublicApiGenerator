@@ -66,7 +66,7 @@ namespace LightweightMetadata
                 }
             }
 
-            wrapper = null;
+            wrapper = default!;
             return false;
         }
 
@@ -139,7 +139,7 @@ namespace LightweightMetadata
             }
         }
 
-        internal static object ReadConstant(this ConstantHandle constantHandle, AssemblyMetadata assemblyMetadata)
+        internal static object? ReadConstant(this ConstantHandle constantHandle, AssemblyMetadata assemblyMetadata)
         {
             if (constantHandle.IsNil)
             {

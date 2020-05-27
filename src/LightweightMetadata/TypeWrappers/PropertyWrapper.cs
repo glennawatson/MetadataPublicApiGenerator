@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
@@ -17,8 +18,8 @@ namespace LightweightMetadata
         private readonly Lazy<string> _name;
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-        private readonly Lazy<MethodWrapper> _getterMethod;
-        private readonly Lazy<MethodWrapper> _setterMethod;
+        private readonly Lazy<MethodWrapper?> _getterMethod;
+        private readonly Lazy<MethodWrapper?> _setterMethod;
         private readonly Lazy<MethodWrapper> _anyAccessor;
         private readonly Lazy<TypeWrapper> _declaringType;
         private readonly Lazy<MethodSignature<IHandleTypeNamedWrapper>> _signature;
@@ -32,14 +33,14 @@ namespace LightweightMetadata
             Definition = Resolve();
 
             _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _getterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Getter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _setterMethod = new Lazy<MethodWrapper>(() => MethodWrapper.Create(Definition.GetAccessors().Setter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _getterMethod = new Lazy<MethodWrapper?>(() => MethodWrapper.Create(Definition.GetAccessors().Getter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _setterMethod = new Lazy<MethodWrapper?>(() => MethodWrapper.Create(Definition.GetAccessors().Setter, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _anyAccessor = new Lazy<MethodWrapper>(GetAnyAccessor, LazyThreadSafetyMode.PublicationOnly);
 
-            _declaringType = new Lazy<TypeWrapper>(() => _anyAccessor.Value.DeclaringType, LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => AnyAccessor.DeclaringType, LazyThreadSafetyMode.PublicationOnly);
 
             _accessibility = new Lazy<EntityAccessibility>(GetAccessibility, LazyThreadSafetyMode.PublicationOnly);
 
@@ -81,7 +82,7 @@ namespace LightweightMetadata
         public EntityAccessibility Accessibility => _accessibility.Value;
 
         /// <inheritdoc />
-        public bool IsAbstract => Getter.IsAbstract || Setter.IsAbstract;
+        public bool IsAbstract => (Getter?.IsAbstract ?? false) || (Setter?.IsAbstract ?? false);
 
         /// <inheritdoc />
         public KnownTypeCode KnownType => KnownTypeCode.None;
@@ -89,12 +90,12 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the getter method for the property.
         /// </summary>
-        public MethodWrapper Getter => _getterMethod.Value;
+        public MethodWrapper? Getter => _getterMethod.Value;
 
         /// <summary>
         /// Gets the setter method for the property.
         /// </summary>
-        public MethodWrapper Setter => _setterMethod.Value;
+        public MethodWrapper? Setter => _setterMethod.Value;
 
         /// <summary>
         /// Gets any available accessor.
@@ -120,7 +121,7 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static PropertyWrapper Create(PropertyDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
+        public static PropertyWrapper? Create(PropertyDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
@@ -136,9 +137,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<PropertyWrapper> Create(in PropertyDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<PropertyWrapper?> Create(in PropertyDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new PropertyWrapper[collection.Count];
+            var output = new PropertyWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -148,6 +149,24 @@ namespace LightweightMetadata
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<PropertyWrapper> CreateChecked(in PropertyDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, assemblyMetadata);
+
+            if (entities.Any(x => x is null))
+            {
+                throw new ArgumentException("Have invalid properties.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
         }
 
         /// <inheritdoc />
@@ -168,7 +187,12 @@ namespace LightweightMetadata
                 return Getter;
             }
 
-            return Setter;
+            if (Setter != null)
+            {
+                return Setter;
+            }
+
+            throw new Exception("Cannot find a getter or setter on the property.");
         }
 
         private EntityAccessibility GetAccessibility()

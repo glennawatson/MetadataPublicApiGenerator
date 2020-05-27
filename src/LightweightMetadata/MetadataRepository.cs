@@ -82,9 +82,9 @@ namespace LightweightMetadata
         /// <param name="isRetargetable">If the assembly can be targeting another assembly.</param>
         /// <param name="publicKey">The optional public key.</param>
         /// <returns>The MetadataRepository module.</returns>
-        public static AssemblyMetadata GetAssemblyMetadataForName(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        public static AssemblyMetadata? GetAssemblyMetadataForName(string name, AssemblyMetadata parent, Version? version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string? publicKey = null)
         {
-            if (parent == null)
+            if (parent is null)
             {
                 throw new ArgumentNullException(nameof(parent));
             }
@@ -97,9 +97,9 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="wrapper">The wrapper to get for.</param>
         /// <returns>The MetadataRepository module.</returns>
-        public static AssemblyMetadata GetAssemblyMetadataForAssemblyReference(AssemblyReferenceWrapper wrapper)
+        public static AssemblyMetadata? GetAssemblyMetadataForAssemblyReference(AssemblyReferenceWrapper? wrapper)
         {
-            if (wrapper == null)
+            if (wrapper is null)
             {
                 throw new ArgumentNullException(nameof(wrapper));
             }
@@ -119,7 +119,15 @@ namespace LightweightMetadata
                 return MainAssemblyMetadata;
             }
 
-            return null;
+            foreach (var subAssembly in ReferenceAssemblies)
+            {
+                if (subAssembly.MetadataReader == reader)
+                {
+                    return subAssembly;
+                }
+            }
+
+            throw new ArgumentException("Could not find Assembly Metadata for reader.", nameof(reader));
         }
 
         /// <summary>
@@ -127,8 +135,13 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="fullName">The full name.</param>
         /// <returns>The type wrapper.</returns>
-        public TypeWrapper GetTypeByName(string fullName)
+        public TypeWrapper? GetTypeByName(string? fullName)
         {
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                return null;
+            }
+
             var type = MainAssemblyMetadata.GetTypeByName(fullName, false);
 
             if (type != null)
@@ -161,7 +174,7 @@ namespace LightweightMetadata
 
             var assembliesVisited = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
 
-            var referenceModulesToProcess = new Stack<(AssemblyMetadata parent, AssemblyReferenceWrapper assemblyReference)>(MainAssemblyMetadata.AssemblyReferences.Select(x => (MainModule: MainAssemblyMetadata, x)));
+            var referenceModulesToProcess = new Stack<(AssemblyMetadata Parent, AssemblyReferenceWrapper AssemblyReference)>(MainAssemblyMetadata.AssemblyReferences.Select(x => (MainModule: MainAssemblyMetadata, x)));
 
             while (referenceModulesToProcess.Count > 0)
             {
@@ -175,7 +188,7 @@ namespace LightweightMetadata
 
                 var assemblyMetadata = AssemblyLoadingHelper.ResolveCompilationModule(current.Name, parent, current.Version, current.IsWindowsRuntime, current.IsRetargetable, current.PublicKey);
 
-                if (assemblyMetadata == null)
+                if (assemblyMetadata is null)
                 {
                     continue;
                 }

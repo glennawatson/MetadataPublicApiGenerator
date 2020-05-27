@@ -78,7 +78,7 @@ namespace LightweightMetadata
             }
         }
 
-        public (EntityHandle, MethodSemanticsAttributes) GetSemantics(MethodDefinitionHandle method)
+        public (EntityHandle Handle, MethodSemanticsAttributes Attributes) GetSemantics(MethodDefinitionHandle method)
         {
             var pos = _entries.BinarySearch(new Entry(0, method, default));
             return pos >= 0 ? (_entries[pos].Association, _entries[pos].Semantics) : (default, 0);

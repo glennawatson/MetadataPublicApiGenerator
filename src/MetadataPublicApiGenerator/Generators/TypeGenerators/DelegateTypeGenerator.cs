@@ -19,7 +19,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 {
     internal static class DelegateTypeGenerator
     {
-        internal static MemberDeclarationSyntax Generate(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
+        internal static MemberDeclarationSyntax? Generate(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
             if (excludeFunc(typeWrapper))
             {
@@ -33,7 +33,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
 
             var invokeMember = typeWrapper.GetDelegateInvokeMethod();
 
-            var parameters = invokeMember.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, currentNullability, false)).Where(x => x != null).ToList();
+            var parameters = invokeMember.Parameters.Select(x => ParameterSymbolGenerator.Generate(x, excludeMembersAttributes, excludeAttributes, currentNullability, false)).Where(x => x != null).Select(x => x!).ToList();
             var (constraints, typeParameters) = typeWrapper.GetTypeParameters(excludeMembersAttributes, excludeAttributes, currentNullability);
             var attributes = GeneratorFactory.Generate(typeWrapper.Attributes, excludeMembersAttributes, excludeAttributes);
             var modifiers = typeWrapper.GetModifiers(invokeMember);

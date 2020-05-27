@@ -41,10 +41,10 @@ namespace LightweightMetadata
             _reader = new PEReader(new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read), PEStreamOptions.PrefetchMetadata);
             MetadataReader = _reader.GetMetadataReader();
 
-            _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.Create(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
+            _types = new Lazy<IReadOnlyList<TypeWrapper>>(() => TypeWrapper.CreateChecked(MetadataReader.TypeDefinitions, this), LazyThreadSafetyMode.PublicationOnly);
             _namesToTypes = new Lazy<IReadOnlyDictionary<string, TypeWrapper>>(() => Types.ToDictionary(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
-            _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.Create(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
-            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyReferenceWrapper>>(() => AssemblyReferenceWrapper.Create(MetadataReader.AssemblyReferences, this), LazyThreadSafetyMode.PublicationOnly);
+            _typeReferences = new Lazy<IReadOnlyList<TypeReferenceWrapper>>(() => TypeReferenceWrapper.CreateChecked(MetadataReader.TypeReferences, this), LazyThreadSafetyMode.PublicationOnly);
+            _assemblyReferences = new Lazy<IReadOnlyList<AssemblyReferenceWrapper>>(() => AssemblyReferenceWrapper.CreateChecked(MetadataReader.AssemblyReferences, this), LazyThreadSafetyMode.PublicationOnly);
             _methodSemanticsLookup = new Lazy<MethodSemanticsLookup>(() => new MethodSemanticsLookup(MetadataReader), LazyThreadSafetyMode.PublicationOnly);
             _mainAssembly = new Lazy<AssemblyWrapper>(() => new AssemblyWrapper(this), LazyThreadSafetyMode.PublicationOnly);
             _moduleDefinition = new Lazy<ModuleDefinitionWrapper>(() => ModuleDefinitionWrapper.Create(MetadataReader.GetModuleDefinition(), this), LazyThreadSafetyMode.PublicationOnly);
@@ -128,9 +128,14 @@ namespace LightweightMetadata
         /// <param name="name">The name to check.</param>
         /// <param name="checkRepository">If we should check repository on fail.</param>
         /// <returns>The wrapper if available, null otherwise.</returns>
-        public TypeWrapper GetTypeByName(string name, bool checkRepository = true)
+        public TypeWrapper? GetTypeByName(string? name, bool checkRepository = true)
         {
-            if (_namesToTypes.Value.TryGetValue(name, out var item))
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            if (_namesToTypes.Value.TryGetValue(name!, out var item))
             {
                 return item;
             }

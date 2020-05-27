@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 
 using LightweightMetadata;
@@ -16,7 +17,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class FieldSymbolGenerator
     {
-        public static FieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
+        public static FieldDeclarationSyntax? Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
         {
             if (!(member is FieldWrapper field))
             {
@@ -37,7 +38,14 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             }
             else if (field.IsConst)
             {
-                var variables = new[] { VariableDeclarator(field.Name, EqualsValueClause(SyntaxHelper.GetValueExpression(field.FieldType, field.DefaultValue))) };
+                var valueSyntax = SyntaxHelper.GetValueExpression(field.FieldType, field.DefaultValue!);
+
+                if (valueSyntax == null)
+                {
+                    throw new Exception("Could not generate a const value for field " + field.Name);
+                }
+
+                var variables = new[] { VariableDeclarator(field.Name, EqualsValueClause(valueSyntax)) };
 
                 variableDeclaration = VariableDeclaration(field.FieldType.GetTypeSyntax(field, currentNullability, nullability), variables);
             }

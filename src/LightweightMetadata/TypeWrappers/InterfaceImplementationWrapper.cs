@@ -16,17 +16,17 @@ namespace LightweightMetadata
     /// </summary>
     public class InterfaceImplementationWrapper : AbstractEnclosedTypeWrapper
     {
-        private static readonly ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata), InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata), InterfaceImplementationWrapper>();
+        private static readonly ConcurrentDictionary<(InterfaceImplementationHandle Handle, AssemblyMetadata AssemblyMetadata), InterfaceImplementationWrapper> _registerTypes = new ConcurrentDictionary<(InterfaceImplementationHandle, AssemblyMetadata), InterfaceImplementationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
 
         private InterfaceImplementationWrapper(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata)
-            : base(WrapperFactory.Create(Resolve(assemblyMetadata, handle).Interface, assemblyMetadata))
+            : base(WrapperFactory.CreateChecked(Resolve(assemblyMetadata, handle).Interface, assemblyMetadata))
         {
             InterfaceImplementationHandle = handle;
             Definition = Resolve(assemblyMetadata, handle);
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -50,14 +50,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static InterfaceImplementationWrapper Create(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata)
+        public static InterfaceImplementationWrapper? Create(InterfaceImplementationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new InterfaceImplementationWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new InterfaceImplementationWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <summary>
@@ -66,9 +66,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<InterfaceImplementationWrapper> Create(in InterfaceImplementationHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<InterfaceImplementationWrapper?> Create(in InterfaceImplementationHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new InterfaceImplementationWrapper[collection.Count];
+            var output = new InterfaceImplementationWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -78,6 +78,24 @@ namespace LightweightMetadata
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<InterfaceImplementationWrapper> CreateChecked(in InterfaceImplementationHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, assemblyMetadata);
+
+            if (entities.Any(x => x is null))
+            {
+                throw new ArgumentException("Have invalid types.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
         }
 
         /// <inheritdoc />

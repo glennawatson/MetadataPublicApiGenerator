@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
@@ -20,7 +21,7 @@ namespace LightweightMetadata
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<TypeWrapper> _declaringType;
-        private readonly Lazy<object> _defaultValue;
+        private readonly Lazy<object?> _defaultValue;
         private readonly Lazy<IHandleTypeNamedWrapper> _fieldType;
         private readonly Lazy<ulong> _longEnumValue;
 
@@ -31,12 +32,12 @@ namespace LightweightMetadata
             Handle = handle;
             Definition = Resolve();
 
-            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.Create(Definition.GetDeclaringType(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _declaringType = new Lazy<TypeWrapper>(() => TypeWrapper.CreateChecked(Definition.GetDeclaringType(), AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
-            _defaultValue = new Lazy<object>(() => Definition.GetDefaultValue().ReadConstant(assemblyMetadata));
+            _defaultValue = new Lazy<object?>(() => Definition.GetDefaultValue().ReadConstant(assemblyMetadata));
             IsStatic = (Definition.Attributes & FieldAttributes.Static) != 0;
 
             _longEnumValue = new Lazy<ulong>(() => Convert.ToUInt64(DefaultValue, CultureInfo.InvariantCulture), LazyThreadSafetyMode.PublicationOnly);
@@ -127,7 +128,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the default value of the field.
         /// </summary>
-        public object DefaultValue => _defaultValue.Value;
+        public object? DefaultValue => _defaultValue.Value;
 
         /// <summary>
         /// Gets the type that is declaring this field.
@@ -154,7 +155,7 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static FieldWrapper Create(FieldDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
+        public static FieldWrapper? Create(FieldDefinitionHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
@@ -170,9 +171,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<FieldWrapper> Create(in FieldDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<FieldWrapper?> Create(in FieldDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new FieldWrapper[collection.Count];
+            var output = new FieldWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -182,6 +183,24 @@ namespace LightweightMetadata
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<FieldWrapper> CreateChecked(in FieldDefinitionHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, assemblyMetadata);
+
+            if (entities.Any(x => x is null))
+            {
+                throw new ArgumentException("Have invalid assembly references.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
         }
 
         /// <summary>
@@ -200,7 +219,7 @@ namespace LightweightMetadata
             }
 
             bufferSize = 0;
-            type = null;
+            type = null!;
             return false;
         }
 

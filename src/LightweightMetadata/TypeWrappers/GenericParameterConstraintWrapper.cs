@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
@@ -15,7 +16,7 @@ namespace LightweightMetadata
     /// </summary>
     public class GenericParameterConstraintWrapper : IHandleWrapper
     {
-        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata assemblyMetadata), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle handle, AssemblyMetadata assemblyMetadata), GenericParameterConstraintWrapper>();
+        private static readonly ConcurrentDictionary<(GenericParameterConstraintHandle Handle, AssemblyMetadata AssemblyMetadata), GenericParameterConstraintWrapper> _registerTypes = new ConcurrentDictionary<(GenericParameterConstraintHandle, AssemblyMetadata), GenericParameterConstraintWrapper>();
 
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
@@ -27,7 +28,7 @@ namespace LightweightMetadata
             Parent = parent;
             Definition = Resolve();
 
-            _type = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Type, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _type = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.CreateChecked(Definition.Type, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -63,14 +64,14 @@ namespace LightweightMetadata
         /// <param name="parent">The parent of the constraint.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static GenericParameterConstraintWrapper Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
+        public static GenericParameterConstraintWrapper? Create(GenericParameterConstraintHandle handle, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new GenericParameterConstraintWrapper(data.handle, parent, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new GenericParameterConstraintWrapper(data.Handle, parent, data.AssemblyMetadata));
         }
 
         /// <summary>
@@ -80,9 +81,9 @@ namespace LightweightMetadata
         /// <param name="parent">The parent of the constraint.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<GenericParameterConstraintWrapper> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<GenericParameterConstraintWrapper?> Create(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
         {
-            var output = new GenericParameterConstraintWrapper[collection.Count];
+            var output = new GenericParameterConstraintWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -92,6 +93,25 @@ namespace LightweightMetadata
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="parent">The parent of the constraint.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<GenericParameterConstraintWrapper> CreateChecked(in GenericParameterConstraintHandleCollection collection, GenericParameterWrapper parent, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, parent, assemblyMetadata);
+
+            if (entities.Any(x => x == null))
+            {
+                throw new ArgumentException("Have invalid attributes.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
         }
 
         /// <inheritdoc />

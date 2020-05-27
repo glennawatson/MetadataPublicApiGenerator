@@ -25,7 +25,7 @@ namespace LightweightMetadata
             AssemblyMetadata = assemblyMetadata;
             ModuleDefinition = moduleDefinition;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(ModuleDefinition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(ModuleDefinition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => moduleDefinition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             Generation = ModuleDefinition.Generation;
 
@@ -87,7 +87,7 @@ namespace LightweightMetadata
         /// <returns>The wrapped instance if the handle is not nil, otherwise null.</returns>
         public static ModuleDefinitionWrapper Create(ModuleDefinition handle, AssemblyMetadata assemblyMetadata)
         {
-            if (assemblyMetadata == null)
+            if (assemblyMetadata is null)
             {
                 throw new ArgumentNullException(nameof(assemblyMetadata));
             }

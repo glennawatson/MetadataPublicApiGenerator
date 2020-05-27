@@ -35,7 +35,7 @@ namespace LightweightMetadata
         public string ReflectionFullName => EnclosedType.ReflectionFullName;
 
         /// <inheritdoc />
-        public string TypeNamespace => EnclosedType.TypeNamespace;
+        public string? TypeNamespace => EnclosedType.TypeNamespace;
 
         /// <inheritdoc />
         public EntityAccessibility Accessibility => EnclosedType.Accessibility;

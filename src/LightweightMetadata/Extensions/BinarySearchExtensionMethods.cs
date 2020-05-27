@@ -35,7 +35,7 @@ namespace LightweightMetadata
         public static int BinarySearchIndexOf<TItem>(
             this IReadOnlyList<TItem> list,
             TItem targetValue,
-            IComparer<TItem> comparer = null)
+            IComparer<TItem>? comparer = null)
         {
             var compareFunc = comparer != null
                 ? comparer.Compare

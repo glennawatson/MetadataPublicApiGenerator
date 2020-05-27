@@ -3,9 +3,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageDescription>Provides a light-weight wrapper around System.Reflection.Metadata.</PackageDescription>
-    <DebugType>Full</DebugType>
     <LangVersion>latest</LangVersion>
-    <AllowUnsafe>true</AllowUnsafe>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Reflection.Metadata" Version="1.8.0" />

@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Threading;
 
@@ -15,12 +16,12 @@ namespace LightweightMetadata
     /// </summary>
     public class TypeReferenceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata), TypeReferenceWrapper> _registerTypes = new ConcurrentDictionary<(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata), TypeReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(TypeReferenceHandle Handle, AssemblyMetadata AssemblyMetadata), TypeReferenceWrapper> _registerTypes = new ConcurrentDictionary<(TypeReferenceHandle, AssemblyMetadata), TypeReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _fullName;
         private readonly Lazy<string> _namespace;
-        private readonly Lazy<AssemblyMetadata> _declaringModule;
+        private readonly Lazy<AssemblyMetadata?> _declaringModule;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
 
         private TypeReferenceWrapper(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata)
@@ -32,7 +33,7 @@ namespace LightweightMetadata
             _type = new Lazy<IHandleTypeNamedWrapper>(GetDeclaringType, LazyThreadSafetyMode.PublicationOnly);
             _namespace = new Lazy<string>(() => Definition.Namespace.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _declaringModule = new Lazy<AssemblyMetadata>(GetDeclaringModule, LazyThreadSafetyMode.PublicationOnly);
+            _declaringModule = new Lazy<AssemblyMetadata?>(GetDeclaringModule, LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -73,7 +74,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the declaring module.
         /// </summary>
-        public AssemblyMetadata DeclaringModule => _declaringModule.Value;
+        public AssemblyMetadata? DeclaringModule => _declaringModule.Value;
 
         /// <summary>
         /// Creates a instance of the method, if there is already not an instance.
@@ -81,14 +82,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeReferenceWrapper Create(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata)
+        public static TypeReferenceWrapper? Create(TypeReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeReferenceWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeReferenceWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <summary>
@@ -97,9 +98,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<TypeReferenceWrapper> Create(in TypeReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<TypeReferenceWrapper?> Create(in TypeReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new TypeReferenceWrapper[collection.Count];
+            var output = new TypeReferenceWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -111,15 +112,33 @@ namespace LightweightMetadata
             return output;
         }
 
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<TypeReferenceWrapper> CreateChecked(in TypeReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, assemblyMetadata);
+
+            if (entities.Any(x => x is null))
+            {
+                throw new ArgumentException("Have invalid type references.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
+        }
+
         /// <inheritdoc />
         public override string ToString()
         {
             return FullName;
         }
 
-        private AssemblyMetadata GetDeclaringModule()
+        private AssemblyMetadata? GetDeclaringModule()
         {
-            var current = this;
+            TypeReferenceWrapper? current = this;
 
             while (current != null)
             {
@@ -133,18 +152,31 @@ namespace LightweightMetadata
                         return MetadataRepository.GetAssemblyMetadataForAssemblyReference(assemblyReference);
                     case HandleKind.ModuleReference:
                         var assemblyModuleReference = ModuleReferenceWrapper.Create((ModuleReferenceHandle)current.Definition.ResolutionScope, current.AssemblyMetadata);
-                        return assemblyModuleReference.AssemblyMetadata;
+
+                        if (assemblyModuleReference != null)
+                        {
+                            return assemblyModuleReference.AssemblyMetadata;
+                        }
+
+                        break;
                     default:
                         return default;
                 }
             }
 
-            return null;
+            return default;
         }
 
         private IHandleTypeNamedWrapper GetDeclaringType()
         {
-            return AssemblyMetadata.GetTypeByName(FullName);
+            var declaredType = AssemblyMetadata.GetTypeByName(FullName);
+
+            if (declaredType == null)
+            {
+                throw new Exception("Cannot find valid declaring type for " + FullName);
+            }
+
+            return declaredType;
         }
 
         private TypeReference Resolve()
@@ -160,6 +192,11 @@ namespace LightweightMetadata
             }
 
             var typeReference = Create((TypeReferenceHandle)Definition.ResolutionScope, AssemblyMetadata);
+
+            if (typeReference == null)
+            {
+                throw new Exception("Cannot generate valid FullName for " + Name);
+            }
 
             return typeReference.FullName + "." + Name;
         }

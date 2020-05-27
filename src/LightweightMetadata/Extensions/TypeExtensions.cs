@@ -22,7 +22,7 @@ namespace LightweightMetadata
         /// <param name="wrapper">The wrapper to get the value tuples for.</param>
         /// <param name="tupleElementNames">The tuple element names if there is any.</param>
         /// <returns>If we were able to retrieve the values.</returns>
-        public static bool HasTupleElementNamesAttribute(this IHandleNameWrapper wrapper, out string[] tupleElementNames)
+        public static bool HasTupleElementNamesAttribute(this IHandleNameWrapper wrapper, out string?[] tupleElementNames)
         {
             if (wrapper is null)
             {
@@ -98,7 +98,7 @@ namespace LightweightMetadata
 
                 if (parameterInstance.SequenceNumber == 0)
                 {
-                    return AttributeWrapper.Create(parameterInstance.GetCustomAttributes(), metadata);
+                    return AttributeWrapper.CreateChecked(parameterInstance.GetCustomAttributes(), metadata);
                 }
             }
 

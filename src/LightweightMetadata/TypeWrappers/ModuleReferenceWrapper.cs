@@ -15,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class ModuleReferenceWrapper : IHandleNameWrapper
     {
-        private static readonly ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata), ModuleReferenceWrapper> _registerTypes = new ConcurrentDictionary<(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata), ModuleReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(ModuleReferenceHandle Handle, AssemblyMetadata AssemblyMetadata), ModuleReferenceWrapper> _registerTypes = new ConcurrentDictionary<(ModuleReferenceHandle, AssemblyMetadata), ModuleReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
@@ -30,7 +30,7 @@ namespace LightweightMetadata
             ParentCompilationModule = parent;
 
             _name = new Lazy<string>(() => parent.MetadataReader.GetString(Definition.Name), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), parent), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), parent), LazyThreadSafetyMode.PublicationOnly);
             _compilationModule = new Lazy<AssemblyMetadata>(GetDeclaringModule, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -72,14 +72,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static ModuleReferenceWrapper Create(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata)
+        public static ModuleReferenceWrapper? Create(ModuleReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new ModuleReferenceWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new ModuleReferenceWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <inheritdoc />
@@ -95,7 +95,14 @@ namespace LightweightMetadata
 
         private AssemblyMetadata GetDeclaringModule()
         {
-            return MetadataRepository.GetAssemblyMetadataForName(Name, ParentCompilationModule);
+            var metadata = MetadataRepository.GetAssemblyMetadataForName(Name, ParentCompilationModule);
+
+            if (metadata is null)
+            {
+                throw new Exception("Cannot find valid AssemblyMetadata for " + Name);
+            }
+
+            return metadata;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class MethodSpecificationWrapper : IHandleWrapper, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata), MethodSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(MethodSpecificationHandle Handle, AssemblyMetadata AssemblyMetadata), MethodSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(MethodSpecificationHandle, AssemblyMetadata), MethodSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<ITypeNamedWrapper>> _signature;
         private readonly Lazy<MethodWrapper> _method;
@@ -28,7 +28,7 @@ namespace LightweightMetadata
             Definition = Resolve(handle, assemblyMetadata);
 
             _signature = new Lazy<IReadOnlyList<ITypeNamedWrapper>>(() => Definition.DecodeSignature(assemblyMetadata.TypeProvider, new GenericContext(this)).ToList());
-            _method = new Lazy<MethodWrapper>(() => MethodWrapper.Create((MethodDefinitionHandle)Definition.Method, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _method = new Lazy<MethodWrapper>(() => MethodWrapper.CreateChecked((MethodDefinitionHandle)Definition.Method, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -68,14 +68,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MethodSpecificationWrapper Create(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
+        public static MethodSpecificationWrapper? Create(MethodSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new MethodSpecificationWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new MethodSpecificationWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <inheritdoc />

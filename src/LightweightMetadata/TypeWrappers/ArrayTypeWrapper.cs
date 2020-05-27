@@ -14,7 +14,7 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="elementType">The wrapper to the element type.</param>
         /// <param name="arrayShapeData">The dimension of the array.</param>
-        public ArrayTypeWrapper(IHandleTypeNamedWrapper elementType, ArrayShapeData arrayShapeData)
+        public ArrayTypeWrapper(IHandleTypeNamedWrapper elementType, ArrayShapeData? arrayShapeData)
             : base(elementType)
         {
             ArrayShapeData = arrayShapeData;
@@ -23,6 +23,6 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the array shape data.
         /// </summary>
-        public ArrayShapeData ArrayShapeData { get; }
+        public ArrayShapeData? ArrayShapeData { get; }
     }
 }

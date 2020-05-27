@@ -15,7 +15,7 @@ namespace LightweightMetadata
     /// </summary>
     public class TypeSpecificationWrapper : IHandleTypeNamedWrapper, IHasAttributes, IHasGenericParameters
     {
-        private static readonly ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata), TypeSpecificationWrapper>();
+        private static readonly ConcurrentDictionary<(TypeSpecificationHandle Handle, AssemblyMetadata AssemblyMetadata), TypeSpecificationWrapper> _registerTypes = new ConcurrentDictionary<(TypeSpecificationHandle, AssemblyMetadata), TypeSpecificationWrapper>();
 
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<IHandleTypeNamedWrapper> _type;
@@ -27,7 +27,7 @@ namespace LightweightMetadata
             Handle = handle;
             Definition = Resolve();
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             _type = new Lazy<IHandleTypeNamedWrapper>(GetHandleType, LazyThreadSafetyMode.PublicationOnly);
         }
@@ -66,7 +66,7 @@ namespace LightweightMetadata
         public string ReflectionFullName => Type.ReflectionFullName;
 
         /// <inheritdoc />
-        public string TypeNamespace => Type.TypeNamespace;
+        public string? TypeNamespace => Type.TypeNamespace;
 
         /// <inheritdoc />
         public EntityAccessibility Accessibility => Type.Accessibility;
@@ -89,14 +89,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static TypeSpecificationWrapper Create(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
+        public static TypeSpecificationWrapper? Create(TypeSpecificationHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeSpecificationWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new TypeSpecificationWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <inheritdoc />

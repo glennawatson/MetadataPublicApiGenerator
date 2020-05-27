@@ -15,7 +15,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class EventSymbolGenerator
     {
-        public static EventFieldDeclarationSyntax Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
+        public static EventFieldDeclarationSyntax? Generate(IHandleWrapper member, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
         {
             if (!(member is EventWrapper eventWrapper))
             {

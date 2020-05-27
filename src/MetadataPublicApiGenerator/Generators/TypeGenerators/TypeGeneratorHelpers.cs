@@ -29,6 +29,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 .OrderByAndExclude(excludeMembersAttributes, excludeAttributes)
                 .Select(x => GeneratorFactory.Generate<MemberDeclarationSyntax>(x, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level + 1))
                 .Where(x => x != null)
+                .Select(x => x!)
                 .ToList();
         }
     }

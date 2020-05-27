@@ -65,7 +65,18 @@ namespace MetadataPublicApiGenerator.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static AttributeSyntax Attribute(string name, IReadOnlyCollection<AttributeArgumentSyntax> arguments)
         {
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
             var argumentsList = AttributeArgumentList(arguments);
+
+            if (name.EndsWith("Attribute", StringComparison.InvariantCulture))
+            {
+                var lastIndex = name.LastIndexOf("Attribute", StringComparison.InvariantCulture);
+                name = name.Substring(0, lastIndex);
+            }
 
             return SyntaxFactory.Attribute(IdentifierName(name), argumentsList);
         }
@@ -79,7 +90,7 @@ namespace MetadataPublicApiGenerator.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static CompilationUnitSyntax CompilationUnit(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<MemberDeclarationSyntax> members)
         {
-            var attributesList = attributes == null || attributes.Count == 0 ? default : List(GetIndentedNodes(attributes, 0));
+            var attributesList = attributes == null || attributes.Count == 0 ? default : List(GetIndentedNodes(attributes, 0, true));
             var membersList = members != null && members.Count > 0 ? List(members) : default;
             return SyntaxFactory.CompilationUnit(default, default, attributesList, membersList);
         }
@@ -89,7 +100,7 @@ namespace MetadataPublicApiGenerator.Helpers
         {
             var attributeList = SyntaxFactory.SingletonSeparatedList(attribute);
 
-            AttributeTargetSpecifierSyntax attributeTarget = null;
+            AttributeTargetSpecifierSyntax? attributeTarget = null;
             if (target != null)
             {
                 attributeTarget = SyntaxFactory.AttributeTargetSpecifier(SyntaxFactory.Token(target.Value), SyntaxFactory.Token(SyntaxKind.ColonToken).AddTrialingSpaces());
@@ -208,7 +219,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MethodDeclarationSyntax MethodDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, ExplicitInterfaceSpecifierSyntax explicitInterface, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, int level)
+        public static MethodDeclarationSyntax MethodDeclaration(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, ExplicitInterfaceSpecifierSyntax? explicitInterface, string identifier, IReadOnlyCollection<ParameterSyntax> parameters, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, int level)
         {
             var name = SyntaxFactory.Identifier(identifier);
             if (explicitInterface == null)
@@ -257,7 +268,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ParameterSyntax Parameter(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, string identifier, EqualsValueClauseSyntax equals)
+        public static ParameterSyntax Parameter(IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, TypeSyntax type, string identifier, EqualsValueClauseSyntax? equals)
         {
             var name = SyntaxFactory.Identifier(identifier);
             type = type.AddTrialingSpaces();
@@ -305,7 +316,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static BaseListSyntax BaseList(BaseTypeSyntax baseType)
+        public static BaseListSyntax? BaseList(BaseTypeSyntax baseType)
         {
             if (baseType == null)
             {
@@ -316,7 +327,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static BaseListSyntax BaseList(IReadOnlyCollection<BaseTypeSyntax> baseItems)
+        public static BaseListSyntax? BaseList(IReadOnlyCollection<BaseTypeSyntax> baseItems)
         {
             if (baseItems == null || baseItems.Count == 0)
             {
@@ -358,14 +369,14 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static EnumDeclarationSyntax EnumDeclaration(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<EnumMemberDeclarationSyntax> members, IReadOnlyCollection<SyntaxKind> modifiers, string baseIdentifier, int level)
+        public static EnumDeclarationSyntax EnumDeclaration(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<EnumMemberDeclarationSyntax> members, IReadOnlyCollection<SyntaxKind> modifiers, string? baseIdentifier, int level)
         {
             var attributeList = List(GetIndentedNodes(attributes, level, true));
             var name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();
             var modifiersList = attributes != null && attributes.Count > 0 ? TokenList(modifiers, level) : TokenList(modifiers);
             var membersList = SeparatedList(members, level + 1);
 
-            BaseListSyntax baseList = !string.IsNullOrWhiteSpace(baseIdentifier) ?
+            BaseListSyntax? baseList = !string.IsNullOrWhiteSpace(baseIdentifier) ?
                 BaseList(SyntaxFactory.SimpleBaseType(SyntaxFactory.IdentifierName(baseIdentifier))) :
                 default;
 
@@ -508,7 +519,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static TypeParameterListSyntax TypeParameterList(IReadOnlyCollection<TypeParameterSyntax> parameters)
+        public static TypeParameterListSyntax? TypeParameterList(IReadOnlyCollection<TypeParameterSyntax> parameters)
         {
             if (parameters == null || parameters.Count == 0)
             {
@@ -621,7 +632,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static TupleElementSyntax TupleElement(TypeSyntax type, string name)
+        public static TupleElementSyntax TupleElement(TypeSyntax type, string? name)
         {
             var identifier = string.IsNullOrWhiteSpace(name) ? default : SyntaxFactory.Identifier(name);
             type = identifier == default ? type : type.AddTrialingSpaces();
@@ -657,7 +668,7 @@ namespace MetadataPublicApiGenerator.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (SyntaxToken openingBrace, SyntaxToken closingBrace) GetBraces(int level)
+        private static (SyntaxToken OpeningBrace, SyntaxToken ClosingBrace) GetBraces(int level)
         {
             var openingBrace = SyntaxFactory.Token(SyntaxKind.OpenBraceToken).AddLeadingNewLinesAndSpaces(1, level * LeadingSpacesPerLevel);
             var closingBrace = SyntaxFactory.Token(SyntaxKind.CloseBraceToken).AddLeadingNewLinesAndSpaces(1, level * LeadingSpacesPerLevel);
@@ -686,7 +697,7 @@ namespace MetadataPublicApiGenerator.Helpers
             return items;
         }
 
-        private static void GetTypeValues(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level, out SyntaxList<AttributeListSyntax> attributeList, out SyntaxToken name, out SyntaxTokenList modifiersList, out BaseListSyntax baseList, out SyntaxList<MemberDeclarationSyntax> membersList, out TypeParameterListSyntax typeParameterList, out SyntaxList<TypeParameterConstraintClauseSyntax> typeParameterConstraintList, out SyntaxToken openingBrace, out SyntaxToken closingBrace)
+        private static void GetTypeValues(string identifier, IReadOnlyCollection<AttributeListSyntax> attributes, IReadOnlyCollection<SyntaxKind> modifiers, IReadOnlyCollection<MemberDeclarationSyntax> members, IReadOnlyCollection<TypeParameterConstraintClauseSyntax> typeParameterConstraintClauses, IReadOnlyCollection<TypeParameterSyntax> typeParameters, IReadOnlyCollection<BaseTypeSyntax> bases, int level, out SyntaxList<AttributeListSyntax> attributeList, out SyntaxToken name, out SyntaxTokenList modifiersList, out BaseListSyntax? baseList, out SyntaxList<MemberDeclarationSyntax> membersList, out TypeParameterListSyntax? typeParameterList, out SyntaxList<TypeParameterConstraintClauseSyntax> typeParameterConstraintList, out SyntaxToken openingBrace, out SyntaxToken closingBrace)
         {
             attributeList = List(GetIndentedNodes(attributes, level, true));
             name = SyntaxFactory.Identifier(identifier).AddLeadingSpaces();

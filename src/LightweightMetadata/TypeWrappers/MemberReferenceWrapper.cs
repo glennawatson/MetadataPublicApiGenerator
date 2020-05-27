@@ -16,10 +16,10 @@ namespace LightweightMetadata
     /// </summary>
     public class MemberReferenceWrapper : IHandleTypeNamedWrapper, IHasAttributes
     {
-        private static readonly ConcurrentDictionary<(MemberReferenceHandle handle, AssemblyMetadata assemblyMetadata), MemberReferenceWrapper> _registerTypes = new ConcurrentDictionary<(MemberReferenceHandle handle, AssemblyMetadata assemblyMetadata), MemberReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(MemberReferenceHandle Handle, AssemblyMetadata AssemblyMetadata), MemberReferenceWrapper> _registerTypes = new ConcurrentDictionary<(MemberReferenceHandle, AssemblyMetadata), MemberReferenceWrapper>();
 
         private readonly Lazy<string> _name;
-        private readonly Lazy<IHandleTypeNamedWrapper> _parent;
+        private readonly Lazy<IHandleTypeNamedWrapper?> _parent;
         private readonly Lazy<string> _fullName;
         private readonly Lazy<string> _reflectionFullName;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
@@ -32,8 +32,8 @@ namespace LightweightMetadata
             Definition = Resolve();
 
             _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _parent = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(Definition.Parent, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<IHandleTypeNamedWrapper?>(() => WrapperFactory.Create(Definition.Parent, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _fullName = new Lazy<string>(() => GetName(x => x.FullName), LazyThreadSafetyMode.PublicationOnly);
             _reflectionFullName = new Lazy<string>(() => GetName(x => x.ReflectionFullName), LazyThreadSafetyMode.PublicationOnly);
         }
@@ -60,7 +60,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the parent instance of the member reference.
         /// </summary>
-        public IHandleTypeNamedWrapper Parent => _parent.Value;
+        public IHandleTypeNamedWrapper? Parent => _parent.Value;
 
         /// <inheritdoc/>
         public IReadOnlyList<AttributeWrapper> Attributes => _attributes.Value;
@@ -69,7 +69,7 @@ namespace LightweightMetadata
         public string ReflectionFullName => _reflectionFullName.Value;
 
         /// <inheritdoc />
-        public string TypeNamespace => Parent?.TypeNamespace;
+        public string? TypeNamespace => Parent?.TypeNamespace;
 
         /// <inheritdoc />
         public string FullName => _fullName.Value;
@@ -92,14 +92,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static MemberReferenceWrapper Create(MemberReferenceHandle handle, AssemblyMetadata assemblyMetadata)
+        public static MemberReferenceWrapper? Create(MemberReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new MemberReferenceWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new MemberReferenceWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <summary>
@@ -108,9 +108,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<MemberReferenceWrapper> Create(in MemberReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<MemberReferenceWrapper?> Create(in MemberReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new MemberReferenceWrapper[collection.Count];
+            var output = new MemberReferenceWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -138,7 +138,7 @@ namespace LightweightMetadata
             var stringBuilder = new StringBuilder();
 
             var list = new List<string>(10);
-            var current = Parent;
+            IHandleTypeNamedWrapper? current = Parent;
             while (current != null)
             {
                 var name = nameGetter(current);

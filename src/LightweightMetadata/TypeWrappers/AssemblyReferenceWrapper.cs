@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
@@ -17,7 +18,7 @@ namespace LightweightMetadata
     /// </summary>
     public class AssemblyReferenceWrapper : IEquatable<AssemblyReferenceWrapper>
     {
-        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, AssemblyMetadata), AssemblyReferenceWrapper>();
+        private static readonly ConcurrentDictionary<(AssemblyReferenceHandle Handle, AssemblyMetadata AssemblyMetadata), AssemblyReferenceWrapper> _registerTypes = new ConcurrentDictionary<(AssemblyReferenceHandle, AssemblyMetadata), AssemblyReferenceWrapper>();
 
         private readonly Lazy<string> _name;
         private readonly Lazy<string> _culture;
@@ -43,7 +44,7 @@ namespace LightweightMetadata
             IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
             IsRetargetable = (Definition.Flags & AssemblyFlags.Retargetable) != 0;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -139,14 +140,14 @@ namespace LightweightMetadata
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static AssemblyReferenceWrapper Create(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata)
+        public static AssemblyReferenceWrapper? Create(AssemblyReferenceHandle handle, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
                 return null;
             }
 
-            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new AssemblyReferenceWrapper(data.handle, data.assemblyMetadata));
+            return _registerTypes.GetOrAdd((handle, assemblyMetadata), data => new AssemblyReferenceWrapper(data.Handle, data.AssemblyMetadata));
         }
 
         /// <summary>
@@ -155,9 +156,9 @@ namespace LightweightMetadata
         /// <param name="collection">The collection to create.</param>
         /// <param name="assemblyMetadata">The module to use in creation.</param>
         /// <returns>The list of the type.</returns>
-        public static IReadOnlyList<AssemblyReferenceWrapper> Create(in AssemblyReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        public static IReadOnlyList<AssemblyReferenceWrapper?> Create(in AssemblyReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
         {
-            var output = new AssemblyReferenceWrapper[collection.Count];
+            var output = new AssemblyReferenceWrapper?[collection.Count];
 
             int i = 0;
             foreach (var element in collection)
@@ -167,6 +168,24 @@ namespace LightweightMetadata
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a array instances of a type.
+        /// </summary>
+        /// <param name="collection">The collection to create.</param>
+        /// <param name="assemblyMetadata">The module to use in creation.</param>
+        /// <returns>The list of the type.</returns>
+        public static IReadOnlyList<AssemblyReferenceWrapper> CreateChecked(in AssemblyReferenceHandleCollection collection, AssemblyMetadata assemblyMetadata)
+        {
+            var entities = Create(collection, assemblyMetadata);
+
+            if (entities.Any(x => x is null))
+            {
+                throw new ArgumentException("Have invalid assembly references.", nameof(collection));
+            }
+
+            return entities.Select(x => x!).ToList();
         }
 
         /// <inheritdoc />

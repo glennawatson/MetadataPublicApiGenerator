@@ -38,6 +38,7 @@ namespace LightweightMetadata
             _culture = new Lazy<string>(GetCulture, LazyThreadSafetyMode.PublicationOnly);
             Version = Definition.Version;
             _assemblyName = new Lazy<AssemblyName>(() => Definition.GetAssemblyName(), LazyThreadSafetyMode.PublicationOnly);
+            CompilationModule = assemblyMetadata;
 
             HashAlgorithm = Definition.HashAlgorithm;
 
@@ -45,7 +46,7 @@ namespace LightweightMetadata
             _fullName = new Lazy<string>(GetFullName, LazyThreadSafetyMode.PublicationOnly);
             IsWindowsRuntime = (Definition.Flags & AssemblyFlags.WindowsRuntime) != 0;
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>

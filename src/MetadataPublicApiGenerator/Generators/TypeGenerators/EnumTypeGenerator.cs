@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// </summary>
     internal static class EnumTypeGenerator
     {
-        public static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
+        public static MemberDeclarationSyntax? Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, int level)
         {
             if (excludeFunc(type))
             {
@@ -39,10 +39,10 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                     var memberName = field.Name;
                     var constant = field.DefaultValue;
 
-                    return EnumMemberDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), memberName, constant == null ? null : EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)));
+                    return EnumMemberDeclaration(GeneratorFactory.Generate(field.Attributes, excludeMembersAttributes, excludeAttributes), memberName, constant == null ? null! : EqualsValueClause(SyntaxHelper.GetValueExpressionForKnownType(enumKnownType, constant)!));
                 }).ToList();
 
-            string enumName = null;
+            string? enumName = null;
             if (enumKnownType != KnownTypeCode.Int32)
             {
                 enumName = enumType.FullName;

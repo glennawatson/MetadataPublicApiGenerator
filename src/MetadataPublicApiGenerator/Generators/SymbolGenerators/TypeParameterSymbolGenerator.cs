@@ -14,7 +14,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class TypeParameterSymbolGenerator
     {
-        public static TypeParameterSyntax Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
+        public static TypeParameterSyntax? Generate(IHandleWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes)
         {
             if (!(handle is GenericParameterWrapper typeParameterWrapper))
             {

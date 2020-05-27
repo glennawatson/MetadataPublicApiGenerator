@@ -16,7 +16,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class AttributeSymbolGenerator
     {
-        public static AttributeSyntax Generate(IHandleWrapper member)
+        public static AttributeSyntax? Generate(IHandleWrapper member)
         {
             if (!(member is AttributeWrapper customAttribute))
             {
@@ -27,12 +27,26 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 
             foreach (var fixedArgument in customAttribute.FixedArguments)
             {
-                arguments.Add(AttributeArgument(SyntaxHelper.GetValueExpression(fixedArgument.Type, fixedArgument.Value)));
+                var valueSyntax = SyntaxHelper.GetValueExpression(fixedArgument.Type, fixedArgument.Value);
+
+                if (valueSyntax == null)
+                {
+                    throw new Exception("Invalid fixed arguments for attribute.");
+                }
+
+                arguments.Add(AttributeArgument(valueSyntax));
             }
 
             foreach (var namedArgument in customAttribute.NamedArguments)
             {
-                arguments.Add(AttributeArgument(NameEquals(IdentifierName(namedArgument.Name)), SyntaxHelper.GetValueExpression(namedArgument.Type, namedArgument.Value)));
+                var valueSyntax = SyntaxHelper.GetValueExpression(namedArgument.Type, namedArgument.Value);
+
+                if (valueSyntax == null)
+                {
+                    throw new Exception("Invalid named arguments for attribute:" + namedArgument.Name);
+                }
+
+                arguments.Add(AttributeArgument(NameEquals(IdentifierName(namedArgument.Name)), valueSyntax));
             }
 
             return Attribute(customAttribute.FullName, arguments);

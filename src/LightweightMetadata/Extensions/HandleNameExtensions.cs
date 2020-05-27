@@ -137,7 +137,7 @@ namespace LightweightMetadata
 
         internal static string GetRealTypeName(this string typeDefinitionName) => GetRealTypeName(typeDefinitionName.ToKnownTypeCode(), typeDefinitionName);
 
-        private static string GetRealTypeName(this KnownTypeCode knownTypeCode, string defaultTypeName = null)
+        private static string GetRealTypeName(this KnownTypeCode knownTypeCode, string defaultTypeName)
         {
             switch (knownTypeCode)
             {
@@ -174,7 +174,7 @@ namespace LightweightMetadata
                 case KnownTypeCode.Void:
                     return "void";
                 default:
-                    return defaultTypeName ?? knownTypeCode.ToTypeName();
+                    return defaultTypeName;
             }
         }
     }

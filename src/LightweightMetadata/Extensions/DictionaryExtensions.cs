@@ -24,7 +24,7 @@ namespace LightweightMetadata
         {
             if (!dictionary.TryGetValue(key, out var value))
             {
-                return default;
+                return default!;
             }
 
             return value;

@@ -16,7 +16,7 @@ namespace LightweightMetadata
     public class ParameterWrapper : IHandleNameWrapper, IHasAttributes
     {
         private readonly Lazy<string> _name;
-        private readonly Lazy<object> _defaultValue;
+        private readonly Lazy<object?> _defaultValue;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
         private readonly Lazy<ParameterReferenceKind> _referenceKind;
 
@@ -28,14 +28,14 @@ namespace LightweightMetadata
             Definition = Resolve(handle, assemblyMetadata);
 
             _name = new Lazy<string>(() => Definition.Name.GetName(assemblyMetadata).GetKeywordSafeName(), LazyThreadSafetyMode.PublicationOnly);
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(Definition.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
 
             ParameterType = typeWrapper;
 
             Optional = (Definition.Attributes & ParameterAttributes.Optional) != 0;
             HasDefaultValue = (Definition.Attributes & ParameterAttributes.HasDefault) != 0;
 
-            _defaultValue = new Lazy<object>(() => !HasDefaultValue ? null : Definition.GetDefaultValue().ReadConstant(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _defaultValue = new Lazy<object?>(() => !HasDefaultValue ? null : Definition.GetDefaultValue().ReadConstant(assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _referenceKind = new Lazy<ParameterReferenceKind>(GetReferenceKind, LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -82,7 +82,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the default value if there is one.
         /// </summary>
-        public object DefaultValue => _defaultValue.Value;
+        public object? DefaultValue => _defaultValue.Value;
 
         /// <summary>
         /// Gets the type of reference this parameter is.
@@ -90,13 +90,13 @@ namespace LightweightMetadata
         public ParameterReferenceKind ReferenceKind => _referenceKind.Value;
 
         /// <summary>
-        /// Creates a instance of the method, if there is already not an instance.
+        /// Creates a instance of the parameter, if there is already not an instance.
         /// </summary>
         /// <param name="handle">The handle to the instance.</param>
         /// <param name="typeWrapper">The type of the parameter.</param>
         /// <param name="assemblyMetadata">The module that contains the instance.</param>
         /// <returns>The wrapper.</returns>
-        public static ParameterWrapper Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata assemblyMetadata)
+        public static ParameterWrapper? Create(ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata assemblyMetadata)
         {
             if (handle.IsNil)
             {
@@ -104,6 +104,25 @@ namespace LightweightMetadata
             }
 
             return new ParameterWrapper(handle, typeWrapper, assemblyMetadata);
+        }
+
+        /// <summary>
+        /// Creates a instance of the parameter, if there is already not an instance.
+        /// </summary>
+        /// <param name="handle">The handle to the instance.</param>
+        /// <param name="typeWrapper">The type of the parameter.</param>
+        /// <param name="assemblyMetadata">The module that contains the instance.</param>
+        /// <returns>The wrapper.</returns>
+        public static ParameterWrapper CreateChecked(in ParameterHandle handle, IHandleTypeNamedWrapper typeWrapper, AssemblyMetadata assemblyMetadata)
+        {
+            var value = Create(handle, typeWrapper, assemblyMetadata);
+
+            if (value == null)
+            {
+                throw new ArgumentException("Cannot create method parameter.", nameof(handle));
+            }
+
+            return value;
         }
 
         /// <inheritdoc />

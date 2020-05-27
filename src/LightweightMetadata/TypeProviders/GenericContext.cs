@@ -10,18 +10,15 @@ namespace LightweightMetadata
 {
     internal class GenericContext
     {
-        internal GenericContext(AssemblyMetadata assemblyMetadata)
-        {
-            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
-            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
-        }
-
         internal GenericContext(IHandleWrapper wrapper)
         {
             if (wrapper == null)
             {
                 throw new ArgumentNullException(nameof(wrapper));
             }
+
+            ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
+            MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
 
             switch (wrapper)
             {
@@ -54,7 +51,7 @@ namespace LightweightMetadata
             }
         }
 
-        private GenericContext()
+        internal GenericContext()
         {
             ClassTypeParameters = Array.Empty<GenericParameterWrapper>();
             MethodTypeParameters = Array.Empty<GenericParameterWrapper>();
@@ -69,12 +66,12 @@ namespace LightweightMetadata
 
         public IReadOnlyList<GenericParameterWrapper> MethodTypeParameters { get; }
 
-        public IHandleTypeNamedWrapper GetClassTypeParameter(int index)
+        public IHandleTypeNamedWrapper? GetClassTypeParameter(int index)
         {
             return index < ClassTypeParameters.Count ? ClassTypeParameters[index] : default;
         }
 
-        public IHandleTypeNamedWrapper GetMethodTypeParameter(int index)
+        public IHandleTypeNamedWrapper? GetMethodTypeParameter(int index)
         {
             return index < MethodTypeParameters.Count ? MethodTypeParameters[index] : default;
         }

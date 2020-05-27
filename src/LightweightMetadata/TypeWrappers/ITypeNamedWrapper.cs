@@ -17,7 +17,7 @@ namespace LightweightMetadata
         /// <summary>
         /// Gets the full name of the namespace containing this entity.
         /// </summary>
-        string TypeNamespace { get; }
+        string? TypeNamespace { get; }
 
         /// <summary>
         /// Gets the accessibility of the member.

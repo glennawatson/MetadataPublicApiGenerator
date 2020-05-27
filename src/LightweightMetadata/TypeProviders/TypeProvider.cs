@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection.Metadata;
 
+#nullable disable
 namespace LightweightMetadata
 {
     /// <summary>
@@ -66,7 +67,7 @@ namespace LightweightMetadata
                 return MetadataRepository.GetTypeByName(genericType.FullName);
             }
 
-            return new ParameterizedTypeWrapper(genericType, typeArguments);
+            return new ParameterizedTypeWrapper(genericType, typeArguments.ToArray());
         }
 
         /// <inheritdoc />

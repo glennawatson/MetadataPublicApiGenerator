@@ -18,7 +18,7 @@ namespace LightweightMetadata
     {
         private readonly Lazy<IReadOnlyList<GenericParameterConstraintWrapper>> _constraints;
         private readonly Lazy<IReadOnlyList<AttributeWrapper>> _attributes;
-        private readonly Lazy<IHandleTypeNamedWrapper> _parent;
+        private readonly Lazy<IHandleTypeNamedWrapper?> _parent;
         private readonly Lazy<string> _name;
         private readonly GenericParameterAttributes _genericParameterAttribute;
 
@@ -30,8 +30,8 @@ namespace LightweightMetadata
             _genericParameterAttribute = genericParameterAttribute;
             GenericParameter = assemblyMetadata.MetadataReader.GetGenericParameter(handle);
 
-            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.Create(GenericParameter.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
-            _parent = new Lazy<IHandleTypeNamedWrapper>(() => WrapperFactory.Create(GenericParameter.Parent, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _attributes = new Lazy<IReadOnlyList<AttributeWrapper>>(() => AttributeWrapper.CreateChecked(GenericParameter.GetCustomAttributes(), assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _parent = new Lazy<IHandleTypeNamedWrapper?>(() => WrapperFactory.Create(GenericParameter.Parent, assemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
             _name = new Lazy<string>(() => GenericParameter.Name.GetName(assemblyMetadata));
             switch (genericParameterAttribute & GenericParameterAttributes.VarianceMask)
             {
@@ -46,13 +46,13 @@ namespace LightweightMetadata
                     break;
             }
 
-            _constraints = new Lazy<IReadOnlyList<GenericParameterConstraintWrapper>>(() => GenericParameterConstraintWrapper.Create(GenericParameter.GetConstraints(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
+            _constraints = new Lazy<IReadOnlyList<GenericParameterConstraintWrapper>>(() => GenericParameterConstraintWrapper.CreateChecked(GenericParameter.GetConstraints(), this, AssemblyMetadata), LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
         /// Gets the parent of the parameter.
         /// </summary>
-        public IHandleTypeNamedWrapper Parent => _parent.Value;
+        public IHandleTypeNamedWrapper? Parent => _parent.Value;
 
         /// <summary>
         /// Gets the handle to the owner.
@@ -102,7 +102,7 @@ namespace LightweightMetadata
         public string ReflectionFullName => Name;
 
         /// <inheritdoc />
-        public string TypeNamespace => Owner.TypeNamespace;
+        public string? TypeNamespace => Owner.TypeNamespace;
 
         /// <inheritdoc />
         public EntityAccessibility Accessibility => EntityAccessibility.Public;
@@ -162,7 +162,7 @@ namespace LightweightMetadata
         /// <returns>A <see cref="GenericParameterWrapper"/>.</returns>
         public static GenericParameterWrapper Create(GenericParameterHandle handle, IHandleTypeNamedWrapper owner, int index, AssemblyMetadata assemblyMetadata)
         {
-            if (assemblyMetadata == null)
+            if (assemblyMetadata is null)
             {
                 throw new ArgumentNullException(nameof(assemblyMetadata));
             }

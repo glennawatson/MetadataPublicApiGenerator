@@ -4,16 +4,21 @@
 
 using System;
 using System.Text;
-
+using System.Text.RegularExpressions;
 using Shouldly;
 
 namespace MetadataPublicApiGenerator.Tests
 {
     internal static class TestHelpers
     {
+        private static readonly Regex _spaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
+
         public static void CheckEquals(string publicApi, string expectedApi, string receivedFileName, string approvedFile)
         {
-            if (!publicApi.Equals(expectedApi, StringComparison.InvariantCulture))
+            string fixedStringOne = _spaceRegex.Replace(publicApi, string.Empty);
+            string fixedStringTwo = _spaceRegex.Replace(expectedApi, string.Empty);
+
+            if (!string.Equals(fixedStringOne, fixedStringTwo, StringComparison.InvariantCulture))
             {
                 try
                 {

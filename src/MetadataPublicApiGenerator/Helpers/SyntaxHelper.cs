@@ -25,7 +25,7 @@ namespace MetadataPublicApiGenerator.Helpers
         /// <param name="wrapper">The type to convert from.</param>
         /// <param name="value">The value to set.</param>
         /// <returns>The expression syntax.</returns>
-        public static ExpressionSyntax GetValueExpression(ITypeNamedWrapper wrapper, object value)
+        public static ExpressionSyntax? GetValueExpression(ITypeNamedWrapper wrapper, object value)
         {
             if (value == null)
             {

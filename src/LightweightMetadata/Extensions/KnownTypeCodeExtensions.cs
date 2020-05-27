@@ -13,7 +13,7 @@ namespace LightweightMetadata
     /// </summary>
     internal static class KnownTypeCodeExtensions
     {
-        private static readonly string[] _knownTypeReferences =
+        private static readonly string?[] _knownTypeReferences =
         {
             null, // None
             "System.Object",
@@ -94,7 +94,7 @@ namespace LightweightMetadata
         /// <param name="knownTypeCode">The known type code to convert.</param>
         /// <param name="metadataRepository">The MetadataRepository of all known modules.</param>
         /// <returns>The type wrapper if its available, null otherwise.</returns>
-        internal static IHandleTypeNamedWrapper ToTypeWrapper(this KnownTypeCode knownTypeCode, MetadataRepository metadataRepository)
+        internal static IHandleTypeNamedWrapper? ToTypeWrapper(this KnownTypeCode knownTypeCode, MetadataRepository metadataRepository)
         {
             if (metadataRepository == null)
             {
@@ -110,7 +110,7 @@ namespace LightweightMetadata
         /// </summary>
         /// <param name="knownType">The known type code to convert.</param>
         /// <returns>A string representation of the type.</returns>
-        internal static string ToTypeName(this KnownTypeCode knownType)
+        internal static string? ToTypeName(this KnownTypeCode knownType)
         {
             return _knownTypeReferences[(int)knownType];
         }

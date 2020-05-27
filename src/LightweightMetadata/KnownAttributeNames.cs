@@ -12,7 +12,7 @@ namespace LightweightMetadata
 {
     internal static class KnownAttributeNames
     {
-        public static readonly string[] TypeNames =
+        public static readonly string?[] TypeNames =
         {
             default,
             CompilerServices + nameof(CompilerGeneratedAttribute),

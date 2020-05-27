@@ -21,7 +21,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// </summary>
     internal static class ClassDefinitionGenerator
     {
-        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
+        internal static MemberDeclarationSyntax? Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
             if (excludeFunc(type))
             {

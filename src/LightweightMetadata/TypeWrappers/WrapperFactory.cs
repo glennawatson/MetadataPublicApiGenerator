@@ -2,6 +2,7 @@
 // This file is licensed to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.Reflection.Metadata;
 
 namespace LightweightMetadata
@@ -17,7 +18,7 @@ namespace LightweightMetadata
         /// <param name="entity">The handle of the element to be wrapped.</param>
         /// <param name="assemblyMetadata">The module hosting the handle.</param>
         /// <returns>A wrapper or null if one cannot be created.</returns>
-        public static IHandleTypeNamedWrapper Create(EntityHandle entity, AssemblyMetadata assemblyMetadata)
+        public static IHandleTypeNamedWrapper? Create(EntityHandle entity, AssemblyMetadata assemblyMetadata)
         {
             if (entity.IsNil)
             {
@@ -40,15 +41,33 @@ namespace LightweightMetadata
                     return MemberReferenceWrapper.Create((MemberReferenceHandle)entity, assemblyMetadata);
                 case HandleKind.TypeSpecification:
                     var specification = TypeSpecificationWrapper.Create((TypeSpecificationHandle)entity, assemblyMetadata);
-                    return specification.Type;
+                    return specification?.Type;
                 case HandleKind.InterfaceImplementation:
                     return InterfaceImplementationWrapper.Create((InterfaceImplementationHandle)entity, assemblyMetadata);
                 case HandleKind.TypeReference:
                     var typeWrapper = TypeReferenceWrapper.Create((TypeReferenceHandle)entity, assemblyMetadata);
-                    return typeWrapper.Type;
+                    return typeWrapper?.Type;
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Creates a wrapper given a handle or throws an exception if it can't be created.
+        /// </summary>
+        /// <param name="entity">The handle of the element to be wrapped.</param>
+        /// <param name="assemblyMetadata">The module hosting the handle.</param>
+        /// <returns>A wrapper.</returns>
+        public static IHandleTypeNamedWrapper CreateChecked(EntityHandle entity, AssemblyMetadata assemblyMetadata)
+        {
+            var value = Create(entity, assemblyMetadata);
+
+            if (value == null)
+            {
+                throw new ArgumentException("Cannot create a wrapper for entity", nameof(entity));
+            }
+
+            return value;
         }
     }
 }

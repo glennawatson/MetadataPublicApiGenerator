@@ -14,14 +14,16 @@ namespace LightweightMetadata
 {
     internal static class AssemblyLoadingHelper
     {
+        private static readonly string[] Extensions = new string[] { ".winmd", ".dll", ".exe" };
+
         private static readonly string DefaultNuGetDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
 
         private static readonly ConcurrentDictionary<string, AssemblyMetadata> _fileNameToModule = new ConcurrentDictionary<string, AssemblyMetadata>(StringComparer.InvariantCultureIgnoreCase);
 
-        private static readonly ConcurrentDictionary<string, AssemblyMetadata> _nameToModule
-            = new ConcurrentDictionary<string, AssemblyMetadata>();
+        private static readonly ConcurrentDictionary<string?, AssemblyMetadata?> _nameToModule
+            = new ConcurrentDictionary<string?, AssemblyMetadata?>();
 
-        public static AssemblyMetadata ResolveCompilationModule(string name, AssemblyMetadata parent, Version version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string publicKey = null)
+        public static AssemblyMetadata? ResolveCompilationModule(string name, AssemblyMetadata parent, Version? version = null, bool isWindowsRuntime = false, bool isRetargetable = false, string? publicKey = null)
         {
             return _nameToModule.GetOrAdd(
                 name,
@@ -36,20 +38,18 @@ namespace LightweightMetadata
                         return null;
                     }
 
-                    return _fileNameToModule.GetOrAdd(fileName, __ => new AssemblyMetadata(fileName, parent.MetadataRepository, parent.TypeProvider));
+                    return _fileNameToModule.GetOrAdd(fileName!, __ => new AssemblyMetadata(fileName!, parent.MetadataRepository, parent.TypeProvider));
                 });
         }
 
-        private static string GetFileName(string name, Version version, AssemblyMetadata baseReader, IEnumerable<string> searchDirectories, bool isWindowsRuntime, bool isRetargetable, string publicKey)
+        private static string? GetFileName(string name, Version? version, AssemblyMetadata baseReader, IEnumerable<string> searchDirectories, bool isWindowsRuntime, bool isRetargetable, string? publicKey)
         {
-            var extensions = new[] { ".winmd", ".dll", ".exe" };
-
             if (isWindowsRuntime)
             {
                 return FindWindowsMetadataFile(name, version);
             }
 
-            string file;
+            string? file;
 
             if (name == "mscorlib" && version != null && publicKey != null)
             {
@@ -60,21 +60,21 @@ namespace LightweightMetadata
                 }
             }
 
-            file = FindInParentDirectory(name, baseReader, extensions);
+            file = FindInParentDirectory(name, baseReader, Extensions);
 
             if (!string.IsNullOrWhiteSpace(file))
             {
                 return file;
             }
 
-            file = SearchDirectories(name, extensions, searchDirectories);
+            file = SearchDirectories(name, Extensions, searchDirectories);
 
             if (!string.IsNullOrWhiteSpace(file))
             {
                 return file;
             }
 
-            file = FindInNuGetDirectory(name, extensions);
+            file = FindInNuGetDirectory(name, Extensions);
 
             if (!string.IsNullOrWhiteSpace(file))
             {
@@ -84,9 +84,9 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string FindInParentDirectory(string name, AssemblyMetadata parent, IEnumerable<string> extensions)
+        private static string? FindInParentDirectory(string name, AssemblyMetadata? parent, IEnumerable<string> extensions)
         {
-            if (parent == null)
+            if (parent is null)
             {
                 return null;
             }
@@ -112,7 +112,7 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string SearchDirectories(string name, IReadOnlyList<string> extensions, IEnumerable<string> directories)
+        private static string? SearchDirectories(string name, IReadOnlyList<string> extensions, IEnumerable<string> directories)
         {
             foreach (var searchDirectory in directories)
             {
@@ -136,7 +136,7 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string GetCorlib(Version version, bool isRetargetable, string publicKey)
+        private static string? GetCorlib(Version? version, bool isRetargetable, string? publicKey)
         {
             var corlib = typeof(object).Assembly.GetName();
 
@@ -145,7 +145,7 @@ namespace LightweightMetadata
                 return typeof(object).Module.FullyQualifiedName;
             }
 
-            string path;
+            string? path;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 path = GetMscorlibBasePath(version, publicKey);
@@ -164,29 +164,9 @@ namespace LightweightMetadata
             return File.Exists(file) ? file : null;
         }
 
-        private static string GetMscorlibBasePath(Version version, string publicKeyToken)
+        private static string? GetMscorlibBasePath(Version? version, string? publicKeyToken)
         {
-            string GetSubFolderForVersion()
-            {
-                switch (version.Major)
-                {
-                    case 1:
-                        if (version.MajorRevision == 3300)
-                        {
-                            return "v1.0.3705";
-                        }
-
-                        return "v1.1.4322";
-                    case 2:
-                        return "v2.0.50727";
-                    case 4:
-                        return "v4.0.30319";
-                    default:
-                        return null;
-                }
-            }
-
-            if (publicKeyToken == "969db8053d3322ac")
+            if (publicKeyToken == "969db8053d3322ac" && version != null)
             {
                 string programFiles = Environment.Is64BitOperatingSystem ? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) : Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                 string windowsCeDirectoryPath = $@"Microsoft.NET\SDK\CompactFramework\v{version.Major}.{version.Minor}\WindowsCE\";
@@ -205,7 +185,11 @@ namespace LightweightMetadata
                     Path.Combine(rootPath, "Framework64")
                 };
 
-                string folder = GetSubFolderForVersion();
+                string? folder = null;
+                if (version != null)
+                {
+                    folder = GetSubFolderForVersion(version!);
+                }
 
                 if (folder != null)
                 {
@@ -223,11 +207,36 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string GetMonoMscorlibBasePath(Version version)
+        private static string? GetSubFolderForVersion(Version version)
+        {
+            switch (version.Major)
+            {
+                case 1:
+                    if (version.MajorRevision == 3300)
+                    {
+                        return "v1.0.3705";
+                    }
+
+                    return "v1.1.4322";
+                case 2:
+                    return "v2.0.50727";
+                case 4:
+                    return "v4.0.30319";
+                default:
+                    return null;
+            }
+        }
+
+        private static string? GetMonoMscorlibBasePath(Version? version)
         {
             var path = Directory.GetParent(typeof(object).Module.FullyQualifiedName).Parent?.FullName;
 
             if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            if (version == null)
             {
                 return null;
             }
@@ -248,14 +257,14 @@ namespace LightweightMetadata
             return Directory.Exists(path) ? path : null;
         }
 
-        private static bool IsZeroOrAllOnes(Version version)
+        private static bool IsZeroOrAllOnes(Version? version)
         {
             return version == null
                    || (version.Major == 0 && version.Minor == 0 && version.Build == 0 && version.Revision == 0)
                    || (version.Major == 65535 && version.Minor == 65535 && version.Build == 65535 && version.Revision == 65535);
         }
 
-        private static string FindWindowsMetadataFile(string name, Version version)
+        private static string? FindWindowsMetadataFile(string name, Version? version)
         {
             // This is only supported on windows at the moment.
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -287,7 +296,7 @@ namespace LightweightMetadata
             return file;
         }
 
-        private static string FindWindowsMetadataInSystemDirectory(string name)
+        private static string? FindWindowsMetadataInSystemDirectory(string name)
         {
             string file = Path.Combine(Environment.SystemDirectory, "WinMetadata", name + ".winmd");
             if (File.Exists(file))
@@ -298,7 +307,7 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string FindInNuGetDirectory(string name, IEnumerable<string> extensions)
+        private static string? FindInNuGetDirectory(string name, IEnumerable<string> extensions)
         {
             if (!Directory.Exists(DefaultNuGetDirectory))
             {
@@ -327,26 +336,31 @@ namespace LightweightMetadata
             return null;
         }
 
-        private static string FindClosestVersionDirectory(string basePath, Version version)
+        private static string? FindClosestVersionDirectory(string basePath, Version? version)
         {
-            string path = null;
+            if (version == null)
+            {
+                return null;
+            }
+
+            string? path = null;
             foreach (var folder in new DirectoryInfo(basePath)
                 .EnumerateDirectories()
                 .Select(d => ConvertToVersion(d.Name))
-                .Where(v => v.Item1 != null)
-                .OrderByDescending(v => v.Item1))
+                .Where(v => v.Version != null)
+                .OrderByDescending(v => v.Version))
             {
-                if (path == null || folder.Item1 >= version)
+                if (path == null || folder.Version >= version)
                 {
-                    path = folder.Item2;
+                    path = folder.Name;
                 }
             }
 
-            return path ?? version.ToString();
+            return path ?? version?.ToString();
         }
 
         [SuppressMessage("Design", "CA1031: Modify to catch a more specific exception type, or rethrow the exception.", Justification = "Deliberate usage.")]
-        private static (Version, string) ConvertToVersion(string name)
+        private static (Version? Version, string? Name) ConvertToVersion(string name)
         {
             try
             {

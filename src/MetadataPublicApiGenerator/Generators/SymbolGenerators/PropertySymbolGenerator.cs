@@ -16,7 +16,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
 {
     internal static class PropertySymbolGenerator
     {
-        public static PropertyDeclarationSyntax Generate(IHandleTypeNamedWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
+        public static PropertyDeclarationSyntax? Generate(IHandleTypeNamedWrapper handle, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, int level)
         {
             if (!(handle is PropertyWrapper property))
             {

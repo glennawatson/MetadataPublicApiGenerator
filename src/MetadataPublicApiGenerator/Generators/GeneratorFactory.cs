@@ -39,26 +39,7 @@ namespace MetadataPublicApiGenerator.Generators
             return CompilationUnit(attributes, members);
         }
 
-        public static MemberDeclarationSyntax Generate(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
-        {
-            switch (typeWrapper.TypeKind)
-            {
-                case SymbolTypeKind.Class:
-                    return ClassDefinitionGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
-                case SymbolTypeKind.Delegate:
-                    return DelegateTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
-                case SymbolTypeKind.Enum:
-                    return EnumTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, level);
-                case SymbolTypeKind.Interface:
-                    return InterfaceTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
-                case SymbolTypeKind.Struct:
-                    return StructTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
-            }
-
-            return null;
-        }
-
-        public static TOutput Generate<TOutput>(IHandleTypeNamedWrapper wrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
+        public static TOutput? Generate<TOutput>(IHandleTypeNamedWrapper wrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
             where TOutput : SyntaxNode
         {
             switch (wrapper.Handle.Kind)
@@ -76,23 +57,24 @@ namespace MetadataPublicApiGenerator.Generators
                 case HandleKind.GenericParameter:
                     return TypeParameterSymbolGenerator.Generate(wrapper, excludeMembersAttributes, excludeAttributes) as TOutput;
                 case HandleKind.TypeDefinition:
-                    return Generate(wrapper as TypeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level) as TOutput;
+                    return Generate((TypeWrapper)wrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level) as TOutput;
             }
 
             return null;
         }
 
-        public static IReadOnlyCollection<AttributeListSyntax> Generate(IEnumerable<AttributeWrapper> attributes, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, SyntaxKind? target = null)
+        public static IReadOnlyCollection<AttributeListSyntax> Generate(IReadOnlyList<AttributeWrapper> attributes, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, SyntaxKind? target = null)
         {
             return attributes
                 .OrderByAndExclude(excludeMembersAttributes, excludeAttributes)
                 .Select(AttributeSymbolGenerator.Generate)
                 .Where(x => x != null)
-                .Select(x => AttributeList(x, target))
+                .Select(x => AttributeList(x!, target))
+                .OrderBy(x => x.ToFullString())
                 .ToList();
         }
 
-        public static IReadOnlyCollection<MemberDeclarationSyntax> Generate(NamespaceWrapper root, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, Func<TypeWrapper, bool> excludeFunc)
+        private static IReadOnlyCollection<MemberDeclarationSyntax> Generate(NamespaceWrapper root, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, Func<TypeWrapper, bool> excludeFunc)
         {
             var namespaces = GetAllNamespaces(root)
                 .AsParallel()
@@ -123,7 +105,7 @@ namespace MetadataPublicApiGenerator.Generators
                     var list = new List<MemberDeclarationSyntax>(types.Count);
                     output[namespaceIndex] = list;
 
-                    var members = new MemberDeclarationSyntax[types.Count];
+                    var members = new MemberDeclarationSyntax?[types.Count];
 
                     Parallel.For(
                         0,
@@ -131,21 +113,47 @@ namespace MetadataPublicApiGenerator.Generators
                         i =>
                             {
                                 var current = types[i];
-                                members[i] = Generate(current, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, 1).AddTrialingNewLines().AddLeadingNewLines(i == 0 ? 1 : 0);
+                                var member = Generate(current, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, 1);
+
+                                if (member != null)
+                                {
+                                    members[i] = member.AddTrialingNewLines().AddLeadingNewLines(i == 0 ? 1 : 0);
+                                }
                             });
 
                     var namespaceName = namespaceInfo.FullName;
+
+                    var validMembers = members.Where(x => x != null).Select(x => x!).ToList();
                     if (string.IsNullOrEmpty(namespaceName))
                     {
-                        list.AddRange(members);
+                        list.AddRange(validMembers);
                     }
                     else
                     {
-                        list.Add(NamespaceDeclaration(namespaceName, members, namespaceIndex != 0));
+                        list.Add(NamespaceDeclaration(namespaceName, validMembers, namespaceIndex != 0));
                     }
                 });
 
             return output.Where(x => x != null).SelectMany(x => x).ToList();
+        }
+
+        private static MemberDeclarationSyntax? Generate(TypeWrapper typeWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
+        {
+            switch (typeWrapper.TypeKind)
+            {
+                case SymbolTypeKind.Class:
+                    return ClassDefinitionGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
+                case SymbolTypeKind.Delegate:
+                    return DelegateTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
+                case SymbolTypeKind.Enum:
+                    return EnumTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, level);
+                case SymbolTypeKind.Interface:
+                    return InterfaceTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
+                case SymbolTypeKind.Struct:
+                    return StructTypeGenerator.Generate(typeWrapper, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
+            }
+
+            return null;
         }
 
         private static IEnumerable<NamespaceWrapper> GetAllNamespaces(NamespaceWrapper rootNamespace)

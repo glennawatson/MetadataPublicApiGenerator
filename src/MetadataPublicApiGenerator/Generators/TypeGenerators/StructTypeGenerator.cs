@@ -20,7 +20,7 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
     /// </summary>
     internal static class StructTypeGenerator
     {
-        internal static MemberDeclarationSyntax Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
+        internal static MemberDeclarationSyntax? Generate(TypeWrapper type, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Func<TypeWrapper, bool> excludeFunc, Nullability currentNullability, int level)
         {
             if (excludeFunc(type))
             {
@@ -32,8 +32,9 @@ namespace MetadataPublicApiGenerator.Generators.TypeGenerators
                 currentNullability = nullableContext;
             }
 
+            type.Attributes.TryGetNullable(out var nullable);
             var (constraints, typeParameters) = type.GetTypeParameters(excludeMembersAttributes, excludeAttributes, currentNullability);
-            var baseTypes = type.GetInterfaceBaseTypes(currentNullability);
+            var baseTypes = type.GetInterfaceBaseTypes(currentNullability, nullable);
             var members = TypeGeneratorHelpers.GenerateMemberDeclaration(type, excludeMembersAttributes, excludeAttributes, excludeFunc, currentNullability, level);
             var attributes = GeneratorFactory.Generate(type.Attributes, excludeMembersAttributes, excludeAttributes);
             var modifiers = type.GetModifiers();

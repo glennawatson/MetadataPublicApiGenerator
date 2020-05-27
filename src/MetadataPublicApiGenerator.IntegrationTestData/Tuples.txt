@@ -1,9 +1,16 @@
 namespace MetadataPublicApiGenerator.IntegrationTestData
 {
+    public interface Test<TViewModel, TView, TOutput>
+    {
+    }
+
     public class Tuples
     {
         public Tuples();
         public (int x, int y) PropertyTuple { get; }
+        public MetadataPublicApiGenerator.IntegrationTestData.Test<TView, TViewModel, (object view, bool isViewModel)> Bind<TViewModel, TView, TVMProp, TVProp, TDontCare>(TViewModel viewModel, TView view, System.Linq.Expressions.Expression<System.Func<TViewModel, TVMProp>> vmProperty, System.Linq.Expressions.Expression<System.Func<TView, TVProp>> viewProperty, System.IObservable<TDontCare> signalViewUpdate, object conversionHint)
+            where TViewModel : class
+            where TView : class;
         public (int x, int y) Deconstruct(out int x, out int y);
         public void TestTupleInput((int x, int y) input);
     }

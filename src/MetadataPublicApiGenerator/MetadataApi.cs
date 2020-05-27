@@ -67,7 +67,7 @@ namespace MetadataPublicApiGenerator
         /// <param name="excludeMembersAttributes">Optional parameter of any attributes to use to discard members.</param>
         /// <param name="excludeFunc">Determines if a type should be included.</param>
         /// <returns>The string containing the public available API.</returns>
-        public static string GeneratePublicApi(string assemblyFilePath, bool shouldIncludeAssemblyAttributes = true, IEnumerable<string> excludeAttributes = null, IEnumerable<string> excludeMembersAttributes = null, Func<TypeWrapper, bool> excludeFunc = null)
+        public static string GeneratePublicApi(string assemblyFilePath, bool shouldIncludeAssemblyAttributes = true, IEnumerable<string>? excludeAttributes = null, IEnumerable<string>? excludeMembersAttributes = null, Func<TypeWrapper, bool>? excludeFunc = null)
         {
             var attributesToExclude = excludeAttributes == null ? DefaultSkipAttributeNames : new HashSet<string>(excludeAttributes.Union(DefaultSkipAttributeNames));
 
@@ -82,12 +82,10 @@ namespace MetadataPublicApiGenerator
 
             searchDirectories.UnionWith(AppDomain.CurrentDomain.GetAssemblies().Where(x => !x.IsDynamic).Select(x => Path.GetDirectoryName(x.Location)));
 
-            excludeFunc = excludeFunc ?? (_ => false);
+            excludeFunc ??= _ => false;
 
-            using (var compilationMetadata = new MetadataRepository(assemblyFilePath, searchDirectories))
-            {
-                return GeneratorFactory.Generate(compilationMetadata, attributesMembersToExclude, attributesToExclude, excludeFunc, shouldIncludeAssemblyAttributes).ToFullString();
-            }
+            using var compilationMetadata = new MetadataRepository(assemblyFilePath, searchDirectories);
+            return GeneratorFactory.Generate(compilationMetadata, attributesMembersToExclude, attributesToExclude, excludeFunc, shouldIncludeAssemblyAttributes).ToFullString();
         }
 
         /// <summary>
@@ -99,7 +97,7 @@ namespace MetadataPublicApiGenerator
         /// <param name="excludeMembersAttributes">Optional parameter of any attributes to use to discard members.</param>
         /// <param name="excludeFunc">Determines if a type should be included.</param>
         /// <returns>The string containing the public available API.</returns>
-        public static string GeneratePublicApi(Assembly assembly, bool shouldIncludeAssemblyAttributes = true, IEnumerable<string> excludeAttributes = null, IEnumerable<string> excludeMembersAttributes = null, Func<TypeWrapper, bool> excludeFunc = null)
+        public static string GeneratePublicApi(Assembly assembly, bool shouldIncludeAssemblyAttributes = true, IEnumerable<string>? excludeAttributes = null, IEnumerable<string>? excludeMembersAttributes = null, Func<TypeWrapper, bool>? excludeFunc = null)
         {
             if (assembly == null)
             {

@@ -19,17 +19,22 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
     /// </summary>
     internal static class ParameterSymbolGenerator
     {
-        public static ParameterSyntax Generate(IHandleNameWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, bool isExtensionMethod)
+        public static ParameterSyntax? Generate(IHandleNameWrapper nameWrapper, ISet<string> excludeMembersAttributes, ISet<string> excludeAttributes, Nullability currentNullability, bool isExtensionMethod)
         {
             if (!(nameWrapper is ParameterWrapper parameterWrapper))
             {
                 return null;
             }
 
-            EqualsValueClauseSyntax equals = null;
+            EqualsValueClauseSyntax? equals = null;
             if (parameterWrapper.HasDefaultValue)
             {
-                equals = EqualsValueClause(SyntaxHelper.GetValueExpression(parameterWrapper.ParameterType, parameterWrapper.DefaultValue));
+                var valueSyntax = SyntaxHelper.GetValueExpression(parameterWrapper.ParameterType, parameterWrapper.DefaultValue!);
+
+                if (valueSyntax != null)
+                {
+                    equals = EqualsValueClause(valueSyntax);
+                }
             }
 
             parameterWrapper.Attributes.TryGetNullable(out var nullability);
@@ -38,7 +43,7 @@ namespace MetadataPublicApiGenerator.Generators.SymbolGenerators
             var attributes = GeneratorFactory.Generate(parameterWrapper.Attributes, excludeMembersAttributes, excludeAttributes);
             var modifiers = parameterWrapper.GetModifiers(isExtensionMethod);
             var parameterType = parameterWrapper.ParameterType.GetTypeSyntax(nameWrapper, currentNullability, nullability, false);
-            return Parameter(attributes, modifiers, parameterType, name, equals);
+            return Parameter(attributes, modifiers, parameterType, name, equals!);
         }
     }
 }
