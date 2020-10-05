@@ -14,7 +14,7 @@ namespace LightweightMetadata
     public enum SymbolMethodKind
     {
         /// <summary>
-        /// An anonymous method or lambda expression
+        /// An anonymous method or lambda expression.
         /// </summary>
         AnonymousFunction = 0,
 

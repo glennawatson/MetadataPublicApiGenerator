@@ -10,7 +10,7 @@ namespace LightweightMetadata
     public enum KnownAttribute
     {
         /// <summary>
-        /// Not a known attribute
+        /// Not a known attribute.
         /// </summary>
         None,
 

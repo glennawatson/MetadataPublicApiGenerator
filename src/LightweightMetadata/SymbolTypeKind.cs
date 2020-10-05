@@ -68,12 +68,12 @@ namespace LightweightMetadata
         Pointer = 9,
 
         /// <summary>
-        /// Type is a C# struct or VB Structure
+        /// Type is a C# struct or VB Structure.
         /// </summary>
         Struct = 10,
 
         /// <summary>
-        /// Type is a C# struct or VB Structure
+        /// Type is a C# struct or VB Structure.
         /// </summary>
         Structure = 10,
 
